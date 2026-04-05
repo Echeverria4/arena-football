@@ -4,7 +4,7 @@ import {
   Animated,
   Easing,
   Platform,
-  findNodeHandle,
+  View,
   type ViewProps,
 } from "react-native";
 
@@ -21,7 +21,7 @@ export function RevealOnScroll({
   style,
   ...rest
 }: RevealOnScrollProps) {
-  const containerRef = useRef<Animated.View | null>(null);
+  const containerRef = useRef<any>(null);
   const opacity = useRef(new Animated.Value(Platform.OS === "web" ? 0 : 1)).current;
   const translateY = useRef(new Animated.Value(Platform.OS === "web" ? distance : 0)).current;
   const hasRevealed = useRef(Platform.OS !== "web");
@@ -57,7 +57,7 @@ export function RevealOnScroll({
       return;
     }
 
-    const target = findNodeHandle(containerRef.current) as unknown as Element | null;
+    const target = containerRef.current as Element | null;
 
     if (!target || typeof IntersectionObserver === "undefined") {
       reveal();
@@ -85,18 +85,15 @@ export function RevealOnScroll({
   }, [reveal]);
 
   return (
-    <Animated.View
-      ref={containerRef}
-      style={[
-        style,
-        {
+    <View ref={containerRef} style={style} {...rest}>
+      <Animated.View
+        style={{
           opacity,
           transform: [{ translateY }],
-        },
-      ]}
-      {...rest}
-    >
-      {children}
-    </Animated.View>
+        }}
+      >
+        {children}
+      </Animated.View>
+    </View>
   );
 }

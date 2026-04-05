@@ -1,10 +1,5 @@
-import { Screen } from "@/components/ui/Screen";
-import { TitleGalleryView } from "@/components/trophies/TitleGalleryView";
+import { GalleryScreenContent } from "./gallery";
 
 export default function TitlesScreen() {
-  return (
-    <Screen scroll ambientDiamond className="px-6">
-      <TitleGalleryView />
-    </Screen>
-  );
+  return <GalleryScreenContent initialSection="titles" />;
 }

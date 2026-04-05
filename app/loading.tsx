@@ -7,8 +7,8 @@ import { Screen } from "@/components/ui/Screen";
 import { bootMessages } from "@/lib/constants";
 import { useAppStore } from "@/stores/app-store";
 
-const horizontalLines = ["20%", "50%", "80%"];
-const verticalLines = ["22%", "60%"];
+const horizontalLines = ["20%", "50%", "80%"] as const;
+const verticalLines = ["22%", "60%"] as const;
 const loadingNeon = "#57FF7C";
 const loadingNeonSoft = "#BFFFC8";
 const loadingNeonText = "#D7FFE0";
@@ -18,19 +18,14 @@ const loadingBeamColors = [
   "rgba(87,255,124,0.95)",
   "rgba(87,255,124,0.18)",
   "rgba(87,255,124,0)",
-];
-const loadingBarColors = ["#C9FF72", "#8DFF9E", "#57FF7C"];
+] as const;
+const loadingBarColors = ["#C9FF72", "#8DFF9E", "#57FF7C"] as const;
 
 function formatBootCommand(value: string) {
   return `> ${value.replaceAll(" ", "_").toUpperCase()}...`;
 }
 
 function goToHome() {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.location.href = "/tournaments";
-    return;
-  }
-
   router.replace("/tournaments");
 }
 
@@ -44,6 +39,9 @@ export default function LoadingScreen() {
       .map(formatBootCommand);
   }, [messageIndex]);
   const setBootCompleted = useAppStore((state) => state.setBootCompleted);
+  const releaseSharedTournamentAccess = useAppStore(
+    (state) => state.releaseSharedTournamentAccess,
+  );
   const redirectStarted = useRef(false);
 
   const scanlineY = useRef(new Animated.Value(-120)).current;
@@ -68,6 +66,10 @@ export default function LoadingScreen() {
       })),
     ).flat();
   }, [viewport.height, viewport.width]);
+
+  useEffect(() => {
+    releaseSharedTournamentAccess();
+  }, [releaseSharedTournamentAccess]);
 
   useEffect(() => {
     const progressInterval = setInterval(() => {

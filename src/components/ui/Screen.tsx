@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
-import { Platform, SafeAreaView, ScrollView, View, type ScrollViewProps, type ViewProps } from "react-native";
+import {
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type ScrollViewProps,
+  type ViewProps,
+} from "react-native";
 
 import { NeonGrid } from "@/components/boot/NeonGrid";
 import { AmbientDiamond } from "@/components/ui/AmbientDiamond";
@@ -25,12 +33,13 @@ export function Screen({
   style,
   ...rest
 }: ScreenProps) {
+  const { width } = useWindowDimensions();
   const contentClassName = `flex-1 bg-arena-bg ${className}`.trim();
   const isHorizontal = Boolean(scrollProps?.horizontal);
-  const baseBottomPadding = isHorizontal ? 16 : 132;
+  const baseBottomPadding = isHorizontal ? 16 : width < 420 ? 108 : width < 768 ? 118 : 132;
   const baseScreenStyle =
     Platform.OS === "web"
-      ? ({ flex: 1, minHeight: "100vh" } as const)
+      ? ({ flex: 1, minHeight: "100vh" as never } as const)
       : ({ flex: 1, minHeight: 0 } as const);
   const webVerticalScrollStyle =
     Platform.OS === "web" && !isHorizontal
@@ -39,7 +48,7 @@ export function Screen({
           minHeight: "100vh" as never,
           overflowX: "hidden" as const,
           overflowY: "scroll" as const,
-          scrollbarGutter: "stable both-edges" as never,
+          scrollbarGutter: "stable" as never,
         }
       : undefined;
   const webScrollStyle =
@@ -47,7 +56,7 @@ export function Screen({
       ? {
           overflowX: isHorizontal ? ("auto" as const) : ("hidden" as const),
           overflowY: isHorizontal ? ("hidden" as const) : ("scroll" as const),
-          scrollbarGutter: "stable both-edges" as never,
+          scrollbarGutter: "stable" as never,
         }
       : undefined;
 

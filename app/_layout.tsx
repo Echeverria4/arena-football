@@ -1,12 +1,37 @@
 import "../global.css";
 
 import { Stack } from "expo-router";
+import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+import { useTournamentStore } from "@/stores/tournament-store";
+
+function TournamentDeadlineAutoSync() {
+  const hydrated = useTournamentStore((state) => state.hydrated);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    const sync = () => {
+      useTournamentStore.getState().sincronizarPrazosRodadas();
+    };
+
+    sync();
+    const interval = setInterval(sync, 1000);
+
+    return () => clearInterval(interval);
+  }, [hydrated]);
+
+  return null;
+}
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, minHeight: 0 }}>
+      <TournamentDeadlineAutoSync />
       <StatusBar style="light" />
       <Stack
         screenOptions={{

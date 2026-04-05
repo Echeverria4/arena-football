@@ -3,21 +3,46 @@ export type TournamentFormat =
   | "groups"
   | "knockout"
   | "groups_knockout";
+export type ClassificationCriterion =
+  | "points"
+  | "goal_difference"
+  | "goals_for"
+  | "wins"
+  | "draws"
+  | "losses"
+  | "head_to_head";
+export type TournamentMatchMode = "single_game" | "home_away";
+export type TournamentTeamRuleMode = "open" | "preset";
+export type TournamentTeamRuleType = "club_league" | "national_teams";
 
-export type TournamentStatus = "draft" | "open" | "in_progress" | "finished";
+export type TournamentStatus = "draft" | "in_progress" | "finished";
+
+export interface TournamentTeamRule {
+  mode: TournamentTeamRuleMode;
+  presetId?: string | null;
+  presetLabel?: string | null;
+  presetType?: TournamentTeamRuleType | null;
+  continentId?: string | null;
+  continentLabel?: string | null;
+  targetId?: string | null;
+  targetLabel?: string | null;
+  allowedTeamNames?: string[];
+}
 
 export interface Tournament {
   id: string;
   name: string;
-  coverUrl?: string | null;
   format: TournamentFormat;
+  matchMode?: TournamentMatchMode;
+  teamRule?: TournamentTeamRule;
   status: TournamentStatus;
-  rules?: string | null;
+  rules: string;
   creatorId: string;
   startDate?: string | null;
   allowVideos: boolean;
   allowGoalAward: boolean;
-  createdAt?: string;
+  coverUrl?: string | null;
+  createdAt: string;
 }
 
 export interface TournamentParticipant {
@@ -25,11 +50,11 @@ export interface TournamentParticipant {
   tournamentId: string;
   userId: string;
   teamName: string;
+  groupName?: string | null;
+  isOrganizer?: boolean;
+  displayName: string;
   teamBadgeUrl?: string | null;
   stadiumImageUrl?: string | null;
-  groupName?: string | null;
-  isOrganizer: boolean;
-  displayName: string;
 }
 
 export interface StandingEntry {
@@ -53,3 +78,59 @@ export interface HistoricalPerformance {
   losses: number;
   titles: number;
 }
+
+export type Participante = {
+  id: string;
+  nome: string;
+  time: string;
+  grupo?: string;
+  whatsapp?: string;
+  timeImagem?: string;
+  timeTipoIcone?: "bandeira" | "escudo";
+};
+
+export type Jogo = {
+  id: string;
+  rodada: number;
+  mandanteId: string;
+  visitanteId: string;
+  placarMandante: number | null;
+  placarVisitante: number | null;
+  status: "pendente" | "finalizado";
+};
+
+export type ClassificacaoItem = {
+  participanteId: string;
+  nome: string;
+  time: string;
+  pontos: number;
+  jogos: number;
+  vitorias: number;
+  empates: number;
+  derrotas: number;
+  golsPro: number;
+  golsContra: number;
+  saldo: number;
+};
+
+export type Campeonato = {
+  id: string;
+  nome: string;
+  status: "ativo" | "finalizado";
+  criadoEm: string;
+  inicioEm?: string;
+  fimEm?: string;
+  temporada?: string;
+  prazoRodadaDias?: number;
+  tempoExtraRodadasMs?: Record<string, number>;
+  formato?: TournamentFormat;
+  modoConfronto?: TournamentMatchMode;
+  regraTimes?: TournamentTeamRule;
+  regras?: string;
+  criteriosClassificacao?: ClassificationCriterion[];
+  allowVideos?: boolean;
+  allowGoalAward?: boolean;
+  participantes: Participante[];
+  rodadas: Jogo[][];
+  classificacao: ClassificacaoItem[];
+};

@@ -1,228 +1,349 @@
 import { router } from "expo-router";
-import * as Linking from "expo-linking";
-import { Text, View } from "react-native";
+import { useEffect } from "react";
+import { Alert, Text, View } from "react-native";
 
 import { FloatingWhatsAppLauncher } from "@/components/match/FloatingWhatsAppLauncher";
+import { RankingBarCard } from "@/components/tournament/RankingBarCard";
 import { TournamentCard } from "@/components/tournament/TournamentCard";
+import { WorldCupEditionCard } from "@/components/tournament/WorldCupEditionCard";
 import { FeatureCard } from "@/components/ui/FeatureCard";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
+import { ScreenState } from "@/components/ui/ScreenState";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
-import { sampleMatches, sampleTournament, sampleVideos } from "@/lib/constants";
-import { formatDate } from "@/lib/formatters";
-import { buildMatchMessage, buildWhatsAppLink } from "@/lib/whatsapp";
+import {
+  getCampeonatoLeader,
+  getCurrentOrLatestCampeonato,
+} from "@/lib/season-tournaments";
+import { normalizeTeamDisplayName, resolveTeamVisualByName, slugify } from "@/lib/team-visuals";
+import { getTournamentBundle } from "@/lib/tournament-display";
+import { buildMatchMessage, openWhatsAppConversation } from "@/lib/whatsapp";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAppStore } from "@/stores/app-store";
+import { useTournamentStore } from "@/stores/tournament-store";
+import { useArenaDataHydrated } from "@/stores/use-arena-hydration";
+import { useVideoStore } from "@/stores/video-store";
 
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
+  const campeonatos = useTournamentStore((state) => state.campeonatos);
+  const currentTournamentId = useAppStore((state) => state.currentTournamentId);
+  const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
+  const videos = useVideoStore((state) => state.videos);
   const { cardWidth, contentMaxWidth } = usePanelGrid();
-  const nextMatch = sampleMatches[0];
-  const homeTeam = "Corinthians";
-  const awayTeam = "Bragantino";
+  const hydrated = useArenaDataHydrated();
+
+  if (!hydrated) {
+    return (
+      <Screen scroll className="px-6">
+        <View className="w-full self-center" style={{ maxWidth: contentMaxWidth }}>
+          <ScreenState
+            title="Carregando painel"
+            description="Buscando campeonato ativo, rodada atual e ranking salvo."
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!campeonatos.length) {
+    return (
+      <Screen scroll className="px-6">
+        <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
+          <SectionHeader
+            eyebrow="Dashboard"
+            title={`Painel do ${user?.name ?? "Organizador"}`}
+            subtitle="Crie o primeiro campeonato para liberar rodadas, classificação, vídeos e Hall da Fama reais."
+          />
+
+          <ScreenState
+            title="Nenhum campeonato criado"
+            description="O painel principal só entra em operação com uma temporada real criada no app."
+          />
+
+          <FeatureCard
+            icon="add-circle-outline"
+            title="Criar primeiro campeonato"
+            subtitle="Fluxo real"
+            description="Abra o wizard para definir regra de times, participantes, formato e iniciar a primeira temporada."
+            meta="Criar agora"
+            width={cardWidth}
+            accent="blue"
+            onPress={() => router.push("/tournament/create")}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  const campeonatoAtivo = getCurrentOrLatestCampeonato(campeonatos, currentTournamentId);
+
+  useEffect(() => {
+    if (campeonatoAtivo && campeonatoAtivo.id !== currentTournamentId) {
+      setCurrentTournamentId(campeonatoAtivo.id);
+    }
+  }, [campeonatoAtivo, currentTournamentId, setCurrentTournamentId]);
+  const tournamentBundle = (campeonatoAtivo
+    ? getTournamentBundle(campeonatoAtivo.id, campeonatos, videos)
+    : null)!;
+
+  if (!campeonatoAtivo || !tournamentBundle) {
+    return (
+      <Screen scroll className="px-6">
+        <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
+          <SectionHeader
+            eyebrow="Dashboard"
+            title="Painel principal"
+            subtitle="Não foi possível localizar uma temporada válida para montar o dashboard."
+          />
+          <ScreenState
+            title="Campeonato atual indisponível"
+            description="Selecione ou crie uma temporada válida para reconstruir o painel."
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  const bundle = tournamentBundle;
+
+  const nextMatch = bundle.matches[0];
+  const homeParticipant =
+    bundle.participants.find((item) => item.id === nextMatch?.homeParticipantId) ??
+    bundle.participants[0];
+  const awayParticipant =
+    bundle.participants.find((item) => item.id === nextMatch?.awayParticipantId) ??
+    bundle.participants[1];
+  const rawHomeParticipant =
+    bundle.campeonato.participantes.find((item) => item.id === nextMatch?.homeParticipantId) ??
+    bundle.campeonato.participantes[0];
+  const rawAwayParticipant =
+    bundle.campeonato.participantes.find((item) => item.id === nextMatch?.awayParticipantId) ??
+    bundle.campeonato.participantes[1];
+  const isHomePlayerRoomCreator =
+    slugify(user?.name ?? "") === slugify(rawHomeParticipant?.nome ?? "");
+  const opponentWhatsapp =
+    (isHomePlayerRoomCreator ? rawAwayParticipant?.whatsapp : rawHomeParticipant?.whatsapp) ??
+    rawAwayParticipant?.whatsapp ??
+    rawHomeParticipant?.whatsapp ??
+    null;
+  const leader = getCampeonatoLeader(bundle.campeonato);
+  const ranking = [...bundle.standings].sort((current, next) => next.points - current.points).slice(0, 3);
+  const maxPoints = ranking[0]?.points ?? 1;
+  const seasonLabel = campeonatoAtivo.temporada ?? "Temporada 01";
+  const leaderTeamName = normalizeTeamDisplayName(
+    leader.participante?.time ?? bundle.tournament.name,
+  );
+  const homeTeamName = normalizeTeamDisplayName(homeParticipant?.teamName ?? "Time A");
+  const awayTeamName = normalizeTeamDisplayName(awayParticipant?.teamName ?? "Time B");
 
   async function handleOpenWhatsApp() {
-    const link = buildWhatsAppLink(
-      "+55 11 99999-0000",
+    if (!opponentWhatsapp) {
+      Alert.alert("WhatsApp indisponivel", "O adversário ainda não informou um número na inscrição.");
+      return;
+    }
+
+    await openWhatsAppConversation(
+      opponentWhatsapp,
       buildMatchMessage({
-        round: nextMatch.round,
-        tournamentName: sampleTournament.name,
-        isHomePlayerRoomCreator: true,
+        round: nextMatch?.round ?? 1,
+        tournamentName: bundle.tournament.name,
+        isHomePlayerRoomCreator,
       }),
     );
-
-    await Linking.openURL(link);
   }
 
   return (
     <Screen
-      ambientDiamond
       scroll
       className="px-6"
       overlay={
         <FloatingWhatsAppLauncher
-          phone="+55 11 99999-0000"
-          tournamentName={sampleTournament.name}
+          phone={opponentWhatsapp}
+          round={nextMatch?.round ?? 1}
+          tournamentName={bundle.tournament.name}
+          isHomePlayerRoomCreator={isHomePlayerRoomCreator}
         />
       }
     >
       <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
-        <View
-          className="self-center"
-          style={{ width: "100vw", paddingLeft: 28, paddingRight: 28 }}
-        >
-          <SectionHeader
-            eyebrow="Home"
-            title={`Bem-vindo, ${user?.name ?? "Organizador"}`}
-            subtitle="Central premium para criar campeonatos, acompanhar partidas e divulgar confrontos pelo WhatsApp."
-          />
+        <SectionHeader
+          eyebrow="Dashboard"
+          title={`Painel do ${user?.name ?? "Organizador"}`}
+          subtitle="Visão geral da temporada ativa, com monitoramento por rodada e acesso rápido aos fluxos principais."
+        />
+
+        <View className="flex-row flex-wrap gap-5">
+          <RevealOnScroll delay={0} style={{ width: cardWidth }}>
+            <WorldCupEditionCard
+              accent="royal"
+              seasonLabel={seasonLabel}
+              detailLabel={campeonatoAtivo.status === "ativo" ? "Ativa" : "Encerrada"}
+              host={bundle.tournament.name}
+              label="Campeonato ativo"
+              title="Season"
+              headline={leaderTeamName}
+              support={`${leader.participante?.nome ?? "Lider da temporada"} • ${bundle.participants.length} jogadores`}
+              imageUrl={resolveTeamVisualByName(leaderTeamName)}
+              icon="flame-outline"
+              footerNote={bundle.tournament.name}
+              onPress={() => router.push(`/tournament/${bundle.campeonato.id}`)}
+            />
+          </RevealOnScroll>
+
+          <RevealOnScroll delay={90} style={{ width: cardWidth }}>
+            <TournamentCard
+              tournament={bundle.campeonato}
+              primaryAction={{
+                label: "Entrar no campeonato",
+                onPress: () => router.push(`/tournament/${bundle.campeonato.id}`),
+              }}
+              secondaryAction={{
+                label: "Abrir rodadas",
+                onPress: () =>
+                  router.push({ pathname: "/tournament/matches", params: { id: bundle.campeonato.id } }),
+                variant: "secondary",
+              }}
+            />
+          </RevealOnScroll>
         </View>
 
-        <View className="gap-4 px-2">
-          <View
-            className="self-center"
-            style={{ width: "100vw", paddingLeft: 28, paddingRight: 28 }}
-          >
-            <SectionHeader
-              eyebrow="Painel do menu"
-              title="Atalhos do organizador"
-              subtitle="Cards mais objetivos para entrar no campeonato, acompanhar rodadas e abrir as areas mais usadas."
-            />
-          </View>
+        <View className="gap-4">
+          <SectionHeader
+            eyebrow="Proximos jogos"
+            title="Rodada em destaque"
+            subtitle="Partida mais próxima com acesso rápido para sala, leitura do confronto e contato oficial."
+          />
 
           <View className="flex-row flex-wrap gap-5">
             <RevealOnScroll delay={0}>
               <FeatureCard
-                icon="add-circle-outline"
-                title="Criar campeonato"
-                subtitle="Novo torneio"
-                description="Monte formato, regras, videos e premiacoes do proximo campeonato sem sair do painel principal."
-                meta="Abrir wizard"
-                onPress={() => router.push("/tournament/create")}
-                width={cardWidth}
-              />
-            </RevealOnScroll>
-            <RevealOnScroll delay={70}>
-              <FeatureCard
-                icon="trophy-outline"
-                title="Campeonato atual"
-                subtitle={sampleTournament.name}
-                description="Entre direto no campeonato em andamento para ver fases, classificacao, estatisticas e confrontos."
-                meta="Em andamento"
-                onPress={() => router.push(`/tournament/${sampleTournament.id}`)}
-                width={cardWidth}
-              />
-            </RevealOnScroll>
-            <RevealOnScroll delay={140}>
-              <FeatureCard
-                icon="stats-chart-outline"
-                title="Classificacao"
-                subtitle="Grupo e geral"
-                description="Veja tabela, aproveitamento, probabilidades e indicadores do torneio com um toque."
-                meta="Abrir tabela"
-                onPress={() =>
-                  router.push({ pathname: "/tournament/standings", params: { id: sampleTournament.id } })
+              icon="football-outline"
+                title={
+                  nextMatch ? `${homeTeamName} x ${awayTeamName}` : "Rodadas prontas para acompanhar"
                 }
-                width={cardWidth}
-              />
-            </RevealOnScroll>
-            <RevealOnScroll delay={210}>
-              <FeatureCard
-                icon="git-network-outline"
-                title="Fases e rodadas"
-                subtitle={`Rodada ${nextMatch.round}`}
-                description="Acompanhe a grade de confrontos, avance entre rodadas e visualize o chaveamento do campeonato."
-                meta="Ver confrontos"
-                onPress={() =>
-                  router.push({ pathname: "/tournament/matches", params: { id: sampleTournament.id } })
+                subtitle={nextMatch ? `Rodada ${nextMatch.round}` : "Sem partida em destaque"}
+                description={
+                  nextMatch
+                    ? `${homeParticipant?.displayName ?? "Jogador A"} enfrenta ${awayParticipant?.displayName ?? "Jogador B"} na temporada ativa.`
+                    : "Abra a lista completa de rodadas para acompanhar os confrontos reais desta temporada."
                 }
+                meta={nextMatch ? "Entrar na partida" : "Abrir rodadas"}
                 width={cardWidth}
+                accent="gold"
+                onPress={() =>
+                  nextMatch
+                    ? router.push(`/match/${nextMatch.id}?tournamentId=${bundle.campeonato.id}`)
+                    : router.push({
+                        pathname: "/tournament/matches",
+                        params: { id: bundle.campeonato.id },
+                      })
+                }
               />
             </RevealOnScroll>
-            <RevealOnScroll delay={280}>
-              <FeatureCard
-                icon="radio-outline"
-                title="Proxima partida"
-                subtitle={`${homeTeam} x ${awayTeam}`}
-                description={`Prazo final em ${formatDate(nextMatch.deadlineAt)}. Abra a partida para adicionar placar e acompanhar o duelo.`}
-                meta="Abrir partida"
-                onPress={() => router.push("/match/match-1")}
-                width={cardWidth}
-              />
-            </RevealOnScroll>
-            <RevealOnScroll delay={350}>
+
+            <RevealOnScroll delay={80}>
               <FeatureCard
                 icon="logo-whatsapp"
-                title="WhatsApp"
-                subtitle="Contato rapido"
-                description="Abra a conversa oficial da rodada atual para combinar sala, horario e inicio da partida."
+                title="WhatsApp da rodada"
+                subtitle="Contato oficial"
+                description="Abra a conversa da rodada para combinar horário, sala e confirmar a partida sem sair do painel."
                 meta="Chamar agora"
+                width={cardWidth}
+                accent="blue"
                 onPress={handleOpenWhatsApp}
-                width={cardWidth}
               />
             </RevealOnScroll>
           </View>
         </View>
 
-        <View className="gap-4 px-2">
-          <SectionHeader eyebrow="Em destaque" title="Resumo do campeonato" subtitle="Visao detalhada do torneio principal e do que exige atencao agora." />
-
-          <View className="flex-row flex-wrap gap-5">
-            <RevealOnScroll delay={0} style={{ width: cardWidth }}>
-              <TournamentCard
-                tournament={sampleTournament}
-                primaryAction={{
-                  label: "Acompanhar campeonato",
-                  onPress: () => router.push(`/tournament/${sampleTournament.id}`),
-                }}
-                secondaryAction={{
-                  label: "Ver fases e rodadas",
-                  onPress: () =>
-                    router.push({ pathname: "/tournament/matches", params: { id: sampleTournament.id } }),
-                  variant: "secondary",
-                }}
-              />
-            </RevealOnScroll>
-
-            <RevealOnScroll delay={90}>
-              <FeatureCard
-                icon="podium-outline"
-                title="Classificacao atual"
-                subtitle="Corinthians lider"
-                description="Acompanhe a tabela geral, o desempenho do torneio e os indicadores mais relevantes da fase atual."
-                meta="9 pts / saldo +6"
-                onPress={() =>
-                  router.push({ pathname: "/tournament/standings", params: { id: sampleTournament.id } })
-                }
-                width={cardWidth}
-              />
-            </RevealOnScroll>
-          </View>
-        </View>
-
-        <View className="gap-4 px-2">
+        <View className="gap-4">
           <SectionHeader
-            eyebrow="Radar rapido"
-            title="O que esta chamando mais atencao"
-            subtitle="Leitura curta do confronto imediato, da rodada ativa e do destaque de video."
+            eyebrow="Cards de campeonatos"
+            title="Acesso rapido"
+            subtitle="Entradas imediatas para o campeonato, ranking, jogos e Hall da Fama."
           />
 
           <View className="flex-row flex-wrap gap-5">
             <RevealOnScroll delay={0}>
               <FeatureCard
-                icon="calendar-outline"
-                title={`Rodada ${nextMatch.round}`}
-                subtitle="Fase de grupos"
-                description={`Mandante ${homeTeam}. Deadline ${formatDate(nextMatch.deadlineAt)}. Abra a partida ou avance para a grade completa.`}
-                meta="Calendario vivo"
-                onPress={() =>
-                  router.push({ pathname: "/tournament/matches", params: { id: sampleTournament.id } })
-                }
+                icon="trophy-outline"
+                title="Campeonato"
+                subtitle={bundle.tournament.name}
+                description="Tela principal com status, header premium e navegação interna por jogos, classificação, estatísticas e vídeos."
+                meta="Entrar"
                 width={cardWidth}
+                onPress={() => router.push(`/tournament/${bundle.campeonato.id}`)}
               />
             </RevealOnScroll>
-            <RevealOnScroll delay={90}>
+            <RevealOnScroll delay={80}>
+              <FeatureCard
+                icon="git-network-outline"
+                title="Jogos"
+                subtitle="Agenda + confrontos"
+                description="Lista de rodadas no formato histórico, com confronto central e entrada rápida para a partida."
+                meta="Abrir jogos"
+                width={cardWidth}
+                onPress={() =>
+                  router.push({ pathname: "/tournament/matches", params: { id: bundle.campeonato.id } })
+                }
+              />
+            </RevealOnScroll>
+            <RevealOnScroll delay={160}>
+              <FeatureCard
+                icon="podium-outline"
+                title="Classificacao"
+                subtitle="Top 3 + grupos"
+                description="Ranking visual tipo game, barras de pontos, destaque para líderes e leitura rápida da campanha."
+                meta="Ver ranking"
+                width={cardWidth}
+                onPress={() =>
+                  router.push({ pathname: "/tournament/standings", params: { id: bundle.campeonato.id } })
+                }
+              />
+            </RevealOnScroll>
+            <RevealOnScroll delay={240}>
               <FeatureCard
                 icon="play-circle-outline"
-                title={sampleVideos[0].title}
-                subtitle="Video em destaque"
-                description="Area de videos pronta para curadoria do gol mais bonito, votacao e aprovacao do organizador."
-                meta={`${sampleVideos[0].votesCount} votos`}
-                onPress={() => router.push("/videos")}
-                width={cardWidth}
-              />
-            </RevealOnScroll>
-            <RevealOnScroll delay={180}>
-              <FeatureCard
-                icon="sparkles-outline"
                 title="Hall da Fama"
-                subtitle="Premios e historico"
-                description="Veja trofeus, destaques, campeoes e as memorias competitivas que ja foram registradas no Arena."
-                meta="Abrir galeria"
-                onPress={() => router.push("/hall-of-fame")}
+                subtitle="Videos + premiacao"
+                description="Acompanhe os vídeos com maior votação, o melhor gol e a galeria histórica da temporada."
+                meta={`${bundle.videos.length} videos`}
                 width={cardWidth}
+                accent="gold"
+                onPress={() => router.push("/hall-of-fame")}
               />
             </RevealOnScroll>
+          </View>
+        </View>
+
+        <View className="gap-4">
+          <SectionHeader
+            eyebrow="Ranking rapido"
+            title="Top 3 da temporada"
+            subtitle="Leitura instantânea dos líderes atuais com barra forte, pontuação e destaque para o pódio."
+          />
+
+          <View className="gap-4">
+            {ranking.map((entry, index) => {
+              const participant = bundle.participants.find((item) => item.id === entry.participantId);
+
+              return (
+                <RevealOnScroll key={entry.participantId} delay={index * 80}>
+                  <RankingBarCard
+                    rank={index + 1}
+                    teamName={normalizeTeamDisplayName(participant?.teamName ?? "Time")}
+                    playerName={participant?.displayName ?? "Jogador"}
+                    value={entry.points}
+                    maxValue={maxPoints}
+                    unit="pts"
+                    accent={index === 0 ? "gold" : index === 1 ? "blue" : "mint"}
+                    subtitle={`${entry.wins}V • ${entry.draws}E • ${entry.losses}D`}
+                  />
+                </RevealOnScroll>
+              );
+            })}
           </View>
         </View>
       </View>

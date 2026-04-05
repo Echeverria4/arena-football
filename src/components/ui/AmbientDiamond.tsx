@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Platform, Text, useWindowDimensions, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, Platform, useWindowDimensions, View } from "react-native";
 
 const titleLabel = "ARENA";
 
@@ -88,9 +88,8 @@ const shardSpecs = [
 const AnimatedText = Animated.Text;
 
 export function AmbientDiamond() {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const motion = useRef(new Animated.Value(0)).current;
-  const [pointerShift, setPointerShift] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const pulseLoop = Animated.loop(
@@ -116,26 +115,6 @@ export function AmbientDiamond() {
       pulseLoop.stop();
     };
   }, [motion]);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") {
-      return;
-    }
-
-    function handleMouseMove(event: MouseEvent) {
-      const normalizedX = event.clientX / Math.max(width, 1) - 0.5;
-      const normalizedY = event.clientY / Math.max(height, 1) - 0.5;
-
-      setPointerShift({
-        x: normalizedX * 34,
-        y: normalizedY * 24,
-      });
-    }
-
-    window.addEventListener("mousemove", handleMouseMove);
-
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [height, width]);
 
   const size = Math.min(Math.max(width * 0.62, 640), 1080);
   const crystalSize = size * 0.34;
@@ -188,7 +167,7 @@ export function AmbientDiamond() {
           width: size * 1.08,
           marginLeft: -(size * 1.08) / 2,
           marginTop: -titleSize * 0.46,
-          transform: [{ translateX: pointerShift.x * 0.18 }, { translateY: pointerShift.y * 0.08 }],
+          transform: [{ translateY: -2 }],
         }}
       >
         <AnimatedText
@@ -224,7 +203,6 @@ export function AmbientDiamond() {
             textShadowColor: "rgba(255,255,255,0.18)",
             textShadowRadius: 12,
             textShadowOffset: { width: 0, height: 0 },
-            transform: [{ translateX: pointerShift.x * 0.04 }],
             fontFamily:
               Platform.OS === "ios"
                 ? "Helvetica Neue"
@@ -245,7 +223,7 @@ export function AmbientDiamond() {
             fontWeight: "200",
             letterSpacing: titleSize * 0.06,
             color: "rgba(220,255,228,0.16)",
-            transform: [{ translateX: pointerShift.x * -0.08 + 6 }],
+            transform: [{ translateX: 6 }],
             fontFamily:
               Platform.OS === "ios"
                 ? "Helvetica Neue"
@@ -267,11 +245,7 @@ export function AmbientDiamond() {
           height: size,
           marginLeft: -size / 2,
           marginTop: -size / 2,
-          transform: [
-            { translateX: pointerShift.x * 0.34 },
-            { translateY: pointerShift.y * 0.28 },
-            { translateY: floatY },
-          ],
+          transform: [{ translateY: floatY }],
         }}
       >
         <Animated.View
@@ -431,8 +405,6 @@ export function AmbientDiamond() {
               backgroundColor: shard.fill,
               opacity: shard.key === "shard-right-core" ? glowOpacity : 0.9,
               transform: [
-                { translateX: pointerShift.x * shard.driftX },
-                { translateY: pointerShift.y * shard.driftY },
                 { rotate: `${shard.rotate}deg` },
                 { skewX: `${shard.skew}deg` },
               ],
@@ -453,8 +425,6 @@ export function AmbientDiamond() {
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.08)",
             transform: [
-              { translateX: pointerShift.x * 0.6 },
-              { translateY: pointerShift.y * -0.4 },
               { rotate: "-26deg" },
               { skewY: "-16deg" },
             ],

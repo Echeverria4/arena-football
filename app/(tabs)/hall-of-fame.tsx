@@ -1,116 +1,146 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { router } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { Text, View } from "react-native";
 
-import { FeatureCard } from "@/components/ui/FeatureCard";
-import { ChoiceChip } from "@/components/ui/ChoiceChip";
+import { ChampionShowcaseCard } from "@/components/trophies/ChampionShowcaseCard";
+import { SeasonPodiumBoard } from "@/components/trophies/SeasonPodiumBoard";
+import { RankingBarCard } from "@/components/tournament/RankingBarCard";
+import { BackButton } from "@/components/ui/BackButton";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
-import { ScrollRow } from "@/components/ui/ScrollRow";
+import { ScreenState } from "@/components/ui/ScreenState";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
+import { VideoHighlightCard } from "@/components/videos/VideoHighlightCard";
+import {
+  getFinishedChampionshipHistory,
+  getPlayerTitleLeaderboard,
+  getTeamTitleLeaderboard,
+} from "@/lib/championship-history";
+import {
+  getCampeonatoLeader,
+  getCampeonatoPodium,
+  getCurrentOrLatestCampeonato,
+  getSeasonStatus,
+} from "@/lib/season-tournaments";
+import { normalizeTeamDisplayName } from "@/lib/team-visuals";
+import { useAuthStore } from "@/stores/auth-store";
+import { useAppStore } from "@/stores/app-store";
+import { useTournamentStore } from "@/stores/tournament-store";
+import { useArenaDataHydrated } from "@/stores/use-arena-hydration";
+import { useVideoStore } from "@/stores/video-store";
 
-interface SpotlightConfiguratorCardProps {
-  width: number | string;
-  selectedCategory: string;
-  selectedSpotlight: string;
-  hallCategories: string[];
-  spotlightOptions: string[];
-  onSelectCategory: (value: string) => void;
-  onSelectSpotlight: (value: string) => void;
-}
-
-function SpotlightConfiguratorCard({
-  width,
-  selectedCategory,
-  selectedSpotlight,
-  hallCategories,
-  spotlightOptions,
-  onSelectCategory,
-  onSelectSpotlight,
-}: SpotlightConfiguratorCardProps) {
-  return (
-    <View
-      className="rounded-[24px] border p-6 gap-5"
-      style={{
-        width,
-        minHeight: 236,
-        borderColor: "#D3D7DC",
-        backgroundColor: "#FAFAFA",
-        shadowColor: "#A3A8AF",
-        shadowOpacity: 0.12,
-        shadowRadius: 18,
-      }}
-    >
-      <View className="mb-1 flex-row items-center gap-3">
-        <View className="h-12 w-12 items-center justify-center rounded-full border border-[#C4C9CF] bg-[#EEF1F3]">
-          <Ionicons name="medal-outline" size={22} color="#666C74" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-xl font-semibold text-[#3F454C]">Adicionar ao salao</Text>
-          <Text className="text-base text-[#777D85]">Novo destaque</Text>
-        </View>
-      </View>
-
-      <Text className="text-base leading-7 text-[#777D85]">
-        Inclua videos premiados, trofeus especiais e destaques historicos no mural principal do campeonato.
-      </Text>
-
-      <View className="gap-2">
-        <Text className="text-xl font-semibold text-[#3F454C]">Escolha do destaque</Text>
-        <Text className="text-base leading-7 text-[#777D85]">
-          Configure categoria e tipo de trofeu no mesmo padrao visual do painel principal.
-        </Text>
-      </View>
-
-      <View className="gap-3">
-        <Text className="text-sm uppercase tracking-[2px] text-[#50565D]">Categoria</Text>
-        <ScrollRow>
-          {hallCategories.map((option) => (
-            <ChoiceChip
-              key={option}
-              label={option}
-              active={selectedCategory === option}
-              tone="gold"
-              onPress={() => onSelectCategory(option)}
-            />
-          ))}
-        </ScrollRow>
-      </View>
-
-      <View className="gap-3">
-        <Text className="text-sm uppercase tracking-[2px] text-[#50565D]">Escolha</Text>
-        <ScrollRow>
-          {spotlightOptions.map((option) => (
-            <ChoiceChip
-              key={option}
-              label={option}
-              active={selectedSpotlight === option}
-              tone="gold"
-              onPress={() => onSelectSpotlight(option)}
-            />
-          ))}
-        </ScrollRow>
-      </View>
-
-      <View className="mt-auto flex-row items-center gap-2">
-        <Ionicons name="flash-outline" size={14} color="#666C74" />
-        <Text className="text-sm font-semibold uppercase tracking-[2px] text-[#464B52]">Modo ativo</Text>
-      </View>
-    </View>
-  );
-}
+type SubView = "overview" | "podium" | "video-gallery";
 
 export default function HallOfFameScreen() {
-  const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState("Gol mais bonito");
-  const [selectedSpotlight, setSelectedSpotlight] = useState("Video vencedor");
-  const [subView, setSubView] = useState<"overview" | "configurator">("overview");
-  const { cardWidth, contentMaxWidth } = usePanelGrid();
+  const user = useAuthStore((state) => state.user);
+  const currentTournamentId = useAppStore((state) => state.currentTournamentId);
+  const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
+  const campeonatos = useTournamentStore((state) => state.campeonatos);
+  const videos = useVideoStore((state) => state.videos);
+  const voteVideo = useVideoStore((state) => state.voteVideo);
+  const userVotes = useVideoStore((state) => state.userVotes);
+  const { contentMaxWidth } = usePanelGrid();
+  const [subView, setSubView] = useState<SubView>("overview");
+  const hydrated = useArenaDataHydrated();
+  const voterId = user?.id ?? user?.email ?? "funcionario-dispositivo";
+  const hasCurrentUserVoted = Boolean(userVotes[voterId]);
+  const featuredCampeonato = getCurrentOrLatestCampeonato(campeonatos, currentTournamentId);
 
-  const hallCategories = ["Gol mais bonito", "Campeao", "Artilheiro", "Organizador destaque"];
-  const spotlightOptions = ["Video vencedor", "Destaque da rodada", "Trofeu especial"];
+  useEffect(() => {
+    if (featuredCampeonato && featuredCampeonato.id !== currentTournamentId) {
+      setCurrentTournamentId(featuredCampeonato.id);
+    }
+  }, [featuredCampeonato, currentTournamentId, setCurrentTournamentId]);
+  const tournamentVideos = useMemo(() => {
+    if (!featuredCampeonato) {
+      return videos;
+    }
+
+    const filtered = videos.filter((video) => video.tournamentId === featuredCampeonato.id);
+    return filtered.length ? filtered : videos;
+  }, [featuredCampeonato, videos]);
+  const orderedVideos = useMemo(
+    () => [...tournamentVideos].sort((current, next) => next.votesCount - current.votesCount),
+    [tournamentVideos],
+  );
+  const finishedHistory = useMemo(
+    () => getFinishedChampionshipHistory(campeonatos, videos),
+    [campeonatos, videos],
+  );
+  const playerTitleLeaders = useMemo(
+    () => getPlayerTitleLeaderboard(campeonatos).slice(0, 3),
+    [campeonatos],
+  );
+  const teamTitleLeaders = useMemo(
+    () => getTeamTitleLeaderboard(campeonatos).slice(0, 3),
+    [campeonatos],
+  );
+
+  if (!hydrated) {
+    return (
+      <Screen scroll ambientDiamond className="px-6">
+        <View className="w-full self-center" style={{ maxWidth: contentMaxWidth }}>
+          <ScreenState
+            title="Carregando hall da fama"
+            description="Sincronizando campeão, pódio e vídeos reais da temporada."
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!campeonatos.length) {
+    return (
+      <Screen scroll ambientDiamond className="px-6">
+        <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
+          <SectionHeader
+            eyebrow="Hall da Fama"
+            title="Hall da Fama"
+            subtitle="O pódio aparece assim que a primeira temporada tiver classificação real."
+          />
+          <ScreenState
+            title="Sem temporadas ainda"
+            description="Crie um campeonato, salve os placares e o Hall da Fama passa a mostrar campeão, time e top 3 da temporada."
+          />
+          <PrimaryButton
+            label="Criar campeonato"
+            onPress={() => router.push("/tournament/create")}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!featuredCampeonato) {
+    return null;
+  }
+
+  const leader = getCampeonatoLeader(featuredCampeonato);
+  const podium = getCampeonatoPodium(featuredCampeonato, 3);
+  const championClassificacao = leader.classificacao;
+  const championParticipant = leader.participante;
+  const championTeam = normalizeTeamDisplayName(
+    championParticipant?.time ?? championClassificacao?.time ?? featuredCampeonato.nome,
+  );
+
+  const podiumEntries = podium.map((entry, index) => {
+    const participant = featuredCampeonato.participantes.find(
+      (item) => item.id === entry.participanteId,
+    );
+
+    return {
+      id: entry.participanteId,
+      position: (index + 1) as 1 | 2 | 3,
+      teamName: normalizeTeamDisplayName(participant?.time ?? entry.time),
+      playerName: participant?.nome ?? entry.nome,
+      points: entry.pontos,
+      wins: entry.vitorias,
+      goalDifference: entry.saldo,
+      played: entry.jogos,
+    };
+  });
 
   return (
     <Screen scroll ambientDiamond className="px-6">
@@ -119,86 +149,261 @@ export default function HallOfFameScreen() {
           <>
             <SectionHeader
               eyebrow="Hall da Fama"
-              title="Galeria de trofeus"
-              subtitle="Cards organizados para premiacoes, destaques historicos e configuracoes do salao."
+              title="Campeão em destaque"
+              subtitle="O card principal mostra o campeão ou líder atual. Passe o mouse para virar e clique para abrir o pódio da temporada."
             />
 
-            <View className="flex-row flex-wrap gap-5 px-2">
-              <RevealOnScroll delay={0}>
-                <FeatureCard
-                  icon="medal-outline"
-                  title="Adicionar ao salao"
-                  subtitle="Novo destaque"
-                  description="Inclua videos premiados, trofeus especiais e destaques historicos no mural principal do campeonato."
-                  meta="Abrir configuracao"
-                  width={cardWidth}
-                  accent="gold"
-                  onPress={() => setSubView("configurator")}
-                />
-              </RevealOnScroll>
-              <RevealOnScroll delay={90}>
-                <FeatureCard
-                  icon="trophy-outline"
-                  title="Titulos"
-                  subtitle="Aba dedicada"
-                  description="Abra a galeria completa com Clubes e Selecoes em um menu proprio."
-                  meta="Abrir aba"
-                  onPress={() => router.push("/titles")}
-                  width={cardWidth}
-                  accent="gold"
-                />
-              </RevealOnScroll>
-              <RevealOnScroll delay={180}>
-                <FeatureCard
-                  icon="sparkles-outline"
-                  title={selectedCategory}
-                  subtitle={selectedSpotlight}
-                  description="Configuracao atual do salao para a categoria de destaque e o tipo de premiacao exibido."
-                  meta="Configuracao ativa"
-                  width={cardWidth}
-                  accent="gold"
-                  onPress={() => setSubView("configurator")}
-                />
-              </RevealOnScroll>
-            </View>
-          </>
-        ) : (
-          <View className="gap-5 px-2">
             <RevealOnScroll delay={0}>
-              <Pressable
-                onPress={() => setSubView("overview")}
-                className="self-start flex-row items-center gap-2 rounded-full border px-4 py-3 active:opacity-80"
-                style={{
-                  borderColor: "#D1D5DA",
-                  backgroundColor: "#FAFAFA",
+              <ChampionShowcaseCard
+                seasonLabel={featuredCampeonato.temporada ?? "Temporada atual"}
+                tournamentName={featuredCampeonato.nome}
+                championLabel={
+                  getSeasonStatus(featuredCampeonato) === "finalizado" ? "Campeão atual" : "Líder atual"
+                }
+                teamName={championTeam}
+                playerName={championParticipant?.nome ?? championClassificacao?.nome ?? "A definir"}
+                statusLabel={featuredCampeonato.status === "finalizado" ? "Encerrada" : "Em disputa"}
+                summary={`${
+                  championParticipant?.nome ?? championClassificacao?.nome ?? "O líder"
+                } puxa a temporada ${featuredCampeonato.temporada ?? ""} no campeonato ${
+                  featuredCampeonato.nome
+                }.`}
+                statLine={[
+                  { label: "Pontos", value: String(championClassificacao?.pontos ?? 0) },
+                  { label: "Vitórias", value: String(championClassificacao?.vitorias ?? 0) },
+                  {
+                    label: "Saldo",
+                    value: `${(championClassificacao?.saldo ?? 0) >= 0 ? "+" : ""}${championClassificacao?.saldo ?? 0}`,
+                  },
+                  { label: "Jogos", value: String(championClassificacao?.jogos ?? 0) },
+                ]}
+                accent={featuredCampeonato.status === "finalizado" ? "gold" : "blue"}
+                actionLabel="Abrir pódio"
+                onPress={() => setSubView("podium")}
+              />
+            </RevealOnScroll>
+
+            <View className="flex-row flex-wrap gap-3">
+              <PrimaryButton
+                label="Ver pódio da temporada"
+                onPress={() => setSubView("podium")}
+                variant="gold"
+                className="flex-1"
+              />
+              <PrimaryButton
+                label="Abrir campeonato"
+                onPress={() => {
+                  setCurrentTournamentId(featuredCampeonato.id);
+                  router.push(`/tournament/${featuredCampeonato.id}`);
                 }}
-              >
-                <Ionicons name="arrow-back" size={16} color="#4D535A" />
-                <Text className="text-sm font-semibold uppercase tracking-[2px] text-[#4D535A]">
-                  Voltar ao hall
-                </Text>
-              </Pressable>
+                variant="secondary"
+                className="flex-1"
+              />
+              {orderedVideos.length ? (
+                <PrimaryButton
+                  label="Galeria de vídeos"
+                  onPress={() => setSubView("video-gallery")}
+                  variant="light"
+                  className="flex-1"
+                />
+              ) : null}
+              <PrimaryButton
+                label="Histórico e títulos"
+                onPress={() => router.push({ pathname: "/gallery", params: { section: "titles" } })}
+                variant="secondary"
+                className="flex-1"
+              />
+            </View>
+
+            {playerTitleLeaders.length ? (
+              <View className="gap-4">
+                <SectionHeader
+                  eyebrow="Titulos"
+                  title="Quem mais venceu"
+                  subtitle="O Hall da Fama agora também acompanha quem acumula mais títulos e quais equipes já levantaram troféus reais."
+                />
+
+                <View className="gap-4">
+                  {playerTitleLeaders.map((entry, index) => (
+                    <RevealOnScroll key={entry.id} delay={index * 70}>
+                      <RankingBarCard
+                        rank={index + 1}
+                        teamName={entry.label}
+                        playerName={entry.subtitle}
+                        value={entry.titles}
+                        maxValue={playerTitleLeaders[0]?.titles ?? 1}
+                        unit="tit."
+                        accent={index === 0 ? "gold" : index === 1 ? "blue" : "mint"}
+                        subtitle={`Última conquista: ${entry.latestSeason}`}
+                      />
+                    </RevealOnScroll>
+                  ))}
+                </View>
+
+                {teamTitleLeaders.length ? (
+                  <View className="gap-4">
+                    {teamTitleLeaders.map((entry, index) => (
+                      <RevealOnScroll key={entry.id} delay={index * 70}>
+                        <RankingBarCard
+                          rank={index + 1}
+                          teamName={entry.label}
+                          playerName={entry.subtitle}
+                          value={entry.titles}
+                          maxValue={teamTitleLeaders[0]?.titles ?? 1}
+                          unit="tit."
+                          accent={index === 0 ? "gold" : index === 1 ? "blue" : "mint"}
+                          subtitle={`Equipe/seleção campeã • última conquista ${entry.latestSeason}`}
+                        />
+                      </RevealOnScroll>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {finishedHistory.length ? (
+              <View className="gap-4">
+                <SectionHeader
+                  eyebrow="Arquivo"
+                  title="Últimos campeões"
+                  subtitle="Campeões oficiais das temporadas já encerradas, com ligação direta para o histórico completo."
+                />
+
+                <View className="gap-4">
+                  {finishedHistory.slice(0, 2).map((entry, index) => (
+                    <RevealOnScroll key={entry.campeonato.id} delay={index * 80}>
+                      <ChampionShowcaseCard
+                        seasonLabel={entry.campeonato.temporada ?? "Temporada encerrada"}
+                        tournamentName={entry.campeonato.nome}
+                        championLabel="Campeão"
+                        teamName={entry.championTeamName}
+                        playerName={entry.championPlayerName}
+                        statusLabel="Encerrada"
+                        summary={`${entry.videosCount} vídeos ligados a essa temporada e campanha fechada com ${entry.points} pontos.`}
+                        statLine={[
+                          { label: "Pontos", value: String(entry.points) },
+                          { label: "Vitórias", value: String(entry.wins) },
+                          {
+                            label: "Saldo",
+                            value: `${entry.goalDifference >= 0 ? "+" : ""}${entry.goalDifference}`,
+                          },
+                          { label: "Vídeos", value: String(entry.videosCount) },
+                        ]}
+                        accent="gold"
+                        actionLabel="Abrir temporada"
+                        onPress={() => router.push(`/tournament/${entry.campeonato.id}`)}
+                      />
+                    </RevealOnScroll>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
+        {subView === "podium" ? (
+          <View className="gap-5">
+            <RevealOnScroll delay={0}>
+              <BackButton onPress={() => setSubView("overview")} label="Voltar" />
             </RevealOnScroll>
 
             <SectionHeader
               eyebrow="Hall da Fama"
-              title="Configuracao do destaque"
-              subtitle="Esta e uma subaba interna do salao. Ajuste categoria e premio sem misturar com os outros cards."
+              title={`Top 3 • ${featuredCampeonato.temporada ?? "Temporada atual"}`}
+              subtitle="Pódio da classificação atual da temporada. Passe o mouse sobre cada posição para alternar entre destaque e estatísticas."
             />
 
-            <RevealOnScroll delay={80}>
-              <SpotlightConfiguratorCard
-                width="100%"
-                selectedCategory={selectedCategory}
-                selectedSpotlight={selectedSpotlight}
-                hallCategories={hallCategories}
-                spotlightOptions={spotlightOptions}
-                onSelectCategory={setSelectedCategory}
-                onSelectSpotlight={setSelectedSpotlight}
+            <RevealOnScroll delay={40}>
+              <SeasonPodiumBoard
+                title={featuredCampeonato.nome}
+                subtitle="O ranking do pódio acompanha a classificação real salva no campeonato."
+                entries={podiumEntries}
               />
             </RevealOnScroll>
+
+            <View className="flex-row flex-wrap gap-3">
+              <PrimaryButton
+                label="Abrir campeonato"
+                onPress={() => {
+                  setCurrentTournamentId(featuredCampeonato.id);
+                  router.push(`/tournament/${featuredCampeonato.id}`);
+                }}
+                variant="secondary"
+                className="flex-1"
+              />
+              <PrimaryButton
+                label="Ver classificação completa"
+                onPress={() =>
+                  router.push({
+                    pathname: "/tournament/standings",
+                    params: { id: featuredCampeonato.id },
+                  })
+                }
+                variant="light"
+                className="flex-1"
+              />
+              <PrimaryButton
+                label="Histórico e títulos"
+                onPress={() => router.push({ pathname: "/gallery", params: { section: "titles" } })}
+                variant="secondary"
+                className="flex-1"
+              />
+            </View>
           </View>
-        )}
+        ) : null}
+
+        {subView === "video-gallery" ? (
+          <View className="gap-5 px-2">
+            <RevealOnScroll delay={0}>
+              <BackButton onPress={() => setSubView("overview")} label="Voltar" />
+            </RevealOnScroll>
+
+            <SectionHeader
+              eyebrow="Hall da Fama"
+              title="Galeria de vídeos"
+              subtitle="Destaques da temporada organizados por votação."
+            />
+
+            <View className="gap-5">
+              {orderedVideos.map((video, index) => {
+                const selectedByCurrentUser = userVotes[voterId] === video.id;
+
+                return (
+                  <RevealOnScroll key={video.id} delay={index * 70}>
+                    <VideoHighlightCard
+                      video={{
+                        ...video,
+                        isGoalAwardWinner: index === 0,
+                        tournamentName: video.tournamentName ?? featuredCampeonato.nome,
+                      }}
+                      voteLocked={hasCurrentUserVoted}
+                      voteLabel={
+                        selectedByCurrentUser
+                          ? "Seu voto"
+                          : hasCurrentUserVoted
+                            ? "Votação travada"
+                            : "Votar"
+                      }
+                      onVote={() => voteVideo(voterId, video.id)}
+                    />
+                  </RevealOnScroll>
+                );
+              })}
+
+              {!orderedVideos.length ? (
+                <Text
+                  style={{
+                    color: "#AEBBDA",
+                    fontSize: 15,
+                    lineHeight: 24,
+                  }}
+                >
+                  Ainda não existem vídeos cadastrados nesta temporada.
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
       </View>
     </Screen>
   );

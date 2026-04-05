@@ -1,19 +1,85 @@
-import { Text, View } from "react-native";
+import { Text, View, useWindowDimensions } from "react-native";
 
 interface SectionHeaderProps {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  tone?: "light" | "dark";
 }
 
-export function SectionHeader({ eyebrow, title, subtitle }: SectionHeaderProps) {
+export function SectionHeader({
+  eyebrow,
+  title,
+  subtitle,
+  tone = "light",
+}: SectionHeaderProps) {
+  const { width } = useWindowDimensions();
+  const isPhone = width < 768;
+  const isSmallPhone = width < 420;
+  const colors =
+    tone === "dark"
+      ? {
+          eyebrow: "#5678C9",
+          title: "#1C2B4A",
+          subtitle: "#6B7EA3",
+          divider: "rgba(59,91,255,0.14)",
+        }
+      : {
+          eyebrow: "#DDE7FF",
+          title: "#F3F7FF",
+          subtitle: "#AEBBDA",
+          divider: "rgba(255,255,255,0.12)",
+        };
+
   return (
-    <View className="gap-1">
+    <View className="gap-3">
       {eyebrow ? (
-        <Text className="text-sm uppercase tracking-[3px] text-arena-text">{eyebrow}</Text>
+        <View
+          className="self-start rounded-full border px-3 py-2"
+          style={{
+            borderColor: colors.divider,
+            backgroundColor: tone === "dark" ? "#F7FAFF" : "rgba(255,255,255,0.06)",
+          }}
+        >
+          <Text
+            style={{
+              color: colors.eyebrow,
+              fontSize: isSmallPhone ? 10 : 11,
+              fontWeight: "900",
+              letterSpacing: isSmallPhone ? 1.8 : 2.2,
+              textTransform: "uppercase",
+            }}
+          >
+            {eyebrow}
+          </Text>
+        </View>
       ) : null}
-      <Text className="text-3xl font-bold text-arena-text">{title}</Text>
-      {subtitle ? <Text className="text-base leading-7 text-arena-muted">{subtitle}</Text> : null}
+
+      <View className="gap-2">
+        <Text
+          style={{
+            color: colors.title,
+            fontSize: isSmallPhone ? 26 : isPhone ? 30 : 34,
+            fontWeight: "900",
+            lineHeight: isSmallPhone ? 32 : isPhone ? 36 : 40,
+          }}
+        >
+          {title}
+        </Text>
+
+        {subtitle ? (
+          <Text
+            style={{
+              maxWidth: 880,
+              color: colors.subtitle,
+              fontSize: isSmallPhone ? 14 : 16,
+              lineHeight: isSmallPhone ? 24 : 28,
+            }}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }

@@ -1,12 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Linking from "expo-linking";
 import { useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
 
-import { buildMatchMessage, buildWhatsAppLink } from "@/lib/whatsapp";
+import { buildMatchMessage, openWhatsAppConversation } from "@/lib/whatsapp";
 
 interface FloatingWhatsAppLauncherProps {
-  phone: string;
+  phone?: string | null;
   round?: number | null;
   tournamentName: string;
   isHomePlayerRoomCreator?: boolean;
@@ -21,14 +20,18 @@ export function FloatingWhatsAppLauncher({
   const [isHovered, setIsHovered] = useState(Platform.OS !== "web");
 
   async function handleOpen() {
+    if (!phone) {
+      Alert.alert("WhatsApp indisponivel", "O adversário ainda não informou um número na inscrição.");
+      return;
+    }
+
     const message = buildMatchMessage({
       round,
       tournamentName,
       isHomePlayerRoomCreator,
     });
-    const link = buildWhatsAppLink(phone, message);
 
-    await Linking.openURL(link);
+    await openWhatsAppConversation(phone, message);
   }
 
   return (
@@ -60,18 +63,66 @@ export function FloatingWhatsAppLauncher({
       >
         <View className="flex-row items-center">
           {isHovered ? (
-            <View className="mr-2 rounded-l-2xl border border-arena-line bg-arena-card px-4 py-3 opacity-100">
-              <Text className="text-[11px] uppercase tracking-[2px] text-arena-neon">WhatsApp</Text>
+            <View
+              style={{
+                marginRight: 8,
+                borderTopLeftRadius: 18,
+                borderBottomLeftRadius: 18,
+                borderWidth: 1,
+                borderRightWidth: 0,
+                borderColor: "rgba(59,91,255,0.32)",
+                backgroundColor: "#0B1328",
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                shadowColor: "#3B5BFF",
+                shadowOpacity: 0.14,
+                shadowRadius: 10,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  color: "#9AB8FF",
+                  fontWeight: "700",
+                }}
+              >
+                WhatsApp
+              </Text>
             </View>
           ) : null}
 
           <View
-            className={`items-center justify-center border border-arena-neon bg-arena-neon px-4 py-4 shadow-neon active:opacity-90 ${
-              isHovered ? "rounded-l-2xl rounded-r-none border-r-0" : "rounded-2xl"
-            }`}
-            style={{ minWidth: 72, minHeight: 72 }}
+            style={{
+              minWidth: 72,
+              minHeight: 72,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: "rgba(59,91,255,0.36)",
+              backgroundColor: "#112018",
+              shadowColor: "#3B5BFF",
+              shadowOpacity: 0.22,
+              shadowRadius: 18,
+              borderTopLeftRadius: isHovered ? 18 : 18,
+              borderBottomLeftRadius: isHovered ? 18 : 18,
+              borderTopRightRadius: isHovered ? 18 : 18,
+              borderBottomRightRadius: isHovered ? 18 : 18,
+            }}
           >
-            <Ionicons name="logo-whatsapp" size={28} color="#050816" />
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                width: 54,
+                height: 54,
+                borderRadius: 999,
+                backgroundColor: "rgba(59,91,255,0.14)",
+              }}
+            />
+
+            <Ionicons name="logo-whatsapp" size={28} color="#D7FFE2" />
           </View>
         </View>
       </Pressable>

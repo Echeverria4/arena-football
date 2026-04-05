@@ -1,103 +1,194 @@
 import { router } from "expo-router";
-import { View } from "react-native";
+import { useEffect } from "react";
+import { Text, View } from "react-native";
 
 import { TournamentCard } from "@/components/tournament/TournamentCard";
-import { FeatureCard } from "@/components/ui/FeatureCard";
+import { ChoiceChip } from "@/components/ui/ChoiceChip";
+import { LiveBorderCard } from "@/components/ui/LiveBorderCard";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
+import { ScreenState } from "@/components/ui/ScreenState";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
-import { sampleTournament } from "@/lib/constants";
+import { sortCampeonatosBySeason } from "@/lib/season-tournaments";
+import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
+import { useAppStore } from "@/stores/app-store";
+import { useTournamentStore } from "@/stores/tournament-store";
 
 export default function TournamentsScreen() {
-  const { cardWidth, contentMaxWidth } = usePanelGrid();
+  const campeonatos = useTournamentStore((state) => state.campeonatos);
+  const currentTournamentId = useAppStore((state) => state.currentTournamentId);
+  const tournamentAccess = useAppStore((state) => state.tournamentAccess);
+  const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
+  const { contentMaxWidth } = usePanelGrid();
+  const orderedCampeonatos = sortCampeonatosBySeason(campeonatos);
+  const activeCampeonatos = orderedCampeonatos.filter((campeonato) => campeonato.status === "ativo");
+  const archivedCampeonatos = orderedCampeonatos.filter((campeonato) => campeonato.status === "finalizado");
+  const activeAccessMode = resolveTournamentAccessMode(tournamentAccess, currentTournamentId);
+  const lockToActiveTournament =
+    Boolean(currentTournamentId) && isTournamentAccessLocked(activeAccessMode);
+
+  useEffect(() => {
+    if (!lockToActiveTournament || !currentTournamentId) {
+      return;
+    }
+
+    router.replace({ pathname: "/tournament/[id]", params: { id: currentTournamentId } });
+  }, [currentTournamentId, lockToActiveTournament]);
+
+  if (lockToActiveTournament) {
+    return (
+      <Screen scroll ambientDiamond className="px-6">
+        <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
+          <ScreenState
+            title="Abrindo campeonato ativo"
+            description="Seu acesso atual está restrito ao campeonato compartilhado. Redirecionando para o painel correto."
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  function openTournament(id: string) {
+    setCurrentTournamentId(id);
+    router.push({ pathname: "/tournament/[id]", params: { id } });
+  }
+
+  function goToNewTournament() {
+    router.push("/tournament/create");
+  }
 
   return (
     <Screen scroll ambientDiamond className="px-6">
-      <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
+      <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
         <SectionHeader
           eyebrow="Campeonatos"
-          title="Gerencie seus torneios"
-          subtitle="Painel rapido para abrir o torneio ativo, criar novas competicoes e navegar pelas areas principais."
+          title="Temporadas do Arena"
+          subtitle="Organize ciclos ativos, acompanhe temporadas encerradas e entre rápido no painel principal de cada campeonato."
         />
 
-        <View className="flex-row flex-wrap gap-5 px-2">
-          <RevealOnScroll delay={0}>
-            <FeatureCard
-              icon="add-circle-outline"
-              title="Novo campeonato"
-              subtitle="Criacao imediata"
-              description="Abra o wizard para configurar formato, participantes, regras, videos e premiacoes do proximo torneio."
-              meta="Criar agora"
-              onPress={() => router.push("/tournament/create")}
-              width={cardWidth}
-            />
-          </RevealOnScroll>
-          <RevealOnScroll delay={90}>
-            <FeatureCard
-              icon="trophy-outline"
-              title="Abrir campeonato"
-              subtitle={sampleTournament.name}
-              description="Entre no campeonato em andamento para acompanhar classificacao, regulamento, jogos e configuracoes."
-              meta="Em andamento"
-              onPress={() => router.push(`/tournament/${sampleTournament.id}`)}
-              width={cardWidth}
-            />
-          </RevealOnScroll>
-          <RevealOnScroll delay={180}>
-            <FeatureCard
-              icon="git-network-outline"
-              title="Acompanhar rodadas"
-              subtitle="Grade e confrontos"
-              description="Veja as fases, navegue entre rodadas e acompanhe todos os jogos ja liberados no torneio."
-              meta="Abrir chaveamento"
-              onPress={() =>
-                router.push({ pathname: "/tournament/matches", params: { id: sampleTournament.id } })
-              }
-              width={cardWidth}
-            />
-          </RevealOnScroll>
-        </View>
+        <RevealOnScroll delay={0}>
+          <LiveBorderCard
+            accent="gold"
+            radius={20}
+            padding={1.4}
+            backgroundColor="#0A1018"
+            contentStyle={{ paddingHorizontal: 20, paddingVertical: 22 }}
+          >
+            <View className="gap-5">
+              <View className="gap-2">
+                <Text
+                  style={{
+                    color: "#FFD76A",
+                    fontSize: 12,
+                    fontWeight: "800",
+                    letterSpacing: 2.4,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Novo ciclo
+                </Text>
+                <Text style={{ color: "#F3F7FF", fontSize: 30, fontWeight: "900" }}>
+                  Criar campeonato
+                </Text>
+                <Text style={{ color: "#AEBBDA", fontSize: 15, lineHeight: 24 }}>
+                  Abra a configuração inicial da temporada e entre no painel principal assim que
+                  concluir o primeiro passo.
+                </Text>
+              </View>
 
-        <View className="gap-4 px-2">
-          <SectionHeader
-            eyebrow="Campeonato principal"
-            title="Resumo do torneio ativo"
-            subtitle="Leitura detalhada do campeonato principal mantendo o mesmo estilo de cards do painel."
+              <View className="flex-row flex-wrap gap-3">
+                <ChoiceChip label="Painel central" active tone="gold" />
+                <ChoiceChip label="Cards destacados" tone="gold" />
+                <ChoiceChip label="Fluxo real" tone="gold" />
+              </View>
+
+              <PrimaryButton
+                label="Nova temporada"
+                variant="gold"
+                onPress={goToNewTournament}
+                className="self-start rounded-[16px] px-6 py-3"
+              />
+            </View>
+          </LiveBorderCard>
+        </RevealOnScroll>
+
+        {orderedCampeonatos.length === 0 ? (
+          <ScreenState
+            title="Nenhum campeonato ainda"
+            description="Crie o primeiro campeonato para liberar rodadas, gráfico de evolução, classificação e compartilhamento."
           />
+        ) : null}
 
-          <View className="flex-row flex-wrap gap-5">
-            <RevealOnScroll delay={0} style={{ width: cardWidth }}>
-              <TournamentCard
-                tournament={sampleTournament}
-                primaryAction={{
-                  label: "Abrir campeonato",
-                  onPress: () => router.push(`/tournament/${sampleTournament.id}`),
-                }}
-                secondaryAction={{
-                  label: "Acompanhar rodadas",
-                  onPress: () =>
-                    router.push({ pathname: "/tournament/matches", params: { id: sampleTournament.id } }),
-                  variant: "secondary",
-                }}
-              />
-            </RevealOnScroll>
+        {activeCampeonatos.length > 0 ? (
+          <View className="gap-4">
+            <SectionHeader
+              eyebrow="Em andamento"
+              title="Temporadas ativas"
+              subtitle="Campeonatos com rodadas abertas, painel central e acesso direto ao andamento atual."
+            />
 
-            <RevealOnScroll delay={90}>
-              <FeatureCard
-                icon="stats-chart-outline"
-                title="Classificacao"
-                subtitle="Grupo e geral"
-                description="Veja tabela, aproveitamento, historico e estatisticas do torneio em um painel proprio."
-                meta="Abrir tabela"
-                onPress={() =>
-                  router.push({ pathname: "/tournament/standings", params: { id: sampleTournament.id } })
-                }
-                width={cardWidth}
-              />
-            </RevealOnScroll>
+            <View className="gap-5">
+              {activeCampeonatos.map((campeonato, index) => (
+                <RevealOnScroll key={campeonato.id} delay={index * 70}>
+                  <TournamentCard
+                    tournament={campeonato}
+                    surface="dark"
+                    primaryAction={{
+                      label: "Abrir painel",
+                      onPress: () => openTournament(campeonato.id),
+                    }}
+                    secondaryAction={{
+                      label: "Ver rodadas",
+                      onPress: () =>
+                        router.push({
+                          pathname: "/tournament/matches",
+                          params: { id: campeonato.id },
+                        }),
+                      variant: "secondary",
+                    }}
+                  />
+                </RevealOnScroll>
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
+
+        {archivedCampeonatos.length > 0 ? (
+          <View className="gap-4">
+            <SectionHeader
+              eyebrow="Histórico"
+              title="Temporadas encerradas"
+              subtitle="Ciclos já concluídos que seguem disponíveis para consulta, ranking e memória da competição."
+            />
+
+            <View className="gap-5">
+              {archivedCampeonatos.map((campeonato, index) => (
+                <RevealOnScroll key={campeonato.id} delay={index * 70}>
+                  <TournamentCard
+                    tournament={campeonato}
+                    surface="dark"
+                    primaryAction={{
+                      label: "Ver resumo",
+                      onPress: () => openTournament(campeonato.id),
+                      variant: "gold",
+                    }}
+                    secondaryAction={{
+                      label: "Classificação",
+                      onPress: () =>
+                        router.push({
+                          pathname: "/tournament/standings",
+                          params: { id: campeonato.id },
+                        }),
+                      variant: "secondary",
+                    }}
+                  />
+                </RevealOnScroll>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </View>
     </Screen>
   );

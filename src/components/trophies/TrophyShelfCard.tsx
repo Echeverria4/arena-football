@@ -1,32 +1,91 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { Text, View, useWindowDimensions } from "react-native";
 
 import { Badge } from "@/components/ui/Badge";
-import type { Trophy } from "@/types/trophy";
+import { NeonFrame } from "@/components/ui/NeonFrame";
+import { ScrollRow } from "@/components/ui/ScrollRow";
+import type { VideoHighlight } from "@/types/video";
 
-interface TrophyShelfCardProps {
-  trophy: Trophy;
+interface VideoHighlightCardProps {
+  video: VideoHighlight;
 }
 
-export function TrophyShelfCard({ trophy }: TrophyShelfCardProps) {
+export function VideoHighlightCard({ video }: VideoHighlightCardProps) {
+  const { width } = useWindowDimensions();
+  const isPhone = width < 768;
+  const isSmallPhone = width < 420;
+
   return (
-    <View
-      className="gap-4 rounded-[24px] border p-6 transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.01]"
-      style={{
-        borderColor: "#D3D7DC",
-        backgroundColor: "#FAFAFA",
-        shadowColor: "#A3A8AF",
-        shadowOpacity: 0.12,
-        shadowRadius: 18,
-      }}
-    >
-      <View className="h-20 w-20 items-center justify-center rounded-full border border-[#C4C9CF] bg-[#EEF1F3]">
-        <Ionicons name="ribbon-outline" size={34} color="#666C74" />
+    <NeonFrame radius={24} backgroundColor="#FFFFFF">
+      <View
+        className="gap-4"
+        style={{
+          padding: isSmallPhone ? 18 : 24,
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <View
+          className="items-center justify-center rounded-[20px]"
+          style={{
+            height: isPhone ? 144 : 160,
+            borderWidth: 1,
+            borderColor: "rgba(59,91,255,0.18)",
+            backgroundColor: "#F8FAFF",
+            shadowColor: "#3B5BFF",
+            shadowOpacity: 0.08,
+            shadowRadius: 10,
+            overflow: "hidden",
+            position: "relative",
+          }}
+        >
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              width: 110,
+              height: 110,
+              borderRadius: 999,
+              backgroundColor: "rgba(59,91,255,0.08)",
+              top: -24,
+              right: -18,
+            }}
+          />
+
+          <Ionicons
+            name="play-circle-outline"
+            size={isPhone ? 42 : 48}
+            color="#5A78D1"
+          />
+        </View>
+
+        <View className="gap-2">
+          <Text
+            className="font-semibold"
+            style={{
+              fontSize: isPhone ? 18 : 20,
+              color: "#1C2B4A",
+            }}
+          >
+            {video.title}
+          </Text>
+
+          <Text
+            style={{
+              fontSize: isSmallPhone ? 14 : 16,
+              lineHeight: isSmallPhone ? 24 : 28,
+              color: "#6B7EA3",
+            }}
+          >
+            {video.description}
+          </Text>
+        </View>
+
+        <ScrollRow>
+          <Badge label={video.approvalStatus} tone="neon" />
+          <Badge label={`${video.votesCount} votos`} tone="gold" />
+        </ScrollRow>
       </View>
-      <View className="gap-2">
-        <Badge label={trophy.category.replace("_", " ")} tone="gold" />
-        <Text className="text-xl font-bold text-[#3F454C]">{trophy.title}</Text>
-      </View>
-    </View>
+    </NeonFrame>
   );
 }
+

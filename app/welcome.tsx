@@ -1,26 +1,29 @@
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, Platform, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Pressable, Text, View } from "react-native";
 
 import { Screen } from "@/components/ui/Screen";
+import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
 
 function goToHome() {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.location.replace("/tournaments");
-    return;
-  }
-
   router.replace("/tournaments");
 }
 
 export default function WelcomeScreen() {
   const user = useAuthStore((state) => state.user);
+  const releaseSharedTournamentAccess = useAppStore(
+    (state) => state.releaseSharedTournamentAccess,
+  );
   const welcomeName = useMemo(() => user?.name ?? "Jogador", [user?.name]);
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const slideUp = useRef(new Animated.Value(28)).current;
   const glowPulse = useRef(new Animated.Value(0.55)).current;
+
+  useEffect(() => {
+    releaseSharedTournamentAccess();
+  }, [releaseSharedTournamentAccess]);
 
   useEffect(() => {
     const introAnimation = Animated.parallel([

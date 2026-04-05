@@ -25,7 +25,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen scroll ambientDiamond className="px-6">
+    <Screen scroll className="px-6">
       <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
         <SectionHeader
           eyebrow="Perfil"
@@ -41,7 +41,7 @@ export default function ProfileScreen() {
                 width: cardWidth,
                 minHeight: 236,
                 borderColor: "#D3D7DC",
-                backgroundColor: "#FAFAFA",
+                backgroundColor: "rgba(250,250,250,0.94)",
                 shadowColor: "#A3A8AF",
                 shadowOpacity: 0.12,
                 shadowRadius: 18,

@@ -11,15 +11,21 @@ export function ScrollRow({ children, className = "", contentClassName = "" }: S
   return (
     <ScrollView
       horizontal
+      nestedScrollEnabled
+      directionalLockEnabled
       className={className}
       contentContainerStyle={{ paddingRight: 8 }}
-      showsHorizontalScrollIndicator
+      keyboardShouldPersistTaps="handled"
+      scrollEventThrottle={16}
+      showsHorizontalScrollIndicator={false}
       showsVerticalScrollIndicator={false}
       style={
         Platform.OS === "web"
           ? {
               overflowX: "auto",
               overflowY: "hidden",
+              overscrollBehaviorX: "contain" as never,
+              touchAction: "pan-x" as never,
             }
           : undefined
       }

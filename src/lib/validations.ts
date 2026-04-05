@@ -35,9 +35,19 @@ export const classificationCriterionSchema = z.enum([
   "head_to_head",
 ]);
 
+export const participantSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  time: z.string(),
+  whatsapp: z.string().optional(),
+});
+
 export const tournamentSchema = z.object({
   name: z.string().min(3, "Informe o nome do campeonato."),
   format: z.enum(["league", "groups", "knockout", "groups_knockout"]),
+  matchMode: z.enum(["single_game", "home_away"]),
+  teamRuleMode: z.enum(["open", "preset"]),
+  teamRulePresetId: z.string().nullable().optional(),
   playerCount: z.coerce.number().min(2).max(128),
   rules: z.string().min(10, "Descreva as regras principais."),
   classificationCriteria: z
@@ -45,8 +55,18 @@ export const tournamentSchema = z.object({
     .min(1, "Selecione ao menos um criterio de classificacao."),
   allowVideos: z.boolean(),
   allowGoalAward: z.boolean(),
+  participants: z.array(participantSchema).min(2, "Adicione pelo menos 2 participantes."),
+}).superRefine((values, ctx) => {
+  if (values.teamRuleMode === "preset" && !values.teamRulePresetId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["teamRulePresetId"],
+      message: "Selecione o continente e depois o país, liga ou grupo de seleções permitido.",
+    });
+  }
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;
 export type TournamentFormValues = z.infer<typeof tournamentSchema>;
+export type ParticipantFormValues = z.infer<typeof participantSchema>;

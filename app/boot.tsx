@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { Screen } from "@/components/ui/Screen";
+import { useAppStore } from "@/stores/app-store";
 
 const bootNeon = "#57FF7C";
 const horizontalBeamColors = [
@@ -12,23 +13,23 @@ const horizontalBeamColors = [
   "rgba(87,255,124,0.9)",
   "rgba(87,255,124,0.12)",
   "rgba(87,255,124,0)",
-];
+] as const;
 const verticalBeamColors = [
   "rgba(87,255,124,0)",
   "rgba(87,255,124,0.1)",
   "rgba(87,255,124,0.85)",
   "rgba(87,255,124,0.1)",
   "rgba(87,255,124,0)",
-];
+] as const;
 const diagonalBeamColors = [
   "rgba(87,255,124,0)",
   "rgba(87,255,124,0.08)",
   "rgba(87,255,124,0.75)",
   "rgba(87,255,124,0.08)",
   "rgba(87,255,124,0)",
-];
-const horizontalGuides = ["14%", "28%", "42%", "56%", "70%", "84%"];
-const verticalGuides = ["10%", "24%", "38%", "52%", "66%", "80%"];
+] as const;
+const horizontalGuides = ["14%", "28%", "42%", "56%", "70%", "84%"] as const;
+const verticalGuides = ["10%", "24%", "38%", "52%", "66%", "80%"] as const;
 const diagonalBeams = [
   { top: "10%", left: "-18%", width: "150%", rotate: "-8deg", opacity: 0.06 },
   { top: "24%", left: "-16%", width: "144%", rotate: "-7deg", opacity: 0.06 },
@@ -36,16 +37,19 @@ const diagonalBeams = [
   { top: "52%", left: "-20%", width: "156%", rotate: "-8deg", opacity: 0.08 },
   { top: "66%", left: "-18%", width: "150%", rotate: "-7deg", opacity: 0.06 },
   { top: "80%", left: "-16%", width: "144%", rotate: "-8deg", opacity: 0.06 },
-];
+] as const;
 const diagonalReverseBeams = [
   { top: "18%", left: "-14%", width: "146%", rotate: "8deg", opacity: 0.06 },
   { top: "34%", left: "-18%", width: "150%", rotate: "7deg", opacity: 0.07 },
   { top: "50%", left: "-14%", width: "146%", rotate: "8deg", opacity: 0.08 },
   { top: "66%", left: "-20%", width: "154%", rotate: "7deg", opacity: 0.07 },
-];
+] as const;
 
 export default function BootScreen() {
   const { width, height } = useWindowDimensions();
+  const releaseSharedTournamentAccess = useAppStore(
+    (state) => state.releaseSharedTournamentAccess,
+  );
   const horizontalAnimations = useRef(horizontalGuides.map(() => new Animated.Value(-1800))).current;
   const horizontalReverseAnimations = useRef(horizontalGuides.map(() => new Animated.Value(1800))).current;
   const verticalAnimations = useRef(verticalGuides.map(() => new Animated.Value(-1800))).current;
@@ -56,6 +60,10 @@ export default function BootScreen() {
   const moonColor = useRef(new Animated.Value(0)).current;
   const moonScale = useRef(new Animated.Value(0.94)).current;
   const haloOpacity = useRef(new Animated.Value(0.45)).current;
+
+  useEffect(() => {
+    releaseSharedTournamentAccess();
+  }, [releaseSharedTournamentAccess]);
 
   useEffect(() => {
     const horizontalTravel = Math.max(width * 0.55, 520);

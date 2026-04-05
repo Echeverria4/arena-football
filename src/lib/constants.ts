@@ -1,5 +1,8 @@
 import type {
+  Campeonato,
+  ClassificacaoItem,
   HistoricalPerformance,
+  Participante,
   StandingEntry,
   Tournament,
   TournamentParticipant,
@@ -22,6 +25,11 @@ export const tournamentFormats = [
   { label: "Grupos + mata-mata", value: "groups_knockout" },
 ] as const;
 
+export const tournamentMatchModes = [
+  { label: "Jogo único", value: "single_game" },
+  { label: "Casa e\u00A0fora", value: "home_away" },
+] as const;
+
 export const classificationCriteriaOptions = [
   { label: "Pontos", value: "points" },
   { label: "Saldo", value: "goal_difference" },
@@ -36,14 +44,67 @@ export const sampleTournament: Tournament = {
   id: "arena-2026-open",
   name: "Arena Football Master Series",
   format: "groups_knockout",
+  matchMode: "single_game",
   status: "in_progress",
   rules: "Mandante cria a sala. Resultados precisam de aprovacao do organizador.",
   creatorId: "user-organizer",
-  startDate: "2026-04-04",
+  startDate: "2026-03-22",
   allowVideos: true,
   allowGoalAward: true,
   coverUrl: null,
   createdAt: "2026-03-22T00:00:00Z",
+};
+
+export const sampleCampeonato: Campeonato = {
+  id: "arena-2026-open",
+  nome: "Arena Football Master Series",
+  status: "ativo",
+  criadoEm: "2026-03-22T00:00:00Z",
+  temporada: "2026-Q1",
+  modoConfronto: "single_game",
+  participantes: [
+    {
+      id: "participant-1",
+      nome: "Matheus",
+      time: "Corinthians",
+      whatsapp: "11999999999",
+    },
+    {
+      id: "participant-2",
+      nome: "João",
+      time: "São Paulo",
+      whatsapp: "11999999998",
+    },
+  ],
+  rodadas: [],
+  classificacao: [
+    {
+      participanteId: "participant-1",
+      nome: "Matheus",
+      time: "Corinthians",
+      pontos: 3,
+      jogos: 1,
+      vitorias: 1,
+      empates: 0,
+      derrotas: 0,
+      golsPro: 2,
+      golsContra: 0,
+      saldo: 2,
+    },
+    {
+      participanteId: "participant-2",
+      nome: "João",
+      time: "São Paulo",
+      pontos: 0,
+      jogos: 1,
+      vitorias: 0,
+      empates: 0,
+      derrotas: 1,
+      golsPro: 0,
+      golsContra: 2,
+      saldo: -2,
+    },
+  ],
 };
 
 export const sampleParticipants: TournamentParticipant[] = [
@@ -326,7 +387,8 @@ export const sampleVideos: VideoHighlight[] = [
     matchId: "match-1",
     userId: "user-2",
     title: "Chute colocado no angulo",
-    description: "Gol enviado para o concurso do lance mais bonito.",
+    teamName: "Bragantino",
+    description: null,
     videoUrl: "https://example.com/video.mp4",
     thumbnailUrl: null,
     approvalStatus: "approved",

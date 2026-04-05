@@ -1,12 +1,14 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { View } from "react-native";
 
+type Percent = `${number}%`;
+
 interface NeonGridProps {
   variant?: "soft" | "hero";
 }
 
-const horizontalLines = ["20%", "52%", "84%"];
-const verticalLines = ["22%", "50%", "78%"];
+const horizontalLines = ["20%", "52%", "84%"] as const;
+const verticalLines = ["22%", "50%", "78%"] as const;
 const stars = [
   { left: "6%", top: "10%", size: 2, opacity: 0.52 },
   { left: "14%", top: "18%", size: 1.5, opacity: 0.34 },
@@ -47,9 +49,9 @@ export function NeonGrid({ variant = "hero" }: NeonGridProps) {
   const chevrons = Array.from({ length: rows + 2 }, (_, row) =>
     Array.from({ length: columns + 2 }, (_, column) => ({
       id: `${row}-${column}`,
-      left: `${column * columnGap - columnGap * 0.7}%`,
-      top: `${row * rowGap - rowGap * 0.35}%`,
-      lowerTop: `${row * rowGap - rowGap * 0.35 + (chevronWidth / 10)}%`,
+      left: `${column * columnGap - columnGap * 0.7}%` as Percent,
+      top: `${row * rowGap - rowGap * 0.35}%` as Percent,
+      lowerTop: `${row * rowGap - rowGap * 0.35 + chevronWidth / 10}%` as Percent,
       width: chevronWidth,
     })),
   ).flat();

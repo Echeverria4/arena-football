@@ -1,22 +1,18 @@
 import { View, type ViewProps } from "react-native";
 
+import { LiveBorderCard } from "@/components/ui/LiveBorderCard";
+
 export function GlassCard({ children, className = "", style, ...rest }: ViewProps) {
   return (
-    <View
-      className={`rounded-3xl border p-4 ${className}`.trim()}
-      style={[
-        {
-          borderColor: "#D3D7DC",
-          backgroundColor: "#FAFAFA",
-          shadowColor: "#A3A8AF",
-          shadowOpacity: 0.1,
-          shadowRadius: 16,
-        },
-        style,
-      ]}
-      {...rest}
+    <LiveBorderCard
+      accent="blue"
+      radius={18}
+      padding={1.3}
+      backgroundColor="#FFFFFF"
     >
-      {children}
-    </View>
+      <View className={`p-4 ${className}`.trim()} style={style} {...rest}>
+        {children}
+      </View>
+    </LiveBorderCard>
   );
 }

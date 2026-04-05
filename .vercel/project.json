@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_hVitAbEZWW1svL8DaNPTQTBqRKux",
+  "orgId": "team_TKRnGllOMeIZ11eSGdZN7f02",
+  "projectName": "arena-football-app",
+  "settings": {
+    "createdAt": 1774286308809,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
