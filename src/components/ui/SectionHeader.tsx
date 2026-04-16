@@ -59,9 +59,9 @@ export function SectionHeader({
         <Text
           style={{
             color: colors.title,
-            fontSize: isSmallPhone ? 26 : isPhone ? 30 : 34,
+            fontSize: isSmallPhone ? 20 : isPhone ? 24 : 32,
             fontWeight: "900",
-            lineHeight: isSmallPhone ? 32 : isPhone ? 36 : 40,
+            lineHeight: isSmallPhone ? 26 : isPhone ? 30 : 38,
           }}
         >
           {title}
@@ -72,8 +72,8 @@ export function SectionHeader({
             style={{
               maxWidth: 880,
               color: colors.subtitle,
-              fontSize: isSmallPhone ? 14 : 16,
-              lineHeight: isSmallPhone ? 24 : 28,
+              fontSize: isSmallPhone ? 13 : isPhone ? 14 : 16,
+              lineHeight: isSmallPhone ? 20 : isPhone ? 22 : 28,
             }}
           >
             {subtitle}

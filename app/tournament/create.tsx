@@ -2,9 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Pressable, Switch, Text, TextInput, View } from "react-native";
+import { Image, Pressable, Switch, Text, TextInput, View } from "react-native";
 import { z } from "zod";
 
+import { TeamPickerModal } from "@/components/tournament/TeamPickerModal";
 import { BackButton } from "@/components/ui/BackButton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Screen } from "@/components/ui/Screen";
@@ -12,6 +13,8 @@ import { ScrollRow } from "@/components/ui/ScrollRow";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { classificationCriteriaOptions, tournamentFormats } from "@/lib/constants";
 import { getNextSeasonLabel } from "@/lib/season-tournaments";
+import type { TeamItem } from "@/lib/team-data";
+import { getTeamInitials, resolveTeamVisual } from "@/lib/team-visuals";
 import { buildInitialCampeonato } from "@/lib/tournament-setup";
 import { classificationCriterionSchema } from "@/lib/validations";
 import { useAppStore } from "@/stores/app-store";
@@ -30,7 +33,14 @@ const tournamentCreateSchema = z.object({
 });
 
 type TournamentCreateValues = z.infer<typeof tournamentCreateSchema>;
-type DraftParticipant = { nome: string; time: string; whatsapp: string };
+
+type DraftParticipant = {
+  nome: string;
+  time: string;
+  whatsapp: string;
+  timeImagem?: string;
+  timeTipoIcone?: "bandeira" | "escudo";
+};
 
 function StepDots({ step }: { step: 1 | 2 | 3 }) {
   return (
@@ -51,6 +61,47 @@ function StepDots({ step }: { step: 1 | 2 | 3 }) {
   );
 }
 
+function TeamBadge({
+  imageUri,
+  name,
+  tipoIcone,
+}: {
+  imageUri?: string;
+  name: string;
+  tipoIcone?: "bandeira" | "escudo";
+}) {
+  const [failed, setFailed] = useState(false);
+  const size = tipoIcone === "escudo" ? 28 : 36;
+
+  return (
+    <View
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(59,91,255,0.12)",
+        borderWidth: 1,
+        borderColor: "rgba(59,91,255,0.28)",
+      }}
+    >
+      {imageUri && !failed ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={{ width: size, height: size }}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "900" }}>
+          {getTeamInitials(name)}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 export default function TournamentCreateScreen() {
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const adicionarCampeonato = useTournamentStore((state) => state.adicionarCampeonato);
@@ -62,6 +113,7 @@ export default function TournamentCreateScreen() {
   const [draftParticipants, setDraftParticipants] = useState<DraftParticipant[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step2Touched, setStep2Touched] = useState(false);
+  const [pickerOpenForIndex, setPickerOpenForIndex] = useState<number | null>(null);
 
   const {
     control,
@@ -111,12 +163,13 @@ export default function TournamentCreateScreen() {
   function handleStep1Next(values: TournamentCreateValues) {
     const count = Math.max(2, Number(values.playerCount) || 2);
     setStep1Values(values);
-    // Preserve existing drafts when going back and forth; resize to match playerCount
     setDraftParticipants((prev) =>
       Array.from({ length: count }, (_, i) => ({
         nome: prev[i]?.nome ?? `Jogador ${String(i + 1).padStart(2, "0")}`,
         time: prev[i]?.time ?? `Time ${String(i + 1).padStart(2, "0")}`,
         whatsapp: prev[i]?.whatsapp ?? "",
+        timeImagem: prev[i]?.timeImagem,
+        timeTipoIcone: prev[i]?.timeTipoIcone,
       })),
     );
     setStep(2);
@@ -126,6 +179,18 @@ export default function TournamentCreateScreen() {
     setDraftParticipants((prev) =>
       prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
     );
+  }
+
+  function handleTeamSelect(index: number, team: TeamItem) {
+    const visualUri = resolveTeamVisual(team) ?? undefined;
+    setDraftParticipants((prev) =>
+      prev.map((p, i) =>
+        i === index
+          ? { ...p, time: team.nome, timeImagem: visualUri, timeTipoIcone: team.tipoIcone }
+          : p,
+      ),
+    );
+    setPickerOpenForIndex(null);
   }
 
   function isParticipantIncomplete(p: DraftParticipant) {
@@ -168,6 +233,8 @@ export default function TournamentCreateScreen() {
           nome: draft.nome.trim() || autoP.nome,
           time: draft.time.trim() || autoP.time,
           whatsapp: draft.whatsapp.trim() || undefined,
+          timeImagem: draft.timeImagem,
+          timeTipoIcone: draft.timeTipoIcone,
         };
       });
 
@@ -396,6 +463,12 @@ export default function TournamentCreateScreen() {
     const incompleteCount = draftParticipants.filter(isParticipantIncomplete).length;
     const allComplete = incompleteCount === 0;
 
+    // Teams already chosen by OTHER participants (to lock in picker)
+    const lockedTeamNames = draftParticipants
+      .filter((_, i) => i !== pickerOpenForIndex)
+      .map((p) => p.time)
+      .filter(Boolean);
+
     return (
       <Screen scroll className="px-6">
         <View className="gap-8 py-8">
@@ -405,7 +478,7 @@ export default function TournamentCreateScreen() {
           <SectionHeader
             eyebrow="Etapa 2 de 3 — Jogadores"
             title="Registrar participantes"
-            subtitle={`Preencha nome e time de cada jogador. WhatsApp é opcional. Os ${draftParticipants.length} slots abaixo correspondem às vagas do campeonato.`}
+            subtitle={`Preencha nome e time de cada jogador. Use o botão de escudo para escolher o time pelo catálogo de continentes. WhatsApp é opcional.`}
           />
 
           {/* Global error banner */}
@@ -441,6 +514,7 @@ export default function TournamentCreateScreen() {
               const incomplete = step2Touched && isParticipantIncomplete(participant);
               const missingNome = step2Touched && !participant.nome.trim();
               const missingTime = step2Touched && !participant.time.trim();
+              const hasTeamFromCatalog = Boolean(participant.timeImagem);
 
               return (
                 <View
@@ -522,32 +596,80 @@ export default function TournamentCreateScreen() {
                     ) : null}
                   </View>
 
-                  {/* Time */}
-                  <View style={{ gap: 4 }}>
-                    <TextInput
-                      style={{
-                        borderRadius: 14,
-                        borderWidth: 1,
-                        borderColor: missingTime
-                          ? "rgba(212,79,98,0.60)"
-                          : "rgba(255,255,255,0.10)",
-                        backgroundColor: missingTime
-                          ? "rgba(212,79,98,0.08)"
-                          : "#132028",
-                        color: "#F3F7FF",
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        fontSize: 15,
-                      }}
-                      placeholder="Nome do time *"
-                      placeholderTextColor={missingTime ? "#FF8A97" : "#7481A2"}
-                      autoCapitalize="words"
-                      value={participant.time}
-                      onChangeText={(v) => updateParticipant(index, "time", v)}
-                    />
+                  {/* Time — campo + botão catálogo */}
+                  <View style={{ gap: 6 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      {/* Badge do time selecionado pelo catálogo */}
+                      {hasTeamFromCatalog ? (
+                        <TeamBadge
+                          imageUri={participant.timeImagem}
+                          name={participant.time}
+                          tipoIcone={participant.timeTipoIcone}
+                        />
+                      ) : null}
+
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          borderRadius: 14,
+                          borderWidth: 1,
+                          borderColor: missingTime
+                            ? "rgba(212,79,98,0.60)"
+                            : hasTeamFromCatalog
+                              ? "rgba(59,91,255,0.35)"
+                              : "rgba(255,255,255,0.10)",
+                          backgroundColor: missingTime
+                            ? "rgba(212,79,98,0.08)"
+                            : hasTeamFromCatalog
+                              ? "rgba(59,91,255,0.08)"
+                              : "#132028",
+                          color: "#F3F7FF",
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          fontSize: 15,
+                        }}
+                        placeholder="Nome do time *"
+                        placeholderTextColor={missingTime ? "#FF8A97" : "#7481A2"}
+                        autoCapitalize="words"
+                        value={participant.time}
+                        onChangeText={(v) => {
+                          updateParticipant(index, "time", v);
+                          // Clear catalog data when user types manually
+                          setDraftParticipants((prev) =>
+                            prev.map((p, i) =>
+                              i === index
+                                ? { ...p, time: v, timeImagem: undefined, timeTipoIcone: undefined }
+                                : p,
+                            ),
+                          );
+                        }}
+                      />
+
+                      {/* Botão abrir catálogo */}
+                      <Pressable
+                        onPress={() => setPickerOpenForIndex(index)}
+                        style={{
+                          width: 46,
+                          height: 46,
+                          borderRadius: 12,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "rgba(59,91,255,0.14)",
+                          borderWidth: 1,
+                          borderColor: "rgba(59,91,255,0.32)",
+                        }}
+                      >
+                        <Text style={{ fontSize: 20 }}>🌍</Text>
+                      </Pressable>
+                    </View>
+
                     {missingTime ? (
                       <Text style={{ color: "#FF8A97", fontSize: 12, fontWeight: "600", paddingLeft: 4 }}>
                         Time obrigatório
+                      </Text>
+                    ) : hasTeamFromCatalog ? (
+                      <Text style={{ color: "#6B8FD4", fontSize: 11, paddingLeft: 4 }}>
+                        Time selecionado do catálogo
                       </Text>
                     ) : null}
                   </View>
@@ -591,6 +713,18 @@ export default function TournamentCreateScreen() {
             />
           </View>
         </View>
+
+        {/* Team picker modal */}
+        <TeamPickerModal
+          visible={pickerOpenForIndex !== null}
+          lockedTeamNames={lockedTeamNames}
+          onClose={() => setPickerOpenForIndex(null)}
+          onSelect={(team) => {
+            if (pickerOpenForIndex !== null) {
+              handleTeamSelect(pickerOpenForIndex, team);
+            }
+          }}
+        />
       </Screen>
     );
   }
@@ -671,6 +805,9 @@ export default function TournamentCreateScreen() {
               >
                 {String(i + 1).padStart(2, "0")}
               </Text>
+              {p.timeImagem ? (
+                <TeamBadge imageUri={p.timeImagem} name={p.time} tipoIcone={p.timeTipoIcone} />
+              ) : null}
               <Text className="flex-1 text-sm font-semibold text-arena-text">
                 {p.nome || `Jogador ${String(i + 1).padStart(2, "0")}`}
               </Text>

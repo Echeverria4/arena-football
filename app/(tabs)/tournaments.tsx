@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { Text, View } from "react-native";
+import { Text, View, useWindowDimensions } from "react-native";
 
 import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { ChoiceChip } from "@/components/ui/ChoiceChip";
@@ -17,6 +17,9 @@ import { useAppStore } from "@/stores/app-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 
 export default function TournamentsScreen() {
+  const { width } = useWindowDimensions();
+  const isSmallPhone = width < 420;
+  const isPhone = width < 768;
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
@@ -51,8 +54,7 @@ export default function TournamentsScreen() {
   }
 
   function openTournament(id: string) {
-    setCurrentTournamentId(id);
-    router.push({ pathname: "/tournament/[id]", params: { id } });
+    router.push({ pathname: "/tournament/preview", params: { id } });
   }
 
   function goToNewTournament() {
@@ -60,8 +62,15 @@ export default function TournamentsScreen() {
   }
 
   return (
-    <Screen scroll ambientDiamond className="px-6">
-      <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
+    <Screen scroll className={isSmallPhone ? "px-4" : "px-6"}>
+      <View
+        className="w-full self-center"
+        style={{
+          maxWidth: contentMaxWidth,
+          gap: isSmallPhone ? 20 : isPhone ? 24 : 32,
+          paddingVertical: isSmallPhone ? 16 : 24,
+        }}
+      >
         <SectionHeader
           eyebrow="Campeonatos"
           title="Temporadas do Arena"
@@ -89,7 +98,7 @@ export default function TournamentsScreen() {
                 >
                   Novo ciclo
                 </Text>
-                <Text style={{ color: "#F3F7FF", fontSize: 30, fontWeight: "900" }}>
+                <Text style={{ color: "#F3F7FF", fontSize: isSmallPhone ? 20 : isPhone ? 24 : 30, fontWeight: "900" }}>
                   Criar campeonato
                 </Text>
                 <Text style={{ color: "#AEBBDA", fontSize: 15, lineHeight: 24 }}>

@@ -117,8 +117,8 @@ export function Card3D({
   const glowX = useRef(new Animated.Value(0)).current;
   const glowY = useRef(new Animated.Value(0)).current;
 
-  const cardHeight = minHeight ?? (isSmallPhone ? 360 : isPhone ? 390 : 430);
-  const heroHeight = isSmallPhone ? 164 : isPhone ? 188 : 220;
+  const cardHeight = minHeight ?? (isSmallPhone ? 300 : isPhone ? 340 : 420);
+  const heroHeight = isSmallPhone ? 130 : isPhone ? 158 : 210;
   const imageHeight = heroHeight + 36;
   const cardEdgeColors: readonly [string, string, string] = useAmbientSurface
     ? ["rgba(155,183,255,0.18)", "rgba(89,123,228,0.1)", "rgba(255,255,255,0.02)"]

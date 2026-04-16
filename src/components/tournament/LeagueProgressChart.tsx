@@ -1,5 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { Image, ScrollView, Text, View, type LayoutChangeEvent } from "react-native";
+import { Image, Pressable, ScrollView, Text, View, type LayoutChangeEvent } from "react-native";
 
 import {
   getTeamInitials,
@@ -342,6 +343,7 @@ export function LeagueProgressChart({
   format,
 }: LeagueProgressChartProps) {
   const [chartViewportWidth, setChartViewportWidth] = useState(420);
+  const [legendVisible, setLegendVisible] = useState(true);
   const series = useMemo(() => buildSeries(campeonato), [campeonato]);
   const latestFinishedRound = useMemo(
     () => getLatestFinishedRound(campeonato),
@@ -389,21 +391,16 @@ export function LeagueProgressChart({
   );
   const plotWidth = Math.max(chartCanvasWidth - PADDING_LEFT - PADDING_RIGHT, 260);
   const plotHeight = chartHeight - PADDING_TOP - PADDING_BOTTOM;
-  const isLeagueFormat = format === "league";
   const hasParticipants = campeonato.participantes.length > 0;
   const hasRounds = totalRounds > 0;
-  const canRenderLeagueChart = isLeagueFormat && hasParticipants && hasRounds;
+  const canRenderLeagueChart = hasParticipants && hasRounds;
   const xAxisLabels = Array.from({ length: visiblePointCount }, (_, index) => index);
-  const emptyStateTitle = !isLeagueFormat
-    ? "Grafico disponivel so em pontos corridos"
-    : !hasParticipants
-      ? "Campeonato sem participantes"
-      : "Rodadas ainda nao geradas";
-  const emptyStateDescription = !isLeagueFormat
-    ? "Quando o campeonato usar formato de liga, o app mostra aqui a evolucao acumulada de pontos desde o zero."
-    : !hasParticipants
-      ? "Este campeonato foi salvo sem jogadores vinculados. Enquanto isso nao for corrigido, nao ha linha de evolucao para mostrar."
-      : "O campeonato esta em pontos corridos, mas ainda nao existem confrontos estruturados para montar a curva de evolucao.";
+  const emptyStateTitle = !hasParticipants
+    ? "Campeonato sem participantes"
+    : "Rodadas ainda nao geradas";
+  const emptyStateDescription = !hasParticipants
+    ? "Este campeonato foi salvo sem jogadores vinculados. Enquanto isso nao for corrigido, nao ha linha de evolucao para mostrar."
+    : "O campeonato esta em pontos corridos, mas ainda nao existem confrontos estruturados para montar a curva de evolucao.";
 
   function handleLayout(event: LayoutChangeEvent) {
     const nextWidth = Math.max(Math.round(event.nativeEvent.layout.width), 320);
@@ -412,6 +409,8 @@ export function LeagueProgressChart({
       setChartViewportWidth(nextWidth);
     }
   }
+
+  if (format !== "league") return null;
 
   return (
     <View className="gap-4">
@@ -645,7 +644,24 @@ export function LeagueProgressChart({
         </View>
 
         {canRenderLeagueChart ? (
-          <View className="flex-row flex-wrap gap-2">
+          <View className="gap-2">
+            <Pressable
+              onPress={() => setLegendVisible((v) => !v)}
+              className="self-start flex-row items-center gap-1"
+              style={{ paddingVertical: 2 }}
+            >
+              <Text style={{ color: "#5678C9", fontSize: 12, fontWeight: "700", letterSpacing: 1.2 }}>
+                {legendVisible ? "Ocultar times" : "Mostrar times"}
+              </Text>
+              <Ionicons
+                name={legendVisible ? "chevron-up" : "chevron-down"}
+                size={14}
+                color="#5678C9"
+              />
+            </Pressable>
+
+            {legendVisible ? (
+            <View className="flex-row flex-wrap gap-2">
             {series.map((entry) => (
               <View
                 key={`chip-${entry.participantId}`}
@@ -698,6 +714,8 @@ export function LeagueProgressChart({
                 })()}
               </View>
             ))}
+          </View>
+            ) : null}
           </View>
         ) : null}
       </View>

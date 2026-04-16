@@ -5,8 +5,8 @@ export function usePanelGrid() {
   const isPhone = width < 768;
   const isSmallPhone = width < 420;
   const columns = width >= 980 ? 2 : 1;
-  const gap = isPhone ? 16 : 20;
-  const horizontalPadding = isSmallPhone ? 24 : isPhone ? 32 : 48;
+  const gap = isSmallPhone ? 12 : isPhone ? 16 : 20;
+  const horizontalPadding = isSmallPhone ? 16 : isPhone ? 24 : 48;
   const contentMaxWidth = 1440;
   const innerPadding = isSmallPhone ? 8 : 16;
   const contentWidth = Math.min(width - horizontalPadding, contentMaxWidth);

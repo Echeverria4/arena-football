@@ -378,6 +378,7 @@ export default function TournamentDetailsScreen() {
               label={tab.label}
               active={tab.active}
               onPress={tab.onPress}
+              compact
             />
           ))}
         </ScrollRow>

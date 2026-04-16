@@ -86,28 +86,28 @@ export function FeatureCard({
         <View
           className="gap-4"
           style={{
-            minHeight: isPhone ? 212 : 236,
-            padding: isSmallPhone ? 18 : 24,
+            minHeight: isSmallPhone ? 160 : isPhone ? 196 : 236,
+            padding: isSmallPhone ? 14 : isPhone ? 18 : 24,
           }}
         >
           <View className="mb-2 flex-row items-center gap-3">
             <View
               className="items-center justify-center rounded-[20px]"
               style={{
-                width: isPhone ? 48 : 54,
-                height: isPhone ? 48 : 54,
+                width: isSmallPhone ? 40 : isPhone ? 48 : 54,
+                height: isSmallPhone ? 40 : isPhone ? 48 : 54,
                 backgroundColor: styles.iconBg,
                 borderWidth: 1,
                 borderColor: styles.frame,
               }}
             >
-              <Ionicons name={icon} size={isPhone ? 22 : 26} color={styles.icon} />
+              <Ionicons name={icon} size={isSmallPhone ? 18 : isPhone ? 22 : 26} color={styles.icon} />
             </View>
 
             <View className="flex-1">
               <Text
                 style={{
-                  fontSize: isPhone ? 18 : 20,
+                  fontSize: isSmallPhone ? 15 : isPhone ? 18 : 20,
                   color: "#1C2B4A",
                   fontWeight: "800",
                 }}
@@ -116,7 +116,7 @@ export function FeatureCard({
               </Text>
               <Text
                 style={{
-                  fontSize: isSmallPhone ? 14 : 15,
+                  fontSize: isSmallPhone ? 12 : isPhone ? 14 : 15,
                   color: "#6B7EA3",
                 }}
               >
@@ -128,8 +128,8 @@ export function FeatureCard({
           <Text
             style={{
               color: "#5E7197",
-              fontSize: isSmallPhone ? 14 : 16,
-              lineHeight: isSmallPhone ? 24 : 27,
+              fontSize: isSmallPhone ? 13 : isPhone ? 14 : 16,
+              lineHeight: isSmallPhone ? 20 : isPhone ? 22 : 27,
             }}
           >
             {description}

@@ -6,22 +6,22 @@ module.exports = {
     extend: {
       colors: {
         arena: {
-          bg: "#050A11",
-          surface: "#0A141B",
-          card: "#0D1720",
-          line: "#2B424B",
-          text: "#FFFFFF",
-          muted: "#F3F5F7",
-          neon: "#9AE2B2",
-          neonSoft: "#5D987C",
-          gold: "#BFE9CC",
-          silver: "#C9D7D8",
-          bronze: "#739E8E",
+          bg: "#03050B",
+          surface: "#070B14",
+          card: "#0B1020",
+          line: "#1E2A42",
+          text: "#E5E7EB",
+          muted: "#94A3B8",
+          neon: "#8B5CF6",
+          neonSoft: "#6D28D9",
+          gold: "#22D3EE",
+          silver: "#A78BFA",
+          bronze: "#60A5FA",
           danger: "#E06B80"
         }
       },
       boxShadow: {
-        neon: "0px 0px 22px rgba(154, 226, 178, 0.16)"
+        neon: "0px 0px 22px rgba(139, 92, 246, 0.20)"
       }
     }
   },

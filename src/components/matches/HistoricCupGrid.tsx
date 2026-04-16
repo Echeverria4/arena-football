@@ -7,32 +7,39 @@ interface HistoricCupGridProps {
   emptyLabel?: string;
   items: HistoricCupItem[];
   onPressItem?: (item: HistoricCupItem) => void;
+  compact?: boolean;
 }
 
 export function HistoricCupGrid({
   emptyLabel = "Nenhuma partida cadastrada nesta rodada.",
   items,
   onPressItem,
+  compact = false,
 }: HistoricCupGridProps) {
   const { width } = useWindowDimensions();
-  const preferredCardWidth = width < 768 ? Math.max(Math.min(width - 48, 360), 272) : 272;
   const horizontalPadding = width < 768 ? 48 : 72;
-  const availableWidth = Math.max(width - horizontalPadding, preferredCardWidth);
-  const shouldLockEightMatchLayout = items.length === 8;
+  const availableWidth = Math.max(width - horizontalPadding, 100);
+  const shouldLockEightMatchLayout = !compact && items.length === 8;
+
+  const preferredCardWidth = useMemo(() => {
+    if (compact) return Math.floor((availableWidth - 12) / 2);
+    return width < 768 ? Math.max(Math.min(width - 48, 360), 272) : 272;
+  }, [compact, availableWidth, width]);
 
   const columns = useMemo(() => {
+    if (compact) return Math.min(2, items.length > 0 ? 2 : 1);
     const rawColumns = Math.max(1, Math.floor((availableWidth + 16) / (preferredCardWidth + 16)));
     return shouldLockEightMatchLayout ? Math.min(rawColumns, 4) : rawColumns;
-  }, [availableWidth, preferredCardWidth, shouldLockEightMatchLayout]);
+  }, [compact, items.length, availableWidth, preferredCardWidth, shouldLockEightMatchLayout]);
 
   const gridWidth = useMemo(() => {
     if (columns <= 1) {
       return "100%";
     }
 
-    const exactWidth = columns * preferredCardWidth + (columns - 1) * 16;
+    const exactWidth = columns * preferredCardWidth + (columns - 1) * (compact ? 12 : 16);
     return Math.min(exactWidth, availableWidth);
-  }, [availableWidth, columns, preferredCardWidth]);
+  }, [availableWidth, columns, preferredCardWidth, compact]);
 
   if (!items.length) {
     return (
@@ -55,7 +62,7 @@ export function HistoricCupGrid({
         alignSelf: "center",
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: 16,
+        gap: compact ? 12 : 16,
         justifyContent: "center",
       }}
     >

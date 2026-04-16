@@ -17,6 +17,7 @@ function resolveTournamentRouteKey(pathname: string) {
     routeSegment === "create" ||
     routeSegment === "matches" ||
     routeSegment === "participants" ||
+    routeSegment === "preview" ||
     routeSegment === "share" ||
     routeSegment === "standings" ||
     routeSegment === "statistics" ||
@@ -70,6 +71,7 @@ export default function TournamentLayout() {
     routeKey === "[id]" ||
     routeKey === "matches" ||
     routeKey === "participants" ||
+    routeKey === "preview" ||
     routeKey === "standings" ||
     routeKey === "statistics" ||
     routeKey === "videos";

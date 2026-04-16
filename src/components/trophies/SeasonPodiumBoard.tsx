@@ -360,17 +360,20 @@ export function SeasonPodiumBoard({ title, subtitle, entries }: Props) {
           ))}
         </View>
 
-        <Text
-          style={{
-            color: "#DCCFA8",
-            fontSize: 11,
-            fontWeight: "700",
-            letterSpacing: 1.6,
-            textTransform: "uppercase",
-          }}
-        >
-          Passe o mouse em cada posição para ver time, números e o fogo vivo do pódio.
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text style={{ fontSize: 14 }}>👆</Text>
+          <Text
+            style={{
+              color: "#DCCFA8",
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 0.6,
+              flex: 1,
+            }}
+          >
+            Segure qualquer card do pódio para revelar o time e as estatísticas da posição.
+          </Text>
+        </View>
       </View>
     </LiveBorderCard>
   );

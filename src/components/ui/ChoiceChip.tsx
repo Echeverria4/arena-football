@@ -6,6 +6,7 @@ interface ChoiceChipProps {
   onPress?: () => void;
   tone?: "neon" | "gold";
   surface?: "dark" | "light";
+  compact?: boolean;
 }
 
 export function ChoiceChip({
@@ -14,6 +15,7 @@ export function ChoiceChip({
   onPress,
   tone = "neon",
   surface = "dark",
+  compact = false,
 }: ChoiceChipProps) {
   const { width } = useWindowDimensions();
   const isSmallPhone = width < 420;
@@ -77,8 +79,8 @@ export function ChoiceChip({
         className="flex-row items-center gap-2 rounded-full px-4 py-3"
         style={{
           backgroundColor: active ? palette.activeInner : palette.inactiveInner,
-          paddingHorizontal: isSmallPhone ? 14 : 16,
-          paddingVertical: isSmallPhone ? 10 : 12,
+          paddingHorizontal: compact ? 10 : isSmallPhone ? 14 : 16,
+          paddingVertical: compact ? 7 : isSmallPhone ? 10 : 12,
         }}
       >
         {active ? (
@@ -98,7 +100,7 @@ export function ChoiceChip({
           style={
             {
               color: active ? palette.activeText : palette.inactiveText,
-              fontSize: isSmallPhone ? 14 : 15,
+              fontSize: compact ? 13 : isSmallPhone ? 14 : 15,
               flexShrink: 0,
               whiteSpace: "nowrap",
               wordBreak: "keep-all",

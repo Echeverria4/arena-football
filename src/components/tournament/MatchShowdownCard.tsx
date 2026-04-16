@@ -48,6 +48,7 @@ export function MatchShowdownCard({
 }: MatchShowdownCardProps) {
   const { width } = useWindowDimensions();
   const isPhone = width < 768;
+  const isSmallPhone = width < 420;
   const palette = statusStyles[status];
 
   return (
@@ -67,9 +68,9 @@ export function MatchShowdownCard({
       <View
         className="flex-row items-center justify-between"
         style={{
-          paddingHorizontal: 22,
-          paddingTop: 20,
-          paddingBottom: 14,
+          paddingHorizontal: isSmallPhone ? 14 : 22,
+          paddingTop: isSmallPhone ? 14 : 20,
+          paddingBottom: isSmallPhone ? 10 : 14,
           borderBottomWidth: 1,
           borderBottomColor: "rgba(59,91,255,0.10)",
         }}
@@ -124,33 +125,33 @@ export function MatchShowdownCard({
         onPress={onOpen}
         disabled={!onOpen}
         className="transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.01]"
-        style={{ padding: isPhone ? 18 : 24 }}
+        style={{ padding: isSmallPhone ? 14 : isPhone ? 18 : 24 }}
       >
-        <View className={`items-center ${isPhone ? "gap-5" : "flex-row gap-4"}`}>
-          <View className="flex-1 items-center gap-3">
+        <View className={`items-center ${isPhone ? "gap-4" : "flex-row gap-4"}`}>
+          <View className="flex-1 items-center gap-2">
             <View
               className="items-center justify-center rounded-[24px]"
               style={{
-                width: isPhone ? 96 : 110,
-                height: isPhone ? 96 : 110,
+                width: isSmallPhone ? 72 : isPhone ? 96 : 110,
+                height: isSmallPhone ? 72 : isPhone ? 96 : 110,
                 backgroundColor: "#F7FAFF",
                 borderWidth: 1,
                 borderColor: "rgba(59,91,255,0.12)",
               }}
             >
-              <Ionicons name="shield-outline" size={isPhone ? 40 : 48} color="#4A70E8" />
+              <Ionicons name="shield-outline" size={isSmallPhone ? 30 : isPhone ? 40 : 48} color="#4A70E8" />
             </View>
             <Text
               style={{
                 color: "#1C2B4A",
-                fontSize: isPhone ? 18 : 22,
+                fontSize: isSmallPhone ? 15 : isPhone ? 18 : 22,
                 fontWeight: "800",
                 textAlign: "center",
               }}
             >
               {homeTeam}
             </Text>
-            <Text style={{ color: "#6B7EA3", fontSize: 14, textAlign: "center" }}>
+            <Text style={{ color: "#6B7EA3", fontSize: isSmallPhone ? 12 : 14, textAlign: "center" }}>
               {homePlayer}
             </Text>
           </View>
@@ -159,7 +160,7 @@ export function MatchShowdownCard({
             <Text
               style={{
                 color: "#5678C9",
-                fontSize: isPhone ? 13 : 14,
+                fontSize: isSmallPhone ? 12 : isPhone ? 13 : 14,
                 fontWeight: "700",
                 letterSpacing: 2,
                 textTransform: "uppercase",
@@ -167,11 +168,11 @@ export function MatchShowdownCard({
             >
               VS
             </Text>
-            <View className="h-12 w-[1px]" style={{ backgroundColor: "rgba(59,91,255,0.16)" }} />
+            <View className="h-10 w-[1px]" style={{ backgroundColor: "rgba(59,91,255,0.16)" }} />
             <Text
               style={{
                 color: "#89A0D8",
-                fontSize: 12,
+                fontSize: isSmallPhone ? 10 : 12,
                 fontWeight: "700",
                 letterSpacing: 1.4,
                 textTransform: "uppercase",
@@ -181,30 +182,30 @@ export function MatchShowdownCard({
             </Text>
           </View>
 
-          <View className="flex-1 items-center gap-3">
+          <View className="flex-1 items-center gap-2">
             <View
               className="items-center justify-center rounded-[24px]"
               style={{
-                width: isPhone ? 96 : 110,
-                height: isPhone ? 96 : 110,
+                width: isSmallPhone ? 72 : isPhone ? 96 : 110,
+                height: isSmallPhone ? 72 : isPhone ? 96 : 110,
                 backgroundColor: "#F7FAFF",
                 borderWidth: 1,
                 borderColor: "rgba(59,91,255,0.12)",
               }}
             >
-              <Ionicons name="shield-outline" size={isPhone ? 40 : 48} color="#4A70E8" />
+              <Ionicons name="shield-outline" size={isSmallPhone ? 30 : isPhone ? 40 : 48} color="#4A70E8" />
             </View>
             <Text
               style={{
                 color: "#1C2B4A",
-                fontSize: isPhone ? 18 : 22,
+                fontSize: isSmallPhone ? 15 : isPhone ? 18 : 22,
                 fontWeight: "800",
                 textAlign: "center",
               }}
             >
               {awayTeam}
             </Text>
-            <Text style={{ color: "#6B7EA3", fontSize: 14, textAlign: "center" }}>
+            <Text style={{ color: "#6B7EA3", fontSize: isSmallPhone ? 12 : 14, textAlign: "center" }}>
               {awayPlayer}
             </Text>
           </View>
@@ -214,7 +215,7 @@ export function MatchShowdownCard({
           label="Entrar na partida"
           onPress={onOpen}
           variant="light"
-          className="mt-6 w-full rounded-[18px] py-3"
+          className="mt-5 w-full rounded-[18px] py-3"
         />
       </Pressable>
     </View>
