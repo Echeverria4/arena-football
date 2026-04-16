@@ -18,6 +18,7 @@ import { canEditTournament, useTournamentAccessMode } from "@/lib/tournament-acc
 import { formatPhone } from "@/lib/formatters";
 import { normalizeTeamDisplayName } from "@/lib/team-visuals";
 import { getTournamentBundle } from "@/lib/tournament-display";
+import { updateParticipantDisplay } from "@/services/participants";
 import { useTournamentStore } from "@/stores/tournament-store";
 import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
@@ -39,6 +40,7 @@ export default function TournamentParticipantsScreen() {
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftWhatsapp, setDraftWhatsapp] = useState("");
+  const [saving, setSaving] = useState(false);
 
   if (!hydrated) {
     return (
@@ -93,7 +95,7 @@ export default function TournamentParticipantsScreen() {
     setDraftWhatsapp("");
   }
 
-  function saveParticipantReplacement() {
+  async function saveParticipantReplacement() {
     if (!editingParticipantId) {
       return;
     }
@@ -110,6 +112,18 @@ export default function TournamentParticipantsScreen() {
     if (nextWhatsapp && nextWhatsappDigits.length < 10) {
       Alert.alert("WhatsApp invalido", "Informe um numero valido ou deixe o campo vazio.");
       return;
+    }
+
+    setSaving(true);
+    try {
+      await updateParticipantDisplay(editingParticipantId, {
+        displayName: nextName,
+        phone: nextWhatsapp || undefined,
+      });
+    } catch {
+      // Silent fail — local store update below ensures offline functionality.
+    } finally {
+      setSaving(false);
     }
 
     atualizarCampeonato(activeBundle.campeonato.id, {
@@ -397,9 +411,10 @@ export default function TournamentParticipantsScreen() {
 
                               <View className="flex-row flex-wrap gap-3">
                                 <PrimaryButton
-                                  label="Salvar substituicao"
+                                  label={saving ? "Salvando..." : "Salvar substituicao"}
                                   size="sm"
                                   onPress={saveParticipantReplacement}
+                                  disabled={saving}
                                   className="self-start"
                                 />
                                 <PrimaryButton

@@ -191,15 +191,19 @@ async function persistTournamentShare(args: {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const shareKey = createShareKey();
 
-    const { error } = await supabase.from("tournament_shares").insert({
-      share_key: shareKey,
-      access: args.access,
-      tournament_id: campeonatoId,
-      tournament_name: campeonatoNome,
-      payload,
-    });
+    const { data: inserted, error } = await supabase
+      .from("tournament_shares")
+      .insert({
+        share_key: shareKey,
+        access: args.access,
+        tournament_id: campeonatoId,
+        tournament_name: campeonatoNome,
+        payload,
+      })
+      .select("share_key")
+      .single();
 
-    if (!error) {
+    if (!error && inserted?.share_key === shareKey) {
       return shareKey;
     }
 

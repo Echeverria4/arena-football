@@ -41,20 +41,23 @@ const glassShards = [
 
 export function NeonGrid({ variant = "hero" }: NeonGridProps) {
   const isHero = variant === "hero";
-  const rows = isHero ? 12 : 9;
-  const columns = isHero ? 18 : 14;
-  const chevronWidth = isHero ? 86 : 68;
+  // Soft variant skips the expensive chevron grid entirely — just gradients + stars
+  const rows = 12;
+  const columns = 18;
+  const chevronWidth = 86;
   const rowGap = 100 / rows;
   const columnGap = 100 / columns;
-  const chevrons = Array.from({ length: rows + 2 }, (_, row) =>
-    Array.from({ length: columns + 2 }, (_, column) => ({
-      id: `${row}-${column}`,
-      left: `${column * columnGap - columnGap * 0.7}%` as Percent,
-      top: `${row * rowGap - rowGap * 0.35}%` as Percent,
-      lowerTop: `${row * rowGap - rowGap * 0.35 + chevronWidth / 10}%` as Percent,
-      width: chevronWidth,
-    })),
-  ).flat();
+  const chevrons = isHero
+    ? Array.from({ length: rows + 2 }, (_, row) =>
+        Array.from({ length: columns + 2 }, (_, column) => ({
+          id: `${row}-${column}`,
+          left: `${column * columnGap - columnGap * 0.7}%` as Percent,
+          top: `${row * rowGap - rowGap * 0.35}%` as Percent,
+          lowerTop: `${row * rowGap - rowGap * 0.35 + chevronWidth / 10}%` as Percent,
+          width: chevronWidth,
+        })),
+      ).flat()
+    : [];
 
   return (
     <View className="absolute inset-0 overflow-hidden" pointerEvents="none">

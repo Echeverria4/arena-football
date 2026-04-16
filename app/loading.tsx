@@ -328,23 +328,25 @@ export default function LoadingScreen() {
                 className="h-3 overflow-hidden border"
                 style={{ borderColor: "rgba(87,255,124,0.4)", backgroundColor: "#08110C" }}
               >
-                <Animated.View
-                  style={{
-                    height: "100%",
-                    width: `${progress}%`,
-                    opacity: progressGlow,
-                    shadowColor: "#57FF7C",
-                    shadowOpacity: 1,
-                    shadowRadius: 20,
-                  }}
-                >
-                  <LinearGradient
-                    colors={loadingBarColors}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                </Animated.View>
+                <View style={{ height: "100%", width: `${progress}%` }}>
+                  <Animated.View
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      opacity: progressGlow,
+                      shadowColor: "#57FF7C",
+                      shadowOpacity: 1,
+                      shadowRadius: 20,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={loadingBarColors}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  </Animated.View>
+                </View>
               </View>
             </View>
 

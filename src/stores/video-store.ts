@@ -33,6 +33,9 @@ interface AddVideoInput {
 interface VideoState {
   videos: VideoHighlight[];
   userVotes: Record<string, string>;
+  // Per-tournament phone-based voting (tournament videos)
+  tournamentVotesByPhone: Record<string, Record<string, string>>; // tournamentId -> normalizedPhone -> videoId
+  tournamentVoterNames: Record<string, Record<string, string>>; // tournamentId -> normalizedPhone -> voterName
   globalVideoVoterPhones: string[];
   globalVideoVotesByPhone: Record<string, string>;
   globalVotingClosed: boolean;
@@ -74,6 +77,7 @@ interface VideoState {
   encerrarVotacaoGlobal: () => string | null;
   reabrirVotacaoGlobal: () => void;
   definirVencedorGlobal: (videoId: string) => boolean;
+  voteTournamentVideoByPhone: (tournamentId: string, phone: string, voterName: string, videoId: string) => boolean;
   removerVideosDoCampeonato: (tournamentId: string) => void;
 }
 
@@ -114,6 +118,8 @@ export const useVideoStore = create<VideoState>()(
     (set, get) => ({
       videos: [],
       userVotes: {},
+      tournamentVotesByPhone: {},
+      tournamentVoterNames: {},
       globalVideoVoterPhones: [],
       globalVideoVotesByPhone: {},
       globalVotingClosed: false,
@@ -417,6 +423,42 @@ export const useVideoStore = create<VideoState>()(
 
         return true;
       },
+      voteTournamentVideoByPhone: (tournamentId, phone, voterName, videoId) => {
+        const normalizedPhone = normalizeVideoVoterPhone(phone);
+
+        if (!normalizedPhone) {
+          return false;
+        }
+
+        const existingVote = get().tournamentVotesByPhone[tournamentId]?.[normalizedPhone];
+        if (existingVote) {
+          return false;
+        }
+
+        set((state) => ({
+          tournamentVotesByPhone: {
+            ...state.tournamentVotesByPhone,
+            [tournamentId]: {
+              ...(state.tournamentVotesByPhone[tournamentId] ?? {}),
+              [normalizedPhone]: videoId,
+            },
+          },
+          tournamentVoterNames: {
+            ...state.tournamentVoterNames,
+            [tournamentId]: {
+              ...(state.tournamentVoterNames[tournamentId] ?? {}),
+              [normalizedPhone]: voterName.trim() || "Participante",
+            },
+          },
+          videos: state.videos.map((video) =>
+            video.id === videoId
+              ? { ...video, votesCount: video.votesCount + 1 }
+              : video,
+          ),
+        }));
+
+        return true;
+      },
       removerVideosDoCampeonato: (tournamentId) =>
         set((state) => ({
           videos: state.videos.filter((video) => video.tournamentId !== tournamentId),
@@ -434,6 +476,8 @@ export const useVideoStore = create<VideoState>()(
       partialize: (state) => ({
         videos: state.videos,
         userVotes: state.userVotes,
+        tournamentVotesByPhone: state.tournamentVotesByPhone,
+        tournamentVoterNames: state.tournamentVoterNames,
         globalVideoVoterPhones: state.globalVideoVoterPhones,
         globalVideoVotesByPhone: state.globalVideoVotesByPhone,
         globalVotingClosed: state.globalVotingClosed,

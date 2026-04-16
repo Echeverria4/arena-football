@@ -123,6 +123,17 @@ export default function MatchDetailsScreen() {
   const requestedTournamentMissing = Boolean(hydrated && !persistedCampeonato);
   const requestedMatchMissing = Boolean(hydrated && persistedCampeonato && !persistedJogo);
 
+  // Todos os hooks ANTES de qualquer return condicional
+  const accessMode = useTournamentAccessMode(persistedCampeonato?.id ?? "");
+  const [showScoreEditor, setShowScoreEditor] = useState(false);
+  const [homeGoals, setHomeGoals] = useState(persistedJogo?.placarMandante ?? 0);
+  const [awayGoals, setAwayGoals] = useState(persistedJogo?.placarVisitante ?? 0);
+
+  useEffect(() => {
+    setHomeGoals(persistedJogo?.placarMandante ?? 0);
+    setAwayGoals(persistedJogo?.placarVisitante ?? 0);
+  }, [persistedJogo?.id, persistedJogo?.placarMandante, persistedJogo?.placarVisitante]);
+
   if (!hydrated) {
     return (
       <Screen scroll className="px-6" backgroundVariant="none" style={{ backgroundColor: "#0B1018" }}>
@@ -140,8 +151,8 @@ export default function MatchDetailsScreen() {
         <View className="gap-6 py-8">
           <BackButton fallbackHref="/tournaments" />
           <ScreenState
-            title="Partida nao encontrada"
-            description="Esse link nao corresponde mais a um jogo valido do campeonato ativo."
+            title="Partida não encontrada"
+            description="Esse link não corresponde mais a um jogo válido do campeonato ativo."
           />
         </View>
       </Screen>
@@ -154,7 +165,6 @@ export default function MatchDetailsScreen() {
 
   const campeonato = persistedCampeonato;
   const jogo = persistedJogo;
-  const accessMode = useTournamentAccessMode(campeonato.id);
   const canManageMatch = canEditTournament(accessMode);
   const home = campeonato.participantes.find((item) => item.id === jogo.mandanteId);
   const away = campeonato.participantes.find((item) => item.id === jogo.visitanteId);
@@ -165,14 +175,6 @@ export default function MatchDetailsScreen() {
   const awayTeamName = normalizeTeamDisplayName(away?.time ?? "Time visitante");
   const homePhone = home?.whatsapp ?? null;
   const awayPhone = away?.whatsapp ?? null;
-  const [showScoreEditor, setShowScoreEditor] = useState(false);
-  const [homeGoals, setHomeGoals] = useState(jogo.placarMandante ?? 0);
-  const [awayGoals, setAwayGoals] = useState(jogo.placarVisitante ?? 0);
-
-  useEffect(() => {
-    setHomeGoals(jogo.placarMandante ?? 0);
-    setAwayGoals(jogo.placarVisitante ?? 0);
-  }, [jogo.id, jogo.placarMandante, jogo.placarVisitante]);
 
   function updateScore(currentValue: number, delta: number, setter: (value: number) => void) {
     setter(Math.max(0, currentValue + delta));

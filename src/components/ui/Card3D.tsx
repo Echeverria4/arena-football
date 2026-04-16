@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -113,34 +113,9 @@ export function Card3D({
   const rotateX = useRef(new Animated.Value(0)).current;
   const rotateY = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
-  const shadowPulse = useRef(new Animated.Value(0.55)).current;
+  const shadowPulse = useRef(new Animated.Value(0.65)).current;
   const glowX = useRef(new Animated.Value(0)).current;
   const glowY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shadowPulse, {
-          toValue: 1,
-          duration: 1800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(shadowPulse, {
-          toValue: 0.62,
-          duration: 1800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    pulseLoop.start();
-
-    return () => {
-      pulseLoop.stop();
-    };
-  }, [shadowPulse]);
 
   const cardHeight = minHeight ?? (isSmallPhone ? 360 : isPhone ? 390 : 430);
   const heroHeight = isSmallPhone ? 164 : isPhone ? 188 : 220;

@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useRef, type ReactNode } from "react";
-import { Animated, Easing, View, type StyleProp, type ViewStyle } from "react-native";
+import { type ReactNode } from "react";
+import { View, type StyleProp, type ViewStyle } from "react-native";
 
 type LiveBorderAccent = "blue" | "gold" | "emerald" | "crimson";
 
@@ -53,50 +53,7 @@ export function LiveBorderCard({
   style,
   contentStyle,
 }: Props) {
-  const rotate = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0.94)).current;
   const palette = accentPalette[accent];
-
-  useEffect(() => {
-    const rotateLoop = Animated.loop(
-      Animated.timing(rotate, {
-        toValue: 1,
-        duration: 4800,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 1600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.92,
-          duration: 1600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    rotateLoop.start();
-    pulseLoop.start();
-
-    return () => {
-      rotateLoop.stop();
-      pulseLoop.stop();
-    };
-  }, [pulse, rotate]);
-
-  const spin = rotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
 
   return (
     <View
@@ -116,32 +73,18 @@ export function LiveBorderCard({
         style,
       ]}
     >
-      <Animated.View
-        pointerEvents="none"
+      {/* Static gradient border — no loop animation */}
+      <LinearGradient
+        colors={palette.border}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={{
           position: "absolute",
-          top: "-35%",
-          left: "-15%",
-          width: "130%",
-          height: "170%",
+          inset: 0,
           opacity: 0.32,
-          transform: [{ rotate: spin }, { scale: pulse }],
         }}
-      >
-        <LinearGradient
-          colors={palette.border}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={{
-            position: "absolute",
-            top: "46%",
-            left: "-18%",
-            width: "136%",
-            height: 44,
-            borderRadius: 999,
-          }}
-        />
-      </Animated.View>
+        pointerEvents="none"
+      />
 
       <View
         style={{

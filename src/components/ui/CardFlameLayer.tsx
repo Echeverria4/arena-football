@@ -10,14 +10,26 @@ type CardFlameLayerProps = {
   intensity?: "balanced" | "wild";
 };
 
+// Shared animation values passed down — no per-element loops
+type SharedAnims = {
+  riseA: Animated.Value; // primary rise, ~2500ms
+  riseB: Animated.Value; // secondary rise, ~2700ms (inverted phase)
+  sway: Animated.Value;  // horizontal sway, ~1600ms
+  pulse: Animated.Value; // scale pulse, ~1900ms
+  drift: Animated.Value; // spark drift, ~2100ms
+};
+
 type FireBlobProps = {
   left?: number;
   right?: number;
   bottom: number;
   width: number;
   height: number;
-  delay: number;
-  duration: number;
+  riseAnim: Animated.Value;
+  swayAnim: Animated.Value;
+  pulseAnim: Animated.Value;
+  riseScale?: number;
+  swayInvert?: boolean;
 };
 
 type FlameTongueProps = {
@@ -27,10 +39,19 @@ type FlameTongueProps = {
   bottom?: number;
   width: number;
   height: number;
-  delay: number;
-  duration: number;
+  riseAnim: Animated.Value;
+  swayAnim: Animated.Value;
   rotationRange: [string, string];
   reverse?: boolean;
+  riseScale?: number;
+};
+
+type SparkProps = {
+  left: string;
+  compact: boolean;
+  emberColor: string;
+  driftAnim: Animated.Value;
+  driftInvert?: boolean;
 };
 
 const tonePalette = {
@@ -67,91 +88,28 @@ function FireBlob({
   bottom,
   width,
   height,
-  delay,
-  duration,
+  riseAnim,
+  swayAnim,
+  pulseAnim,
+  riseScale = 1,
+  swayInvert = false,
 }: FireBlobProps) {
-  const rise = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0.92)).current;
-  const sway = useRef(new Animated.Value(-1)).current;
+  const travel = height * 0.42 * riseScale;
+  const mid = height * 0.18 * riseScale;
 
-  useEffect(() => {
-    const riseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(rise, {
-          toValue: 1,
-          duration,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(rise, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.08,
-          duration: Math.max(1200, duration - 320),
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.9,
-          duration: Math.max(1200, duration - 320),
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const swayLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(sway, {
-          toValue: 1,
-          duration: Math.max(1000, duration - 600),
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sway, {
-          toValue: -1,
-          duration: Math.max(1000, duration - 600),
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const timer = setTimeout(() => {
-      riseLoop.start();
-      pulseLoop.start();
-      swayLoop.start();
-    }, delay);
-
-    return () => {
-      clearTimeout(timer);
-      riseLoop.stop();
-      pulseLoop.stop();
-      swayLoop.stop();
-    };
-  }, [delay, duration, pulse, rise, sway]);
-
-  const translateY = rise.interpolate({
+  const translateY = riseAnim.interpolate({
     inputRange: [0, 0.45, 1],
-    outputRange: [0, -height * 0.18, -height * 0.42],
+    outputRange: [0, -mid, -travel],
   });
-  const translateX = sway.interpolate({
+  const translateX = swayAnim.interpolate({
     inputRange: [-1, 1],
-    outputRange: [-8, 8],
+    outputRange: swayInvert ? [8, -8] : [-8, 8],
   });
-  const rotate = sway.interpolate({
+  const rotate = swayAnim.interpolate({
     inputRange: [-1, 1],
-    outputRange: ["-7deg", "8deg"],
+    outputRange: swayInvert ? ["7deg", "-8deg"] : ["-7deg", "8deg"],
   });
-  const opacity = rise.interpolate({
+  const opacity = riseAnim.interpolate({
     inputRange: [0, 0.2, 0.76, 1],
     outputRange: [0.16, 0.74, 0.9, 0.08],
   });
@@ -167,17 +125,14 @@ function FireBlob({
         width,
         height,
         opacity,
-        transform: [{ translateX }, { translateY }, { scaleX: pulse }, { scaleY: pulse }, { rotate }],
+        transform: [{ translateX }, { translateY }, { scaleX: pulseAnim }, { scaleY: pulseAnim }, { rotate }],
       }}
     >
       <LinearGradient
         colors={fireGradient}
         start={{ x: 0.5, y: 1 }}
         end={{ x: 0.5, y: 0 }}
-        style={{
-          flex: 1,
-          borderRadius: 999,
-        }}
+        style={{ flex: 1, borderRadius: 999 }}
       />
     </Animated.View>
   );
@@ -190,70 +145,23 @@ function FlameTongue({
   bottom,
   width,
   height,
-  delay,
-  duration,
+  riseAnim,
+  swayAnim,
   rotationRange,
   reverse = false,
+  riseScale = 1,
 }: FlameTongueProps) {
-  const motion = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0.9)).current;
+  const travel = reverse ? 10 * riseScale : -12 * riseScale;
 
-  useEffect(() => {
-    const motionLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(motion, {
-          toValue: 1,
-          duration,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(motion, {
-          toValue: 0,
-          duration,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.16,
-          duration: Math.max(1100, duration - 380),
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.92,
-          duration: Math.max(1100, duration - 380),
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const timer = setTimeout(() => {
-      motionLoop.start();
-      pulseLoop.start();
-    }, delay);
-
-    return () => {
-      clearTimeout(timer);
-      motionLoop.stop();
-      pulseLoop.stop();
-    };
-  }, [delay, duration, motion, pulse]);
-
-  const rotate = motion.interpolate({
-    inputRange: [0, 1],
+  const rotate = swayAnim.interpolate({
+    inputRange: [-1, 1],
     outputRange: rotationRange,
   });
-  const translateY = motion.interpolate({
+  const translateY = riseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, reverse ? 10 : -12],
+    outputRange: [0, travel],
   });
-  const opacity = motion.interpolate({
+  const opacity = riseAnim.interpolate({
     inputRange: [0, 0.45, 1],
     outputRange: [0.48, 0.86, 0.7],
   });
@@ -270,73 +178,36 @@ function FlameTongue({
         width,
         height,
         opacity,
-        transform: [{ translateY }, { scaleX: pulse }, { scaleY: pulse }, { rotate }],
+        transform: [{ translateY }, { rotate }],
       }}
     >
       <LinearGradient
         colors={reverse ? reverseFireGradient : fireGradient}
         start={{ x: 0.5, y: reverse ? 0 : 1 }}
         end={{ x: 0.5, y: reverse ? 1 : 0 }}
-        style={{
-          flex: 1,
-          borderRadius: 999,
-        }}
+        style={{ flex: 1, borderRadius: 999 }}
       />
     </Animated.View>
   );
 }
 
-function Spark({
-  left,
-  delay,
-  compact,
-  emberColor,
-}: {
-  left: string;
-  delay: number;
-  compact: boolean;
-  emberColor: string;
-}) {
-  const drift = useRef(new Animated.Value(0)).current;
+function Spark({ left, compact, emberColor, driftAnim, driftInvert = false }: SparkProps) {
+  const maxY = compact ? -62 : -86;
+  const maxX = compact ? 14 : 22;
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, {
-          toValue: 1,
-          duration: compact ? 1800 : 2200,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(drift, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    const timer = setTimeout(() => loop.start(), delay);
-
-    return () => {
-      clearTimeout(timer);
-      loop.stop();
-    };
-  }, [compact, delay, drift]);
-
-  const translateY = drift.interpolate({
+  const translateY = driftAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, compact ? -62 : -86],
+    outputRange: [0, maxY],
   });
-  const translateX = drift.interpolate({
+  const translateX = driftAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, compact ? 14 : 22],
+    outputRange: [0, driftInvert ? -maxX : maxX],
   });
-  const opacity = drift.interpolate({
+  const opacity = driftAnim.interpolate({
     inputRange: [0, 0.2, 1],
     outputRange: [0, 0.9, 0],
   });
-  const scale = drift.interpolate({
+  const scale = driftAnim.interpolate({
     inputRange: [0, 0.48, 1],
     outputRange: [0.5, 1.1, 0.46],
   });
@@ -367,6 +238,99 @@ export function CardFlameLayer({
   const palette = tonePalette[tone];
   const baseInset = compact ? -10 : -14;
   const isWild = intensity === "wild";
+
+  // 4 shared loops instead of 25+ per-element loops
+  const riseA = useRef(new Animated.Value(0)).current;
+  const riseB = useRef(new Animated.Value(0.5)).current; // offset phase
+  const sway = useRef(new Animated.Value(-1)).current;
+  const pulse = useRef(new Animated.Value(0.92)).current;
+  const drift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const riseLoopA = Animated.loop(
+      Animated.sequence([
+        Animated.timing(riseA, {
+          toValue: 1,
+          duration: 2500,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(riseA, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+
+    const riseLoopB = Animated.loop(
+      Animated.sequence([
+        Animated.timing(riseB, {
+          toValue: 1,
+          duration: 2700,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(riseB, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+
+    const swayLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sway, {
+          toValue: 1,
+          duration: 1600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sway, {
+          toValue: -1,
+          duration: 1600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1.08,
+          duration: 1900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0.9,
+          duration: 1900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    const driftLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, {
+          toValue: 1,
+          duration: compact ? 1800 : 2200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(drift, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+
+    riseLoopA.start();
+    riseLoopB.start();
+    swayLoop.start();
+    pulseLoop.start();
+    driftLoop.start();
+
+    return () => {
+      riseLoopA.stop();
+      riseLoopB.stop();
+      swayLoop.stop();
+      pulseLoop.stop();
+      driftLoop.stop();
+    };
+  }, [compact, drift, pulse, riseA, riseB, sway]);
 
   return (
     <View
@@ -463,24 +427,32 @@ export function CardFlameLayer({
         bottom={compact ? -2 : 0}
         width={compact ? 58 : 74}
         height={compact ? 112 : 142}
-        delay={120}
-        duration={2400}
+        riseAnim={riseA}
+        swayAnim={sway}
+        pulseAnim={pulse}
+        riseScale={0.9}
       />
       <FireBlob
         left={compact ? 46 : 62}
         bottom={compact ? -10 : -8}
         width={compact ? 78 : 104}
         height={compact ? 142 : 184}
-        delay={340}
-        duration={2700}
+        riseAnim={riseB}
+        swayAnim={sway}
+        pulseAnim={pulse}
+        riseScale={1.08}
+        swayInvert
       />
       <FireBlob
         right={compact ? 10 : 14}
         bottom={compact ? -4 : -2}
         width={compact ? 62 : 82}
         height={compact ? 122 : 154}
-        delay={620}
-        duration={2500}
+        riseAnim={riseA}
+        swayAnim={sway}
+        pulseAnim={pulse}
+        riseScale={0.96}
+        swayInvert
       />
       {isWild ? (
         <>
@@ -489,16 +461,21 @@ export function CardFlameLayer({
             bottom={compact ? 10 : 14}
             width={compact ? 44 : 58}
             height={compact ? 98 : 132}
-            delay={860}
-            duration={2100}
+            riseAnim={riseB}
+            swayAnim={sway}
+            pulseAnim={pulse}
+            riseScale={0.82}
           />
           <FireBlob
             right={compact ? 20 : 30}
             bottom={compact ? 8 : 12}
             width={compact ? 46 : 60}
             height={compact ? 102 : 138}
-            delay={1180}
-            duration={2160}
+            riseAnim={riseA}
+            swayAnim={sway}
+            pulseAnim={pulse}
+            riseScale={0.86}
+            swayInvert
           />
         </>
       ) : null}
@@ -508,56 +485,62 @@ export function CardFlameLayer({
         bottom={compact ? 18 : 24}
         width={compact ? 20 : 26}
         height={compact ? 74 : 92}
-        delay={140}
-        duration={1300}
+        riseAnim={riseA}
+        swayAnim={sway}
         rotationRange={["-18deg", "9deg"]}
+        riseScale={0.9}
       />
       <FlameTongue
         right={-2}
         bottom={compact ? 18 : 26}
         width={compact ? 20 : 26}
         height={compact ? 80 : 98}
-        delay={360}
-        duration={1380}
+        riseAnim={riseB}
+        swayAnim={sway}
         rotationRange={["18deg", "-8deg"]}
+        riseScale={0.95}
       />
       <FlameTongue
         left={compact ? 24 : 32}
         top={-2}
         width={compact ? 18 : 22}
         height={compact ? 42 : 52}
-        delay={520}
-        duration={1200}
+        riseAnim={riseA}
+        swayAnim={sway}
         rotationRange={["-12deg", "8deg"]}
         reverse
+        riseScale={0.85}
       />
       <FlameTongue
         right={compact ? 24 : 34}
         top={-2}
         width={compact ? 18 : 22}
         height={compact ? 42 : 52}
-        delay={760}
-        duration={1220}
+        riseAnim={riseB}
+        swayAnim={sway}
         rotationRange={["12deg", "-10deg"]}
         reverse
+        riseScale={0.88}
       />
       <FlameTongue
         left={compact ? 28 : 36}
         bottom={compact ? -6 : -10}
         width={compact ? 24 : 30}
         height={compact ? 66 : 82}
-        delay={420}
-        duration={1440}
+        riseAnim={riseA}
+        swayAnim={sway}
         rotationRange={["-6deg", "12deg"]}
+        riseScale={1.0}
       />
       <FlameTongue
         right={compact ? 30 : 40}
         bottom={compact ? -6 : -10}
         width={compact ? 24 : 30}
         height={compact ? 66 : 82}
-        delay={900}
-        duration={1480}
+        riseAnim={riseB}
+        swayAnim={sway}
         rotationRange={["8deg", "-12deg"]}
+        riseScale={1.02}
       />
       {isWild ? (
         <>
@@ -566,54 +549,58 @@ export function CardFlameLayer({
             bottom={compact ? 72 : 88}
             width={compact ? 18 : 22}
             height={compact ? 58 : 86}
-            delay={1080}
-            duration={1260}
+            riseAnim={riseA}
+            swayAnim={sway}
             rotationRange={["-24deg", "14deg"]}
+            riseScale={1.1}
           />
           <FlameTongue
             right={compact ? -8 : -12}
             bottom={compact ? 70 : 90}
             width={compact ? 18 : 22}
             height={compact ? 64 : 92}
-            delay={1280}
-            duration={1320}
+            riseAnim={riseB}
+            swayAnim={sway}
             rotationRange={["24deg", "-14deg"]}
+            riseScale={1.12}
           />
           <FlameTongue
             left={compact ? 46 : 64}
             top={compact ? -6 : -8}
             width={compact ? 14 : 18}
             height={compact ? 34 : 42}
-            delay={920}
-            duration={980}
+            riseAnim={riseA}
+            swayAnim={sway}
             rotationRange={["-16deg", "10deg"]}
             reverse
+            riseScale={0.78}
           />
           <FlameTongue
             right={compact ? 48 : 66}
             top={compact ? -6 : -8}
             width={compact ? 14 : 18}
             height={compact ? 34 : 42}
-            delay={1100}
-            duration={1040}
+            riseAnim={riseB}
+            swayAnim={sway}
             rotationRange={["16deg", "-10deg"]}
             reverse
+            riseScale={0.8}
           />
         </>
       ) : null}
 
-      <Spark left="18%" delay={160} compact={compact} emberColor={palette.ember} />
-      <Spark left="34%" delay={640} compact={compact} emberColor={palette.ember} />
-      <Spark left="58%" delay={980} compact={compact} emberColor={palette.ember} />
-      <Spark left="74%" delay={1320} compact={compact} emberColor={palette.ember} />
+      <Spark left="18%" compact={compact} emberColor={palette.ember} driftAnim={drift} />
+      <Spark left="34%" compact={compact} emberColor={palette.ember} driftAnim={drift} driftInvert />
+      <Spark left="58%" compact={compact} emberColor={palette.ember} driftAnim={drift} />
+      <Spark left="74%" compact={compact} emberColor={palette.ember} driftAnim={drift} driftInvert />
       {isWild ? (
         <>
-          <Spark left="12%" delay={320} compact={compact} emberColor={palette.ember} />
-          <Spark left="24%" delay={520} compact={compact} emberColor={palette.ember} />
-          <Spark left="42%" delay={860} compact={compact} emberColor={palette.ember} />
-          <Spark left="50%" delay={1120} compact={compact} emberColor={palette.ember} />
-          <Spark left="66%" delay={1460} compact={compact} emberColor={palette.ember} />
-          <Spark left="82%" delay={1680} compact={compact} emberColor={palette.ember} />
+          <Spark left="12%" compact={compact} emberColor={palette.ember} driftAnim={drift} driftInvert />
+          <Spark left="24%" compact={compact} emberColor={palette.ember} driftAnim={drift} />
+          <Spark left="42%" compact={compact} emberColor={palette.ember} driftAnim={drift} driftInvert />
+          <Spark left="50%" compact={compact} emberColor={palette.ember} driftAnim={drift} />
+          <Spark left="66%" compact={compact} emberColor={palette.ember} driftAnim={drift} driftInvert />
+          <Spark left="82%" compact={compact} emberColor={palette.ember} driftAnim={drift} />
         </>
       ) : null}
     </View>

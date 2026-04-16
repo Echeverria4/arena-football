@@ -48,73 +48,26 @@ export default function TournamentMatchesScreen() {
   const [now, setNow] = useState(() => Date.now());
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((campeonato) => campeonato.id === id)));
 
-  if (!hydrated) {
-    return (
-      <Screen scroll ambientDiamond className="px-6">
-        <ScreenState
-          title="Carregando rodadas"
-          description="Sincronizando confrontos, prazos e placares salvos da temporada."
-        />
-      </Screen>
-    );
-  }
-
-  if (tournamentMissing) {
-    return (
-      <Screen scroll ambientDiamond className="px-6">
-        <View className="gap-6 py-8">
-          <BackButton fallbackHref="/tournaments" />
-          <ScreenState
-            title="Campeonato nao encontrado"
-            description="Nao existe uma temporada valida para abrir essas rodadas."
-          />
-        </View>
-      </Screen>
-    );
-  }
-
-  const bundle = (id ? getTournamentBundle(id, campeonatos, videos) : null)!;
-  const activeTournamentAccessMode = resolveTournamentAccessMode(
-    tournamentAccess,
-    currentTournamentId,
-  );
+  // Derivados calculados antes de qualquer return para não violar a regra dos hooks
+  const bundle = hydrated && id ? getTournamentBundle(id, campeonatos, videos) : null;
+  const activeTournamentAccessMode = resolveTournamentAccessMode(tournamentAccess, currentTournamentId);
   const lockToActiveTournament =
     Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
 
+  // Todos os useEffect e useMemo DEVEM ficar antes de qualquer return condicional
   useEffect(() => {
-    if (!lockToActiveTournament || !currentTournamentId || bundle.campeonato.id === currentTournamentId) {
+    if (!lockToActiveTournament || !currentTournamentId || !bundle || bundle.campeonato.id === currentTournamentId) {
       return;
     }
 
     router.replace({ pathname: "/tournament/matches", params: { id: currentTournamentId } });
-  }, [bundle.campeonato.id, currentTournamentId, lockToActiveTournament]);
-
-  if (!bundle) {
-    return (
-      <Screen scroll ambientDiamond className="px-6">
-        <View className="gap-6 py-8">
-          <BackButton fallbackHref="/tournaments" />
-          <ScreenState
-            title="Campeonato nao encontrado"
-            description="Nao existe uma temporada valida para abrir essas rodadas."
-          />
-        </View>
-      </Screen>
-    );
-  }
-  const seasonLabel = bundle.campeonato.temporada ?? "Temporada 01";
-  const roundsStarted = Boolean(bundle.campeonato.inicioEm && bundle.campeonato.prazoRodadaDias);
-  const currentOpenRound = getCurrentOpenRound(bundle.campeonato);
-  const activeRoundCountdown =
-    currentOpenRound != null
-      ? getRoundDeadlineCountdown(bundle.campeonato, currentOpenRound, new Date(now))
-      : null;
+  }, [bundle?.campeonato.id, currentTournamentId, lockToActiveTournament]);
 
   useEffect(() => {
-    if (bundle.campeonato.id !== currentTournamentId) {
+    if (bundle && bundle.campeonato.id !== currentTournamentId) {
       setCurrentTournamentId(bundle.campeonato.id);
     }
-  }, [bundle.campeonato.id, currentTournamentId, setCurrentTournamentId]);
+  }, [bundle?.campeonato.id, currentTournamentId, setCurrentTournamentId]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -122,9 +75,10 @@ export default function TournamentMatchesScreen() {
   }, []);
 
   const groupedMatches = useMemo(() => {
-    const grouped = new Map<number, typeof bundle.matches>();
+    const matches = bundle?.matches ?? [];
+    const grouped = new Map<number, typeof matches>();
 
-    for (const match of bundle.matches) {
+    for (const match of matches) {
       if (!grouped.has(match.round)) {
         grouped.set(match.round, []);
       }
@@ -133,7 +87,7 @@ export default function TournamentMatchesScreen() {
     }
 
     return Array.from(grouped.entries()).sort((current, next) => current[0] - next[0]);
-  }, [bundle.matches]);
+  }, [bundle?.matches]);
 
   function formatDate(value?: string | null) {
     if (!value) return "Prazo a configurar";
@@ -213,12 +167,12 @@ export default function TournamentMatchesScreen() {
     });
   }
   const selectedMatch = useMemo(
-    () => bundle.matches.find((match) => match.id === selectedMatchId) ?? null,
-    [bundle.matches, selectedMatchId],
+    () => (bundle?.matches ?? []).find((match) => match.id === selectedMatchId) ?? null,
+    [bundle?.matches, selectedMatchId],
   );
 
   const selectedMatchContext = useMemo(() => {
-    if (!selectedMatch) {
+    if (!bundle || !selectedMatch) {
       return null;
     }
 
@@ -247,7 +201,7 @@ export default function TournamentMatchesScreen() {
       homePhone: rawHomeParticipant?.whatsapp ?? null,
       awayPhone: rawAwayParticipant?.whatsapp ?? null,
     };
-  }, [bundle.campeonato.participantes, bundle.participants, selectedMatch]);
+  }, [bundle, selectedMatch]);
 
   useEffect(() => {
     if (!selectedMatch) {
@@ -257,6 +211,39 @@ export default function TournamentMatchesScreen() {
     setQuickHomeGoals(selectedMatch.homeGoals ?? 0);
     setQuickAwayGoals(selectedMatch.awayGoals ?? 0);
   }, [selectedMatchId]);
+
+  if (!hydrated) {
+    return (
+      <Screen scroll ambientDiamond className="px-6">
+        <ScreenState
+          title="Carregando rodadas"
+          description="Sincronizando confrontos, prazos e placares salvos da temporada."
+        />
+      </Screen>
+    );
+  }
+
+  if (tournamentMissing || !bundle) {
+    return (
+      <Screen scroll ambientDiamond className="px-6">
+        <View className="gap-6 py-8">
+          <BackButton fallbackHref="/tournaments" />
+          <ScreenState
+            title="Campeonato não encontrado"
+            description="Não existe uma temporada válida para abrir essas rodadas."
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  const seasonLabel = bundle.campeonato.temporada ?? "Temporada 01";
+  const roundsStarted = Boolean(bundle.campeonato.inicioEm && bundle.campeonato.prazoRodadaDias);
+  const currentOpenRound = getCurrentOpenRound(bundle.campeonato);
+  const activeRoundCountdown =
+    currentOpenRound != null
+      ? getRoundDeadlineCountdown(bundle.campeonato, currentOpenRound, new Date(now))
+      : null;
 
   function closeQuickActions() {
     setSelectedMatchId(null);
@@ -794,11 +781,11 @@ export default function TournamentMatchesScreen() {
             ))
           ) : (
             <ScreenState
-              title="Partidas indisponiveis"
+              title="Partidas indisponíveis"
               description={
                 bundle.participants.length === 0
-                  ? "Este campeonato foi salvo sem participantes vinculados. Sem jogadores, o app nao consegue montar rodadas nem confrontos."
-                  : "Ainda nao existe uma grade de confrontos para esta temporada. O campeonato precisa de rodadas estruturadas para listar as partidas."
+                  ? "Este campeonato foi salvo sem participantes vinculados. Sem jogadores, o app não consegue montar rodadas nem confrontos."
+                  : "Ainda não existe uma grade de confrontos para esta temporada. O campeonato precisa de rodadas estruturadas para listar as partidas."
               }
             />
           )}

@@ -1,4 +1,5 @@
-import { createElement, useEffect, useState } from "react";
+import { ResizeMode, Video } from "expo-av";
+import { createElement, useEffect, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
 
 import { resolvePlayableVideoUrl } from "@/lib/local-video-assets";
@@ -12,7 +13,8 @@ interface VideoPlayerSurfaceProps {
 export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps) {
   const [playbackUrl, setPlaybackUrl] = useState<string>("");
   const [resolved, setResolved] = useState(false);
-  const embedUrl = buildYouTubeEmbedUrl(videoUrl);
+  const videoRef = useRef<Video>(null);
+  const embedUrl = Platform.OS === "web" ? buildYouTubeEmbedUrl(videoUrl) : null;
 
   useEffect(() => {
     let active = true;
@@ -46,42 +48,67 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
     };
   }, [videoUrl]);
 
+  // ── Native playback (expo-av) ──────────────────────────────────────────────
   if (Platform.OS !== "web") {
-    return (
-      <View
-        className="items-center justify-center rounded-[20px] border px-5 py-10"
-        style={{
-          minHeight: 260,
-          backgroundColor: "rgba(255,255,255,0.04)",
-          borderColor: "rgba(255,255,255,0.10)",
-        }}
-      >
-        <Text style={{ color: "#F3F7FF", fontSize: 18, fontWeight: "800", textAlign: "center" }}>
-          Visualização disponível no navegador
-        </Text>
-        <Text
+    if (!playbackUrl) {
+      return (
+        <View
           style={{
-            marginTop: 8,
-            color: "#AEBBDA",
-            fontSize: 14,
-            lineHeight: 22,
-            textAlign: "center",
+            minHeight: 200,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.10)",
+            backgroundColor: "rgba(255,255,255,0.04)",
+            paddingHorizontal: 20,
+            paddingVertical: 32,
           }}
         >
-          O painel consegue reproduzir os vídeos importados diretamente na versão web.
-        </Text>
+          <Text style={{ color: "#F3F7FF", fontSize: 15, fontWeight: "700", textAlign: "center" }}>
+            {resolved ? "Vídeo indisponível" : "Carregando vídeo..."}
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={{
+          overflow: "hidden",
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.10)",
+          backgroundColor: "#04070D",
+        }}
+      >
+        <Video
+          ref={videoRef}
+          source={{ uri: playbackUrl }}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay={false}
+          style={{ width: "100%", aspectRatio: 16 / 9 }}
+          accessibilityLabel={title}
+        />
       </View>
     );
   }
 
+  // ── Web: loading / error state ─────────────────────────────────────────────
   if (!playbackUrl) {
     return (
       <View
-        className="items-center justify-center rounded-[20px] border px-5 py-10"
         style={{
           minHeight: 260,
-          backgroundColor: "rgba(255,255,255,0.04)",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 20,
+          borderWidth: 1,
           borderColor: "rgba(255,255,255,0.10)",
+          backgroundColor: "rgba(255,255,255,0.04)",
+          paddingHorizontal: 20,
+          paddingVertical: 40,
         }}
       >
         <Text style={{ color: "#F3F7FF", fontSize: 16, fontWeight: "800", textAlign: "center" }}>
@@ -104,6 +131,7 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
     );
   }
 
+  // ── Web: YouTube iframe or HTML5 video ─────────────────────────────────────
   return (
     <View
       style={{

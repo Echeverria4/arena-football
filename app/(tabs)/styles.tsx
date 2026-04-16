@@ -146,7 +146,6 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
   },
   tabInner: {
-    flex: 1,
     borderRadius: 18,
     overflow: "hidden",
     position: "relative",

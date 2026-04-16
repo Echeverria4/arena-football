@@ -34,6 +34,22 @@ export default function HomeScreen() {
   const { cardWidth, contentMaxWidth } = usePanelGrid();
   const hydrated = useArenaDataHydrated();
 
+  // Derivados calculados antes de qualquer return para não violar a regra dos hooks
+  const campeonatoAtivo =
+    hydrated && campeonatos.length > 0
+      ? getCurrentOrLatestCampeonato(campeonatos, currentTournamentId)
+      : null;
+  const tournamentBundle = campeonatoAtivo
+    ? getTournamentBundle(campeonatoAtivo.id, campeonatos, videos)
+    : null;
+
+  // useEffect DEVE ficar antes de qualquer return condicional
+  useEffect(() => {
+    if (campeonatoAtivo && campeonatoAtivo.id !== currentTournamentId) {
+      setCurrentTournamentId(campeonatoAtivo.id);
+    }
+  }, [campeonatoAtivo?.id, currentTournamentId, setCurrentTournamentId]);
+
   if (!hydrated) {
     return (
       <Screen scroll className="px-6">
@@ -76,17 +92,6 @@ export default function HomeScreen() {
       </Screen>
     );
   }
-
-  const campeonatoAtivo = getCurrentOrLatestCampeonato(campeonatos, currentTournamentId);
-
-  useEffect(() => {
-    if (campeonatoAtivo && campeonatoAtivo.id !== currentTournamentId) {
-      setCurrentTournamentId(campeonatoAtivo.id);
-    }
-  }, [campeonatoAtivo, currentTournamentId, setCurrentTournamentId]);
-  const tournamentBundle = (campeonatoAtivo
-    ? getTournamentBundle(campeonatoAtivo.id, campeonatos, videos)
-    : null)!;
 
   if (!campeonatoAtivo || !tournamentBundle) {
     return (

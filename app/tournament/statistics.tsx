@@ -254,7 +254,24 @@ export default function TournamentStatisticsScreen() {
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
   const hydrated = useTournamentDataHydrated();
-  const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((campeonato) => campeonato.id === id)));
+
+  // Derivados calculados antes de qualquer return para não violar a regra dos hooks
+  const bundle = hydrated && id ? getTournamentBundle(id, campeonatos, videos) : null;
+  const activeTournamentAccessMode = resolveTournamentAccessMode(
+    tournamentAccess,
+    currentTournamentId,
+  );
+  const lockToActiveTournament =
+    Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
+
+  // useEffect DEVE ficar antes de qualquer return condicional
+  useEffect(() => {
+    if (!lockToActiveTournament || !currentTournamentId || !bundle || bundle.campeonato.id === currentTournamentId) {
+      return;
+    }
+
+    router.replace({ pathname: "/tournament/statistics", params: { id: currentTournamentId } });
+  }, [bundle?.campeonato.id, currentTournamentId, lockToActiveTournament]);
 
   if (!hydrated) {
     return (
@@ -271,27 +288,6 @@ export default function TournamentStatisticsScreen() {
       </Screen>
     );
   }
-
-  if (tournamentMissing) {
-    return (
-      <Screen
-        scroll
-        className="px-6"
-        backgroundVariant="none"
-        style={{ backgroundColor: "#0a1220" }}
-      >
-        <View className="gap-6 py-8">
-          <BackButton fallbackHref="/tournaments" />
-          <ScreenState
-            title="Campeonato nao encontrado"
-            description="Esse painel estatistico nao corresponde mais a um campeonato ativo."
-          />
-        </View>
-      </Screen>
-    );
-  }
-
-  const bundle = id ? getTournamentBundle(id, campeonatos, videos) : null;
 
   if (!bundle) {
     return (
@@ -311,21 +307,6 @@ export default function TournamentStatisticsScreen() {
       </Screen>
     );
   }
-
-  const activeTournamentAccessMode = resolveTournamentAccessMode(
-    tournamentAccess,
-    currentTournamentId,
-  );
-  const lockToActiveTournament =
-    Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
-
-  useEffect(() => {
-    if (!lockToActiveTournament || !currentTournamentId || bundle.campeonato.id === currentTournamentId) {
-      return;
-    }
-
-    router.replace({ pathname: "/tournament/statistics", params: { id: currentTournamentId } });
-  }, [bundle.campeonato.id, currentTournamentId, lockToActiveTournament]);
 
   if (bundle.standings.length === 0) {
     return (

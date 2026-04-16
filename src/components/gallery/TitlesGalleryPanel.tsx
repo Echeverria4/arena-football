@@ -4,11 +4,13 @@ import { View } from "react-native";
 import {
   getFinishedChampionshipHistory,
   getPlayerTitleLeaderboard,
+  getTournamentPodium,
   getTeamTitleLeaderboard,
 } from "@/lib/championship-history";
 import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { RankingBarCard } from "@/components/tournament/RankingBarCard";
 import { ChampionShowcaseCard } from "@/components/trophies/ChampionShowcaseCard";
+import { PodiumCard } from "@/components/trophies/PodiumCard";
 import { FeatureCard } from "@/components/ui/FeatureCard";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { ScreenState } from "@/components/ui/ScreenState";
@@ -93,6 +95,27 @@ export function TitlesGalleryPanel() {
               />
             </RevealOnScroll>
           ) : null}
+
+          {latestChampion && (
+            <RevealOnScroll delay={100}>
+              <View
+                style={{
+                  marginTop: 8,
+                  borderRadius: 24,
+                  padding: 20,
+                  backgroundColor: "rgba(9,16,31,0.88)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                }}
+              >
+                <PodiumCard
+                  podium={getTournamentPodium(latestChampion.campeonato)}
+                  tournamentName={latestChampion.campeonato.nome}
+                  seasonLabel={latestChampion.campeonato.temporada}
+                />
+              </View>
+            </RevealOnScroll>
+          )}
 
           <View className="gap-4">
             <SectionHeader

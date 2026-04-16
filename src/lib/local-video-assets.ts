@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import { Platform } from "react-native";
 
 export interface ImportedVideoAsset {
@@ -7,6 +8,8 @@ export interface ImportedVideoAsset {
   storageKey: string;
   videoUrl: string;
 }
+
+// ─── Web: IndexedDB storage ──────────────────────────────────────────────────
 
 const DB_NAME = "arena-local-video-assets";
 const STORE_NAME = "videos";
@@ -110,7 +113,7 @@ function pickFileFromBrowser() {
   });
 }
 
-export async function pickLocalVideoAsset(): Promise<ImportedVideoAsset | null> {
+async function pickVideoFromBrowser(): Promise<ImportedVideoAsset | null> {
   const file = await pickFileFromBrowser();
 
   if (!file) {
@@ -127,6 +130,51 @@ export async function pickLocalVideoAsset(): Promise<ImportedVideoAsset | null> 
     storageKey,
     videoUrl: `local-video://${storageKey}`,
   };
+}
+
+// ─── Native: expo-image-picker ───────────────────────────────────────────────
+
+async function pickVideoFromNative(): Promise<ImportedVideoAsset | null> {
+  // Request permission
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (status !== "granted") {
+    throw new Error("Permissão para acessar a galeria negada. Acesse as configurações do celular para permitir.");
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: "videos",
+    allowsEditing: false,
+    quality: 1,
+    videoMaxDuration: 300, // 5 minutes max
+  });
+
+  if (result.canceled || !result.assets || result.assets.length === 0) {
+    return null;
+  }
+
+  const asset = result.assets[0];
+  const fileName = asset.fileName ?? asset.uri.split("/").pop() ?? `video-${Date.now()}.mp4`;
+  const storageKey = `native-video-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  return {
+    fileName,
+    fileSizeBytes: asset.fileSize ?? 0,
+    mimeType: asset.mimeType ?? "video/mp4",
+    storageKey,
+    // On native, the uri is a file:// path usable directly by expo-av
+    videoUrl: asset.uri,
+  };
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+export async function pickLocalVideoAsset(): Promise<ImportedVideoAsset | null> {
+  if (Platform.OS === "web") {
+    return pickVideoFromBrowser();
+  }
+
+  return pickVideoFromNative();
 }
 
 export async function deleteLocalVideoAsset(storageKey?: string | null) {
@@ -158,10 +206,16 @@ export async function deleteLocalVideoAssets(storageKeys: Array<string | null | 
 }
 
 export function isLocalVideoImportAvailable() {
-  return canUseBrowserVideoImport();
+  // Available on web (IndexedDB) and on native (expo-image-picker)
+  return Platform.OS !== "web" || canUseBrowserVideoImport();
 }
 
 export async function resolvePlayableVideoUrl(videoUrl: string) {
+  // Native file:// URIs are already directly playable
+  if (videoUrl.startsWith("file://")) {
+    return videoUrl;
+  }
+
   if (!videoUrl.startsWith("local-video://")) {
     return videoUrl;
   }

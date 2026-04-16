@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 
 import { getCurrentOpenRound, getRoundDeadlineCountdown, HOUR_MS } from "@/lib/tournament-deadlines";
@@ -35,6 +35,60 @@ import { useTournamentStore } from "@/stores/tournament-store";
 import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
 
+// Isolated so the 1-second tick ONLY re-renders this subtree, not the whole screen
+const CountdownSection = memo(function CountdownSection({
+  campeonato,
+  currentOpenRound,
+  roundsStarted,
+  canManageTournament,
+  onSaveRoundDeadline,
+  onDecreaseExtraHour,
+  onIncreaseExtraHour,
+}: {
+  campeonato: ReturnType<typeof getTournamentBundle> extends null ? never : NonNullable<ReturnType<typeof getTournamentBundle>>["campeonato"];
+  currentOpenRound: number | null;
+  roundsStarted: boolean;
+  canManageTournament: boolean;
+  onSaveRoundDeadline: (days: number) => void;
+  onDecreaseExtraHour: () => void;
+  onIncreaseExtraHour: () => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!roundsStarted || currentOpenRound == null) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [roundsStarted, currentOpenRound]);
+
+  const countdown =
+    currentOpenRound != null
+      ? getRoundDeadlineCountdown(campeonato, currentOpenRound, new Date(now))
+      : null;
+
+  if (!canManageTournament) return null;
+
+  return (
+    <RevealOnScroll delay={60}>
+      <RoundDeadlineSetupCard
+        title={roundsStarted ? "Alterar prazo das rodadas" : "Definir prazo das rodadas"}
+        subtitle={
+          roundsStarted
+            ? "O campeonato já está em andamento. Ajuste a quantidade de dias por rodada sempre que precisar."
+            : "Depois de finalizar as inscrições, defina quantos dias cada rodada terá. O prazo passa a valer assim que for salvo."
+        }
+        buttonLabel={roundsStarted ? "Salvar novo prazo" : "Salvar prazo e iniciar"}
+        defaultDays={campeonato.prazoRodadaDias ?? 3}
+        countdown={countdown}
+        canAdjustExtraTime={roundsStarted && currentOpenRound != null}
+        onDecreaseExtraHour={onDecreaseExtraHour}
+        onIncreaseExtraHour={onIncreaseExtraHour}
+        onSave={onSaveRoundDeadline}
+      />
+    </RevealOnScroll>
+  );
+});
+
 export default function TournamentDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const campeonatos = useTournamentStore((state) => state.campeonatos);
@@ -50,13 +104,11 @@ export default function TournamentDetailsScreen() {
   const { cardWidth, contentMaxWidth } = usePanelGrid();
   const hydrated = useTournamentDataHydrated();
   const accessMode = useTournamentAccessMode(id);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((campeonato) => campeonato.id === id)));
 
   if (!hydrated) {
     return (
-      <Screen scroll ambientDiamond className="px-6">
+      <Screen scroll className="px-6">
         <View className="w-full self-center" style={{ maxWidth: contentMaxWidth }}>
           <ScreenState
             title="Carregando campeonato"
@@ -67,22 +119,9 @@ export default function TournamentDetailsScreen() {
     );
   }
 
-  if (isDeleting) {
-    return (
-      <Screen scroll ambientDiamond className="px-6">
-        <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
-          <ScreenState
-            title="Excluindo campeonato"
-            description="Removendo rodadas, classificacao, videos e voltando para a lista principal."
-          />
-        </View>
-      </Screen>
-    );
-  }
-
   if (tournamentMissing) {
     return (
-      <Screen scroll ambientDiamond className="px-6">
+      <Screen scroll className="px-6">
         <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
           <BackButton fallbackHref="/tournaments" />
           <ScreenState
@@ -98,7 +137,7 @@ export default function TournamentDetailsScreen() {
 
   if (!bundle) {
     return (
-      <Screen scroll ambientDiamond className="px-6">
+      <Screen scroll className="px-6">
         <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
           <BackButton fallbackHref="/tournaments" />
           <ScreenState
@@ -127,21 +166,12 @@ export default function TournamentDetailsScreen() {
   const lockToActiveTournament =
     Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
   const currentOpenRound = getCurrentOpenRound(bundle.campeonato);
-  const activeRoundCountdown =
-    currentOpenRound != null
-      ? getRoundDeadlineCountdown(bundle.campeonato, currentOpenRound, new Date(now))
-      : null;
 
   useEffect(() => {
     if (bundle.campeonato.id !== currentTournamentId) {
       setCurrentTournamentId(bundle.campeonato.id);
     }
   }, [bundle.campeonato.id, currentTournamentId, setCurrentTournamentId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!lockToActiveTournament || !currentTournamentId || bundle.campeonato.id === currentTournamentId) {
@@ -172,22 +202,19 @@ export default function TournamentDetailsScreen() {
   }
 
   function performDeleteTournament() {
-    setIsDeleting(true);
-
     const tournamentId = bundle.campeonato.id;
     const storageKeys = bundle.videos
       .map((video) => video.storageKey)
       .filter((storageKey): storageKey is string => Boolean(storageKey));
+
+    // Navigate first so the tournament screen unmounts cleanly before store mutations
+    router.replace("/tournaments");
 
     removerVideosDoCampeonato(tournamentId);
     removerCampeonato(tournamentId);
     clearTournamentAccess(tournamentId);
     setCurrentTournamentId(undefined);
     void deleteLocalVideoAssets(storageKeys);
-
-    setTimeout(() => {
-      router.replace("/tournaments");
-    }, Platform.OS === "web" ? 80 : 0);
   }
 
   function handleDeleteTournament() {
@@ -274,7 +301,7 @@ export default function TournamentDetailsScreen() {
   ];
 
   return (
-    <Screen scroll ambientDiamond className="px-6">
+    <Screen scroll className="px-6">
       <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
         {lockToActiveTournament ? null : <BackButton fallbackHref="/tournaments" />}
 
@@ -377,25 +404,15 @@ export default function TournamentDetailsScreen() {
           />
         </RevealOnScroll>
 
-        {canManageTournament ? (
-          <RevealOnScroll delay={60}>
-            <RoundDeadlineSetupCard
-              title={roundsStarted ? "Alterar prazo das rodadas" : "Definir prazo das rodadas"}
-              subtitle={
-                roundsStarted
-                  ? "O campeonato já está em andamento. Ajuste a quantidade de dias por rodada sempre que precisar."
-                  : "Depois de finalizar as inscrições, defina quantos dias cada rodada terá. O prazo passa a valer assim que for salvo."
-              }
-              buttonLabel={roundsStarted ? "Salvar novo prazo" : "Salvar prazo e iniciar"}
-              defaultDays={bundle.campeonato.prazoRodadaDias ?? 3}
-              countdown={activeRoundCountdown}
-              canAdjustExtraTime={roundsStarted && currentOpenRound != null}
-              onDecreaseExtraHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
-              onIncreaseExtraHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
-              onSave={handleSaveRoundDeadline}
-            />
-          </RevealOnScroll>
-        ) : null}
+        <CountdownSection
+          campeonato={bundle.campeonato}
+          currentOpenRound={currentOpenRound}
+          roundsStarted={roundsStarted}
+          canManageTournament={canManageTournament}
+          onSaveRoundDeadline={handleSaveRoundDeadline}
+          onDecreaseExtraHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
+          onIncreaseExtraHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
+        />
 
         <View className="flex-row flex-wrap gap-5">
           <RevealOnScroll delay={0}>

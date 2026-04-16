@@ -4,12 +4,10 @@ import type { ComponentProps } from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 
 import { TitlesGalleryPanel } from "@/components/gallery/TitlesGalleryPanel";
-import { TeamsByConfederationView } from "@/components/teams/TeamsByConfederationView";
 import { Screen } from "@/components/ui/Screen";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
-import { CLUBES_DO_CATALOGO, SELECOES_DO_CATALOGO } from "@/lib/team-browser-data";
 
-export type GallerySection = "titles" | "clubs" | "selections";
+export type GallerySection = "titles";
 
 type GalleryOption = {
   accent: string;
@@ -25,35 +23,13 @@ const GALLERY_OPTIONS: GalleryOption[] = [
     accent: "#F6C54B",
     accentSoft: "rgba(246,197,75,0.20)",
     key: "titles",
-    label: "Títulos",
-    description: "Histórico de campeões, ranking e temporadas encerradas.",
+    label: "Hall da Fama",
+    description: "Histórico de campeões, pódio de ganhadores e temporadas encerradas.",
     icon: "ribbon-outline",
-  },
-  {
-    accent: "#4FC3FF",
-    accentSoft: "rgba(79,195,255,0.18)",
-    key: "clubs",
-    label: "Clubes",
-    description: "Catálogo por confederação, país e clubes disponíveis.",
-    icon: "football-outline",
-  },
-  {
-    accent: "#58D68D",
-    accentSoft: "rgba(88,214,141,0.18)",
-    key: "selections",
-    label: "Seleções",
-    description: "Seleções organizadas por continente em uma única vitrine.",
-    icon: "flag-outline",
   },
 ];
 
 function normalizeGallerySection(section: string | string[] | undefined): GallerySection {
-  const value = Array.isArray(section) ? section[0] : section;
-
-  if (value === "clubs" || value === "selections") {
-    return value;
-  }
-
   return "titles";
 }
 
@@ -113,40 +89,28 @@ function ClubsCardPreview({ accent }: { accent: string }) {
         borderColor: "rgba(255,255,255,0.08)",
       }}
     >
-      <View className="flex-row items-center justify-between">
+      <View className="flex-row items-end justify-between">
         {[
-          { label: "CONT.", tone: "rgba(255,255,255,0.22)" },
-          { label: "PAÍS", tone: accent },
-          { label: "CLUBE", tone: "rgba(255,255,255,0.30)" },
-        ].map((item, index) => (
-          <View key={item.label} className="flex-row items-center">
-            <View
-              className="items-center justify-center rounded-[14px]"
+          { label: "🥉", height: 28, color: "rgba(255,255,255,0.18)" },
+          { label: "🥇", height: 52, color: accent },
+          { label: "🥈", height: 38, color: "rgba(255,255,255,0.30)" },
+        ].map((item) => (
+          <View key={item.label} className="items-center gap-2">
+            <Text
               style={{
-                width: 54,
-                height: 40,
-                backgroundColor: item.tone,
+                fontSize: 32,
               }}
             >
-              <Text
-                style={{
-                  color: "#F3F7FF",
-                  fontSize: 10,
-                  fontWeight: "900",
-                  letterSpacing: 1,
-                }}
-              >
-                {item.label}
-              </Text>
-            </View>
-            {index < 2 ? (
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color="rgba(255,255,255,0.45)"
-                style={{ marginHorizontal: 6 }}
-              />
-            ) : null}
+              {item.label}
+            </Text>
+            <View
+              style={{
+                width: 34,
+                height: item.height,
+                borderRadius: 12,
+                backgroundColor: item.color,
+              }}
+            />
           </View>
         ))}
       </View>
@@ -167,8 +131,15 @@ function SelectionsCardPreview({ accent }: { accent: string }) {
       }}
     >
       <View className="flex-row items-center justify-between">
-        {["BRA", "JPN", "MAR"].map((label, index) => (
+        {["🥉", "🥇", "🥈"].map((label, index) => (
           <View key={label} className="items-center gap-2">
+            <Text
+              style={{
+                fontSize: 32,
+              }}
+            >
+              {label}
+            </Text>
             <View
               className="items-center justify-center rounded-full"
               style={{
@@ -187,17 +158,9 @@ function SelectionsCardPreview({ accent }: { accent: string }) {
                   letterSpacing: 0.8,
                 }}
               >
-                {label}
+                {index === 0 ? "3º" : index === 1 ? "1º" : "2º"}
               </Text>
             </View>
-            <View
-              style={{
-                width: 18,
-                height: 4,
-                borderRadius: 999,
-                backgroundColor: index === 1 ? accent : "rgba(255,255,255,0.24)",
-              }}
-            />
           </View>
         ))}
       </View>
@@ -374,7 +337,7 @@ export function GalleryScreenContent({
               fontWeight: "800",
             }}
           >
-            Tudo em um único espaço
+            Hall da Fama
           </Text>
           <Text
             style={{
@@ -383,7 +346,7 @@ export function GalleryScreenContent({
               lineHeight: isCompactMobile ? 22 : 26,
             }}
           >
-            Selecione uma vitrine por vez. O conteúdo de Títulos, Clubes e Seleções agora fica centralizado aqui, sem espalhar a navegação em várias abas.
+            Histórico oficial de campeões, pódio dos ganhadores com nomes e contatos, ranking de títulos e arquivo completo de temporadas encerradas.
           </Text>
         </View>
 
@@ -411,19 +374,7 @@ export function GalleryScreenContent({
 
       {activeSection === "titles" ? (
         <TitlesGalleryPanel />
-      ) : (
-        <View className="w-full self-center pb-8" style={{ maxWidth: contentMaxWidth }}>
-          <TeamsByConfederationView
-            data={activeSection === "clubs" ? CLUBES_DO_CATALOGO : SELECOES_DO_CATALOGO}
-            headerLabel={activeSection === "clubs" ? "Clubes" : "Seleções"}
-            headerSubtitle={
-              activeSection === "clubs"
-                ? "Os blocos começam recolhidos. Selecione um continente e depois clique no país para abrir os clubes disponíveis."
-                : "As seleções ficam recolhidas até você clicar em uma confederação."
-            }
-          />
-        </View>
-      )}
+      ) : null}
     </Screen>
   );
 }

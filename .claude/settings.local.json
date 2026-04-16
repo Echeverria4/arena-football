@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E '^d|tsx$')",
+      "Bash(wc -l /c/PYTHON/Arena/src/components/ui/*.tsx)"
+    ]
+  }
+}

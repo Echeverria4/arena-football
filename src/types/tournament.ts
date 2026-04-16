@@ -53,6 +53,7 @@ export interface TournamentParticipant {
   groupName?: string | null;
   isOrganizer?: boolean;
   displayName: string;
+  phone?: string | null;
   teamBadgeUrl?: string | null;
   stadiumImageUrl?: string | null;
 }

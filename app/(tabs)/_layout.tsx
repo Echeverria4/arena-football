@@ -273,7 +273,7 @@ function GradientTabBarButton({ ...props }: GradientTabBarButtonProps) {
   return (
     <Pressable
       {...props}
-      className="flex-1 transition-transform duration-200 hover:-translate-y-[1px] hover:scale-[1.015]"
+      className="transition-transform duration-200 hover:-translate-y-[1px] hover:scale-[1.015]"
       style={[props.style, styles.tabButton]}
       onHoverIn={() => setIsHovered(true)}
       onHoverOut={() => setIsHovered(false)}
@@ -421,7 +421,7 @@ export default function TabsLayout() {
           tabBarShowLabel: !isSmallPhone,
           tabBarStyle: {
             backgroundColor: "transparent",
-            borderTopColor: "rgba(97,124,129,0.14)",
+            borderTopColor: "transparent",
             height: isSmallPhone ? 72 : isPhone ? 76 : 78,
             paddingBottom: isSmallPhone ? 10 : 12,
             paddingTop: isSmallPhone ? 8 : 10,
@@ -431,6 +431,8 @@ export default function TabsLayout() {
             right: 0,
             bottom: 0,
             display: lockToActiveTournament ? "none" : "flex",
+            alignItems: "center",
+            justifyContent: "center",
           },
           sceneStyle: {
             backgroundColor: "transparent",
@@ -439,7 +441,11 @@ export default function TabsLayout() {
             paddingBottom: lockToActiveTournament ? 0 : isSmallPhone ? 86 : 96,
           },
           tabBarItemStyle: {
-            paddingHorizontal: isSmallPhone ? 0 : 2,
+            flexGrow: 0,
+            flexShrink: 0,
+            flexBasis: "auto",
+            width: "auto",
+            paddingHorizontal: isSmallPhone ? 16 : 24,
           },
           tabBarLabelStyle: {
             fontSize: isPhone ? 11 : 13,
@@ -449,7 +455,7 @@ export default function TabsLayout() {
           tabBarIconStyle: {
             marginTop: isSmallPhone ? 6 : 0,
           },
-          tabBarBackground: () => <TabBarBackdrop />,
+          tabBarBackground: () => null,
         }}
       >
         <Tabs.Screen
@@ -470,52 +476,31 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="videos"
-          options={{
-            title: "Videos",
-            tabBarIcon: ({ color, size }) => <Ionicons name="videocam-outline" color={color} size={size} />,
-            tabBarButton: (props) => <GradientTabBarButton {...props} />,
-          }}
+          options={{ href: null }}
         />
         <Tabs.Screen
           name="gallery"
-          options={{
-            title: "Galeria",
-            tabBarIcon: ({ color, size }) => <Ionicons name="images-outline" color={color} size={size} />,
-            tabBarButton: (props) => <GradientTabBarButton {...props} />,
-          }}
+          options={{ href: null }}
         />
         <Tabs.Screen
           name="titles"
-          options={{
-            href: null,
-          }}
+          options={{ href: null }}
         />
-
         <Tabs.Screen
           name="clubs"
-          options={{
-            href: null,
-          }}
+          options={{ href: null }}
         />
         <Tabs.Screen
           name="selections"
-          options={{
-            href: null,
-          }}
+          options={{ href: null }}
         />
         <Tabs.Screen
           name="hall-of-fame"
-          options={{
-            title: "Hall da Fama",
-            tabBarIcon: ({ color, size }) => <Ionicons name="medal-outline" color={color} size={size} />,
-            tabBarButton: (props) => <GradientTabBarButton {...props} />,
-          }}
+          options={{ href: null }}
         />
         <Tabs.Screen
           name="profile"
-          options={{
-            href: null,
-          }}
+          options={{ href: null }}
         />
         <Tabs.Screen
           name="styles"
