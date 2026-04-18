@@ -287,7 +287,6 @@ export default function TournamentParticipantsScreen() {
                           <Text style={{ fontSize: 11, color: "#8EA4CE" }}>{phoneLabel}</Text>
 
                           <View className="flex-row flex-wrap gap-2">
-                            {participant.isOrganizer ? <Badge label="organizador" tone="gold" /> : null}
                             <Badge label={participant.groupName ?? "liga principal"} tone="royal" />
                             {standing ? <Badge label={`${standing.points} pts`} tone="muted" /> : null}
                           </View>
