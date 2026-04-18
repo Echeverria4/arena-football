@@ -4,7 +4,12 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { HOUR_MS, syncExpiredCampeonatoRounds } from "@/lib/tournament-deadlines";
 import { expireTournamentSharesByTournamentId } from "@/lib/tournament-sharing";
 import { saveCampeonatoMatchScore } from "@/lib/tournament-results";
-import { hydrateCampeonatoStructure } from "@/lib/tournament-setup";
+import {
+  type KnockoutFirstRoundResult,
+  generateKnockoutFirstRound,
+  generateNextKnockoutRound,
+  hydrateCampeonatoStructure,
+} from "@/lib/tournament-setup";
 import { persistStorage } from "@/stores/persist-storage";
 import type { Campeonato } from "@/types/tournament";
 
@@ -18,6 +23,7 @@ interface TournamentState {
   adicionarCampeonato: (campeonato: Campeonato) => void;
   importarCampeonatoCompartilhado: (campeonato: Campeonato) => void;
   removerCampeonato: (id: string) => void;
+  limparTodosCampeonatos: () => void;
   atualizarCampeonato: (id: string, patch: Partial<Campeonato>) => void;
   salvarPlacarJogo: (
     campeonatoId: string,
@@ -27,6 +33,8 @@ interface TournamentState {
   ) => void;
   ajustarTempoExtraRodada: (campeonatoId: string, rodada: number, deltaMs: number) => void;
   sincronizarPrazosRodadas: (now?: string) => void;
+  gerarFaseMataMataCampeonato: (id: string) => void;
+  gerarProximaFaseMataMata: (id: string) => void;
 }
 
 export const useTournamentStore = create<TournamentState>()(
@@ -74,6 +82,8 @@ export const useTournamentStore = create<TournamentState>()(
           selectedCampeonato:
             state.selectedCampeonato?.id === id ? null : state.selectedCampeonato,
         })),
+      limparTodosCampeonatos: () =>
+        set({ campeonatos: [], selectedCampeonato: null }),
       atualizarCampeonato: (id, patch) => {
         let shouldExpireShares = false;
 
@@ -221,6 +231,43 @@ export const useTournamentStore = create<TournamentState>()(
           );
         }
       },
+      gerarFaseMataMataCampeonato: (id) =>
+        set((state) => {
+          const patch = (campeonato: Campeonato) => {
+            if (campeonato.id !== id) return campeonato;
+            // Guard: don't generate if KO rounds already exist (idempotent)
+            const numRodGrupos = campeonato.numRodadasGrupos ?? 0;
+            if (numRodGrupos > 0 && campeonato.rodadas.length > numRodGrupos) return campeonato;
+            const result: KnockoutFirstRoundResult = generateKnockoutFirstRound(campeonato);
+            if (result.rounds.length === 0) return campeonato;
+            return hydrateCampeonatoStructure({
+              ...campeonato,
+              rodadas: [...campeonato.rodadas, ...result.rounds],
+              classificadosDiretosIds: result.classificadosDiretosIds ?? undefined,
+            });
+          };
+          return {
+            campeonatos: state.campeonatos.map(patch),
+            selectedCampeonato: state.selectedCampeonato ? patch(state.selectedCampeonato) : state.selectedCampeonato,
+          };
+        }),
+      gerarProximaFaseMataMata: (id) =>
+        set((state) => {
+          const patch = (campeonato: Campeonato) => {
+            if (campeonato.id !== id) return campeonato;
+            const result = generateNextKnockoutRound(campeonato);
+            if (result.rounds.length === 0) return campeonato;
+            return hydrateCampeonatoStructure({
+              ...campeonato,
+              rodadas: [...campeonato.rodadas, ...result.rounds],
+              classificadosDiretosIds: result.clearDiretos ? undefined : campeonato.classificadosDiretosIds,
+            });
+          };
+          return {
+            campeonatos: state.campeonatos.map(patch),
+            selectedCampeonato: state.selectedCampeonato ? patch(state.selectedCampeonato) : state.selectedCampeonato,
+          };
+        }),
     }),
     {
       name: "arena-tournament-store",

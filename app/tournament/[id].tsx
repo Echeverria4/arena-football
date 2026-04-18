@@ -3,6 +3,7 @@ import { memo, useEffect, useState } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 
 import { getCurrentOpenRound, getRoundDeadlineCountdown, HOUR_MS } from "@/lib/tournament-deadlines";
+import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
 import { LeagueProgressChart } from "@/components/tournament/LeagueProgressChart";
 import { RoundDeadlineSetupCard } from "@/components/tournament/RoundDeadlineSetupCard";
 import { SeasonPodiumBoard } from "@/components/trophies/SeasonPodiumBoard";
@@ -95,6 +96,7 @@ export default function TournamentDetailsScreen() {
   const atualizarCampeonato = useTournamentStore((state) => state.atualizarCampeonato);
   const ajustarTempoExtraRodada = useTournamentStore((state) => state.ajustarTempoExtraRodada);
   const removerCampeonato = useTournamentStore((state) => state.removerCampeonato);
+  const gerarFaseMataMataCampeonato = useTournamentStore((state) => state.gerarFaseMataMataCampeonato);
   const videos = useVideoStore((state) => state.videos);
   const removerVideosDoCampeonato = useVideoStore((state) => state.removerVideosDoCampeonato);
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
@@ -149,14 +151,37 @@ export default function TournamentDetailsScreen() {
     );
   }
 
+  const formato = bundle.campeonato.formato;
+  const numRodadasGrupos = bundle.campeonato.numRodadasGrupos ?? 0;
+  const hasKnockoutRounds =
+    (formato === "groups_knockout" || formato === "knockout") &&
+    bundle.campeonato.rodadas.length > numRodadasGrupos;
+  const showBracketPanel =
+    formato === "knockout" || (formato === "groups_knockout" && hasKnockoutRounds);
+  const showChartPanel =
+    formato === "league" ||
+    formato === "groups" ||
+    (formato === "groups_knockout" && !hasKnockoutRounds);
+
   const isPersistedTournament = campeonatos.some((campeonato) => campeonato.id === bundle.campeonato.id);
   const isCurrentTournament =
     currentTournamentId == null || currentTournamentId === bundle.campeonato.id;
   const canManageTournament = canEditTournament(accessMode);
+
+  // Auto-generate first knockout round when group stage is fully done
+  const groupStageAllDone =
+    formato === "groups_knockout" &&
+    numRodadasGrupos > 0 &&
+    bundle.campeonato.rodadas.slice(0, numRodadasGrupos).flat().every((m) => m.status === "finalizado");
+
+  useEffect(() => {
+    if (groupStageAllDone && !hasKnockoutRounds && canManageTournament) {
+      gerarFaseMataMataCampeonato(bundle.campeonato.id);
+    }
+  }, [groupStageAllDone, hasKnockoutRounds]);
   const canDeleteTournament =
     accessMode === "owner" &&
     isPersistedTournament &&
-    bundle.campeonato.status === "ativo" &&
     isCurrentTournament;
   const roundsStarted = Boolean(bundle.campeonato.inicioEm && bundle.campeonato.prazoRodadaDias);
   const activeTournamentAccessMode = resolveTournamentAccessMode(
@@ -337,9 +362,7 @@ export default function TournamentDetailsScreen() {
             }}
           >
             <Text style={{ color: "#FFD76A", fontSize: 14, fontWeight: "700" }}>
-              {bundle.campeonato.status === "finalizado"
-                ? "Campeonato finalizado não pode mais ser removido. Ele agora faz parte do histórico oficial do app."
-                : "O botão EXCLUIR apaga apenas o campeonato que está ativo no app neste momento."}
+              O botão EXCLUIR apaga apenas o campeonato que está ativo no app neste momento.
             </Text>
           </View>
         ) : null}
@@ -397,10 +420,20 @@ export default function TournamentDetailsScreen() {
             }
             footerLeft={`${bundle.participants.length} jogadores`}
             content={
-              <LeagueProgressChart
-                campeonato={bundle.campeonato}
-                format={bundle.tournament.format}
-              />
+              showBracketPanel ? (
+                <KnockoutBracket
+                  campeonato={bundle.campeonato}
+                  participantes={bundle.campeonato.participantes}
+                  onPressMatch={() =>
+                    router.push({ pathname: "/tournament/matches", params: { id: bundle.campeonato.id } })
+                  }
+                />
+              ) : showChartPanel ? (
+                <LeagueProgressChart
+                  campeonato={bundle.campeonato}
+                  format={bundle.tournament.format}
+                />
+              ) : null
             }
           />
         </RevealOnScroll>

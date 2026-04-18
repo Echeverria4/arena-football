@@ -1,5 +1,21 @@
 import type { Campeonato, ClassificacaoItem, Jogo, Participante } from "@/types/tournament";
 
+function isTournamentComplete(campeonato: Campeonato, rodadas: Jogo[][]): boolean {
+  const allDone = rodadas.flat().every(
+    (jogo) =>
+      jogo.status === "finalizado" &&
+      jogo.placarMandante != null &&
+      jogo.placarVisitante != null,
+  );
+  if (!allDone) return false;
+  // groups_knockout only finalizes after knockout rounds have been generated and finished
+  if (campeonato.formato === "groups_knockout") {
+    const numGroupRounds = campeonato.numRodadasGrupos ?? 0;
+    return rodadas.length > numGroupRounds;
+  }
+  return true;
+}
+
 function buildEmptyClassification(participantes: Participante[]): ClassificacaoItem[] {
   return participantes.map((participante) => ({
     participanteId: participante.id,
@@ -146,27 +162,20 @@ export function saveCampeonatoMatchScore(
     ),
   );
 
-  const allMatchesFinished = rodadas
-    .flat()
-    .every(
-      (jogo) =>
-        jogo.status === "finalizado" &&
-        jogo.placarMandante != null &&
-        jogo.placarVisitante != null,
-    );
+  const complete = isTournamentComplete(campeonato, rodadas);
 
-  const finishDate = allMatchesFinished
+  const finishDate = complete
     ? campeonato.fimEm ?? new Date().toISOString()
     : undefined;
 
   return {
     ...campeonato,
-    status: allMatchesFinished ? "finalizado" : campeonato.status,
+    status: complete ? "finalizado" : campeonato.status,
     fimEm: finishDate,
     rodadas,
     classificacao: recomputeCampeonatoClassificacao({
       ...campeonato,
-      status: allMatchesFinished ? "finalizado" : campeonato.status,
+      status: complete ? "finalizado" : campeonato.status,
       fimEm: finishDate,
       rodadas,
     }),

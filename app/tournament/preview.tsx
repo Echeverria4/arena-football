@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Image,
   Pressable,
   ScrollView,
+  Share,
   Text,
   View,
   useWindowDimensions,
@@ -70,7 +72,7 @@ function TeamCrestBadge({
       {flagUrl && !failed ? (
         <Image
           source={{ uri: flagUrl }}
-          style={{ width: "82%", height: "82%" }}
+          style={{ width: "92%", height: "92%" }}
           resizeMode="contain"
           onError={() => setFailed(true)}
         />
@@ -309,6 +311,26 @@ export default function TournamentPreviewScreen() {
     router.push({ pathname: "/tournament/[id]", params: { id: campeonato.id } });
   }
 
+  async function handleSharePreviewLink() {
+    const path = `/tournament/preview?id=${campeonato.id}`;
+    const baseUrl =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : null;
+    const link = baseUrl ? `${baseUrl}${path}` : path;
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(link);
+        Alert.alert("Link copiado", "Cole o link e compartilhe com quem quiser acessar este campeonato.");
+      } else {
+        await Share.share({ message: link, url: link });
+      }
+    } catch {
+      Alert.alert("Erro", "Não foi possível copiar o link agora.");
+    }
+  }
+
   const hPad = isSmallPhone ? 14 : 20;
 
   return (
@@ -534,23 +556,13 @@ export default function TournamentPreviewScreen() {
 
         {/* Enter button */}
         <RevealOnScroll delay={200}>
-          <View style={{ gap: 10 }}>
-            <PrimaryButton
-              label="Entrar no campeonato"
-              icon="trophy-outline"
-              size="sm"
-              onPress={handleEnterTournament}
-              className="self-center"
-            />
-            <Pressable
-              onPress={() => router.back()}
-              style={{ alignItems: "center", paddingVertical: 10 }}
-            >
-              <Text style={{ color: "#6B7EA3", fontSize: 14, fontWeight: "600" }}>
-                Voltar para a lista
-              </Text>
-            </Pressable>
-          </View>
+          <PrimaryButton
+            label="Entrar no campeonato"
+            icon="trophy-outline"
+            size="sm"
+            onPress={handleEnterTournament}
+            className="self-center"
+          />
         </RevealOnScroll>
       </ScrollView>
     </Screen>

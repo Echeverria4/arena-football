@@ -46,7 +46,7 @@ export async function listParticipantsByTournament(tournamentId: string): Promis
       userId: "user-local",
       teamName: p.time,
       groupName: p.grupo ?? null,
-      isOrganizer: p.organizer ?? false,
+      isOrganizer: false,
       displayName: p.nome,
       phone: p.whatsapp ?? null,
       teamBadgeUrl: null,

@@ -178,15 +178,20 @@ function PodiumStep({
                 style={{
                   width: compact ? 68 : 80,
                   height: compact ? 68 : 80,
-                  borderRadius: 999,
+                  borderRadius: 18,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: "rgba(255,255,255,0.05)",
                   borderWidth: 1,
                   borderColor: palette.border,
+                  overflow: "hidden",
                 }}
               >
-                <Ionicons name={palette.icon} size={compact ? 26 : 32} color={palette.accent} />
+                {crest ? (
+                  <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
+                ) : (
+                  <Ionicons name={palette.icon} size={compact ? 26 : 32} color={palette.accent} />
+                )}
               </View>
 
               <Text
@@ -232,7 +237,7 @@ function PodiumStep({
                 }}
               >
                 {crest ? (
-                  <Image source={{ uri: crest }} style={{ width: "72%", height: "72%" }} resizeMode="contain" />
+                  <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
                 ) : (
                   <Text
                     style={{

@@ -164,40 +164,6 @@ export default function TournamentsScreen() {
           </View>
         ) : null}
 
-        {archivedCampeonatos.length > 0 ? (
-          <View className="gap-4">
-            <SectionHeader
-              eyebrow="Histórico"
-              title="Temporadas encerradas"
-              subtitle="Ciclos já concluídos que seguem disponíveis para consulta, ranking e memória da competição."
-            />
-
-            <View className="gap-5">
-              {archivedCampeonatos.map((campeonato, index) => (
-                <RevealOnScroll key={campeonato.id} delay={index * 70}>
-                  <TournamentCard
-                    tournament={campeonato}
-                    surface="dark"
-                    primaryAction={{
-                      label: "Ver resumo",
-                      onPress: () => openTournament(campeonato.id),
-                      variant: "gold",
-                    }}
-                    secondaryAction={{
-                      label: "Classificação",
-                      onPress: () =>
-                        router.push({
-                          pathname: "/tournament/standings",
-                          params: { id: campeonato.id },
-                        }),
-                      variant: "secondary",
-                    }}
-                  />
-                </RevealOnScroll>
-              ))}
-            </View>
-          </View>
-        ) : null}
       </View>
     </Screen>
   );

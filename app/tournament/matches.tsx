@@ -12,6 +12,7 @@ import {
 
 import { HistoricCupGrid } from "@/components/matches/HistoricCupGrid";
 import type { HistoricCupItem } from "@/components/matches/HistoricCupCard";
+import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
 import { WhatsAppButton } from "@/components/match/WhatsAppButton";
 import { RoundDeadlineCountdownCard } from "@/components/tournament/RoundDeadlineCountdownCard";
 import { BackButton } from "@/components/ui/BackButton";
@@ -46,6 +47,8 @@ export default function TournamentMatchesScreen() {
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const ajustarTempoExtraRodada = useTournamentStore((state) => state.ajustarTempoExtraRodada);
   const salvarPlacarJogo = useTournamentStore((state) => state.salvarPlacarJogo);
+  const gerarFaseMataMataCampeonato = useTournamentStore((state) => state.gerarFaseMataMataCampeonato);
+  const gerarProximaFaseMataMata = useTournamentStore((state) => state.gerarProximaFaseMataMata);
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
   const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
@@ -60,6 +63,7 @@ export default function TournamentMatchesScreen() {
   const [now, setNow] = useState(() => Date.now());
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [countdownExpanded, setCountdownExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<"rounds" | "bracket">("rounds");
 
   const roundTabsRef = useRef<ScrollView>(null);
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((c) => c.id === id)));
@@ -96,6 +100,54 @@ export default function TournamentMatchesScreen() {
   }, [bundle?.matches]);
 
   const currentOpenRound = bundle ? getCurrentOpenRound(bundle.campeonato) : null;
+
+  // ── Grupos + Mata-mata state ──────────────────────────────────────────────
+  const isGroupsKnockout = bundle?.campeonato.formato === "groups_knockout";
+  const numRodadasGrupos = bundle?.campeonato.numRodadasGrupos ?? 0;
+  const totalRounds = bundle?.campeonato.rodadas.length ?? 0;
+  const hasKnockoutRounds = isGroupsKnockout && totalRounds > numRodadasGrupos;
+
+  const groupStageAllDone = isGroupsKnockout && numRodadasGrupos > 0 && (() => {
+    const groupRounds = bundle?.campeonato.rodadas.slice(0, numRodadasGrupos) ?? [];
+    return groupRounds.flat().every((m) => m.status === "finalizado");
+  })();
+
+  const showGerarMataMataBt = canManageMatch && groupStageAllDone && !hasKnockoutRounds;
+
+  const isPureKnockout = bundle?.campeonato.formato === "knockout";
+  const showBracketToggle =
+    (isPureKnockout && (bundle?.campeonato.rodadas.length ?? 0) > 0) ||
+    (isGroupsKnockout && hasKnockoutRounds);
+
+  const showGerarProximaFaseBt = canManageMatch && hasKnockoutRounds && (() => {
+    const knockoutRounds = bundle?.campeonato.rodadas.slice(numRodadasGrupos) ?? [];
+    if (knockoutRounds.length === 0) return false;
+    const modoMata = bundle?.campeonato.modoConfrontoMataMata ?? "single_game";
+    const lastRounds = modoMata === "home_away" && knockoutRounds.length >= 2
+      ? knockoutRounds.slice(-2)
+      : [knockoutRounds[knockoutRounds.length - 1]!];
+    const allDone = lastRounds.every((r) => r.every((m) => m.status === "finalizado"));
+    const totalWinners = lastRounds[0]?.length ?? 0;
+    return allDone && totalWinners >= 2;
+  })();
+
+  // Auto-generate first knockout round when group stage is complete
+  useEffect(() => {
+    if (showGerarMataMataBt && bundle && canManageMatch) {
+      gerarFaseMataMataCampeonato(bundle.campeonato.id);
+      setSelectedRound(null);
+      setViewMode("bracket");
+    }
+  }, [showGerarMataMataBt]);
+
+  // Auto-advance knockout bracket when all matches in current phase are done
+  useEffect(() => {
+    if (showGerarProximaFaseBt && bundle && canManageMatch) {
+      gerarProximaFaseMataMata(bundle.campeonato.id);
+      setSelectedRound(null);
+      setViewMode("bracket");
+    }
+  }, [showGerarProximaFaseBt]);
 
   // Auto-select: open round, or last round with finished matches, or first round
   useEffect(() => {
@@ -217,11 +269,11 @@ export default function TournamentMatchesScreen() {
             ? "Resultado validado"
             : match.status === "in_progress"
               ? "Partida em andamento"
-              : "Sala do mandante",
+              : `${home?.displayName ?? "Mandante"} organiza a sala`,
         city:
           match.status === "finished"
             ? "Arquivo oficial da temporada"
-            : `${home?.displayName ?? "Mandante"} organiza a sala`,
+            : "",
         status: match.status,
       };
     });
@@ -431,8 +483,53 @@ export default function TournamentMatchesScreen() {
         </View>
       </View>
 
+      {/* ── View mode toggle (bracket / rounds) ── */}
+      {showBracketToggle && (
+        <View
+          style={{
+            flexDirection: "row",
+            paddingHorizontal: isSmallPhone ? 14 : 20,
+            paddingVertical: 8,
+            gap: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "rgba(255,255,255,0.06)",
+            backgroundColor: "rgba(3,5,11,0.60)",
+          }}
+        >
+          {(["rounds", "bracket"] as const).map((mode) => {
+            const isActive = viewMode === mode;
+            const label = mode === "rounds" ? "Rodadas" : "Chaveamento";
+            return (
+              <Pressable
+                key={mode}
+                onPress={() => setViewMode(mode)}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1.5,
+                  borderColor: isActive ? "rgba(245,158,11,0.65)" : "rgba(255,255,255,0.12)",
+                  backgroundColor: isActive ? "rgba(245,158,11,0.14)" : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    color: isActive ? "#FDE68A" : "rgba(255,255,255,0.55)",
+                    fontSize: 12,
+                    fontWeight: "900",
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
       {/* ── Round tab selector (fixed) ── */}
-      {groupedMatches.length > 0 && (
+      {viewMode === "rounds" && groupedMatches.length > 0 && (
         <View
           style={{
             borderBottomWidth: 1,
@@ -455,6 +552,8 @@ export default function TournamentMatchesScreen() {
               const isOpen = round === currentOpenRound;
               const finishedCount = rMatches.filter((m) => m.status === "finished").length;
               const allDone = finishedCount === rMatches.length && rMatches.length > 0;
+              const isKnockoutRound = isGroupsKnockout && round > numRodadasGrupos;
+              const knockoutRoundIndex = isKnockoutRound ? round - numRodadasGrupos : 0;
 
               return (
                 <Pressable key={round} onPress={() => setSelectedRound(round)}>
@@ -465,12 +564,12 @@ export default function TournamentMatchesScreen() {
                       borderRadius: 999,
                       borderWidth: 1.5,
                       borderColor: isActive
-                        ? "#8B5CF6"
+                        ? (isKnockoutRound ? "#F59E0B" : "#8B5CF6")
                         : isOpen
                           ? "rgba(59,130,246,0.45)"
                           : "rgba(255,255,255,0.12)",
                       backgroundColor: isActive
-                        ? "rgba(139,92,246,0.22)"
+                        ? (isKnockoutRound ? "rgba(245,158,11,0.20)" : "rgba(139,92,246,0.22)")
                         : isOpen
                           ? "rgba(59,130,246,0.10)"
                           : "transparent",
@@ -491,13 +590,15 @@ export default function TournamentMatchesScreen() {
                     )}
                     <Text
                       style={{
-                        color: isActive ? "#E9D5FF" : isOpen ? "#93C5FD" : "rgba(255,255,255,0.65)",
+                        color: isActive
+                          ? (isKnockoutRound ? "#FDE68A" : "#E9D5FF")
+                          : isOpen ? "#93C5FD" : "rgba(255,255,255,0.65)",
                         fontSize: isSmallPhone ? 12 : 13,
                         fontWeight: isActive ? "900" : "700",
                         letterSpacing: 0.4,
                       }}
                     >
-                      R{round}
+                      {isKnockoutRound ? `MM${knockoutRoundIndex}` : `R${round}`}
                     </Text>
                     {allDone && (
                       <Text style={{ color: "#10B981", fontSize: 10, fontWeight: "900" }}>✓</Text>
@@ -510,8 +611,39 @@ export default function TournamentMatchesScreen() {
         </View>
       )}
 
-      {/* ── Scrollable match content ── */}
-      <ScrollView
+      {/* ── Bracket view ── */}
+      {viewMode === "bracket" && showBracketToggle && (
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: baseBottomPadding }}>
+          <KnockoutBracket
+            campeonato={bundle.campeonato}
+            participantes={bundle.campeonato.participantes}
+            onPressMatch={(matchId) => setSelectedMatchId(matchId)}
+          />
+
+          {/* Gerar mata-mata / próxima fase inside bracket view too */}
+          {showGerarMataMataBt && (
+            <View style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 16, borderWidth: 1, borderColor: "rgba(139,92,246,0.35)", backgroundColor: "rgba(139,92,246,0.10)", padding: 16, gap: 12 }}>
+              <Text style={{ color: "#C4B5FD", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>Fase de grupos concluída</Text>
+              <Text style={{ color: "#E9D5FF", fontSize: 18, fontWeight: "900" }}>Gerar mata-mata</Text>
+              <Pressable onPress={() => { gerarFaseMataMataCampeonato(bundle.campeonato.id); setSelectedRound(null); }} style={{ borderRadius: 14, paddingVertical: 14, alignItems: "center", backgroundColor: "#8B5CF6" }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>Gerar fase eliminatória</Text>
+              </Pressable>
+            </View>
+          )}
+          {showGerarProximaFaseBt && (
+            <View style={{ marginHorizontal: 16, marginBottom: 16, borderRadius: 16, borderWidth: 1, borderColor: "rgba(59,130,246,0.35)", backgroundColor: "rgba(59,130,246,0.08)", padding: 16, gap: 12 }}>
+              <Text style={{ color: "#93C5FD", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>Fase eliminatória</Text>
+              <Text style={{ color: "#DBEAFE", fontSize: 18, fontWeight: "900" }}>Avançar para próxima fase</Text>
+              <Pressable onPress={() => { gerarProximaFaseMataMata(bundle.campeonato.id); setSelectedRound(null); }} style={{ borderRadius: 14, paddingVertical: 14, alignItems: "center", backgroundColor: "#3B82F6" }}>
+                <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>Gerar próxima fase</Text>
+              </Pressable>
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {/* ── Scrollable match content (rounds view) ── */}
+      {viewMode === "rounds" && <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: isSmallPhone ? 12 : 16,
@@ -584,7 +716,91 @@ export default function TournamentMatchesScreen() {
             </Text>
           </View>
         )}
-      </ScrollView>
+
+        {/* Gerar fase mata-mata */}
+        {showGerarMataMataBt && (
+          <View
+            style={{
+              marginTop: 16,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "rgba(139,92,246,0.35)",
+              backgroundColor: "rgba(139,92,246,0.10)",
+              padding: 16,
+              gap: 12,
+            }}
+          >
+            <Text style={{ color: "#C4B5FD", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>
+              Fase de grupos concluída
+            </Text>
+            <Text style={{ color: "#E9D5FF", fontSize: 18, fontWeight: "900" }}>
+              Gerar mata-mata
+            </Text>
+            <Text style={{ color: "rgba(233,213,255,0.72)", fontSize: 13, lineHeight: 20 }}>
+              Os classificados de cada grupo foram definidos. O chaveamento estilo Copa do Mundo está pronto para ser gerado (1º do Grupo A x 2º do Grupo B, etc.).
+            </Text>
+            <Pressable
+              onPress={() => {
+                gerarFaseMataMataCampeonato(bundle.campeonato.id);
+                setSelectedRound(null);
+                setViewMode("bracket");
+              }}
+              style={{
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+                backgroundColor: "#8B5CF6",
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+                Gerar fase eliminatória
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Gerar próxima fase do mata-mata */}
+        {showGerarProximaFaseBt && (
+          <View
+            style={{
+              marginTop: 16,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "rgba(59,130,246,0.35)",
+              backgroundColor: "rgba(59,130,246,0.08)",
+              padding: 16,
+              gap: 12,
+            }}
+          >
+            <Text style={{ color: "#93C5FD", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>
+              Fase eliminatória
+            </Text>
+            <Text style={{ color: "#DBEAFE", fontSize: 18, fontWeight: "900" }}>
+              Avançar para próxima fase
+            </Text>
+            <Text style={{ color: "rgba(219,234,254,0.72)", fontSize: 13, lineHeight: 20 }}>
+              Todos os jogos desta fase foram concluídos. Os vencedores avançam para o próximo confronto.
+            </Text>
+            <Pressable
+              onPress={() => {
+                gerarProximaFaseMataMata(bundle.campeonato.id);
+                setSelectedRound(null);
+                setViewMode("bracket");
+              }}
+              style={{
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+                backgroundColor: "#3B82F6",
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+                Gerar próxima fase
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </ScrollView>}
     </Screen>
   );
 }

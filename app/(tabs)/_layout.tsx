@@ -588,6 +588,14 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="history"
+          options={{
+            title: "Histórico",
+            tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
+            tabBarButton: (props) => <GradientTabBarButton {...props} />,
+          }}
+        />
+        <Tabs.Screen
           name="videos"
           options={{ href: null }}
         />

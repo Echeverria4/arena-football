@@ -39,12 +39,13 @@ export function Screen({
   const baseBottomPadding = isHorizontal ? 16 : width < 420 ? 108 : width < 768 ? 118 : 132;
   const baseScreenStyle =
     Platform.OS === "web"
-      ? ({ flex: 1, minHeight: "100vh" as never } as const)
+      ? ({ flex: 1, width: "100%" as const, minHeight: "100vh" as never } as const)
       : ({ flex: 1, minHeight: 0 } as const);
   const webVerticalScrollStyle =
     Platform.OS === "web" && !isHorizontal
       ? {
           flex: 1,
+          width: "100%" as const,
           minHeight: "100vh" as never,
           overflowX: "hidden" as const,
           overflowY: "scroll" as const,

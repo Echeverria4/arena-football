@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Image, Pressable, Switch, Text, TextInput, View } from "react-native";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import type { TeamItem } from "@/lib/team-data";
 import { getTeamInitials, resolveTeamVisual } from "@/lib/team-visuals";
 import { buildInitialCampeonato } from "@/lib/tournament-setup";
 import { classificationCriterionSchema } from "@/lib/validations";
+import type { TournamentMatchMode } from "@/types/tournament";
 import { useAppStore } from "@/stores/app-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 
@@ -114,6 +115,11 @@ export default function TournamentCreateScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step2Touched, setStep2Touched] = useState(false);
   const [pickerOpenForIndex, setPickerOpenForIndex] = useState<number | null>(null);
+  const [numGrupos, setNumGrupos] = useState(2);
+  const [jogadoresPerGrupo, setJogadoresPerGrupo] = useState(4);
+  const [modoConfronto, setModoConfronto] = useState<TournamentMatchMode>("single_game");
+  const [modoConfrontoMataMata, setModoConfrontoMataMata] = useState<TournamentMatchMode>("single_game");
+  const [gruposClassificacaoModo, setGruposClassificacaoModo] = useState<"first_only" | "top_two" | "first_direct_second_playoff" | "first_direct_second_vs_third_playoff">("top_two");
 
   const {
     control,
@@ -136,6 +142,14 @@ export default function TournamentCreateScreen() {
 
   const currentFormat = watch("format");
   const selectedCriteria = watch("classificationCriteria");
+  const usesGroupConfig = currentFormat === "groups" || currentFormat === "groups_knockout";
+
+  // When using group config, player count is derived from groups × players-per-group
+  useEffect(() => {
+    if (usesGroupConfig) {
+      setValue("playerCount", numGrupos * jogadoresPerGrupo, { shouldValidate: true });
+    }
+  }, [numGrupos, jogadoresPerGrupo, usesGroupConfig, setValue]);
 
   function handleBackPress() {
     if (step === 2) { setStep2Touched(false); setStep(1); return; }
@@ -166,7 +180,7 @@ export default function TournamentCreateScreen() {
     setDraftParticipants((prev) =>
       Array.from({ length: count }, (_, i) => ({
         nome: prev[i]?.nome ?? `Jogador ${String(i + 1).padStart(2, "0")}`,
-        time: prev[i]?.time ?? `Time ${String(i + 1).padStart(2, "0")}`,
+        time: prev[i]?.time ?? "",
         whatsapp: prev[i]?.whatsapp ?? "",
         timeImagem: prev[i]?.timeImagem,
         timeTipoIcone: prev[i]?.timeTipoIcone,
@@ -217,12 +231,15 @@ export default function TournamentCreateScreen() {
         createdAt,
         seasonLabel: nextSeasonLabel,
         format: step1Values.format,
-        matchMode: "single_game",
+        matchMode: modoConfronto,
         rules: step1Values.rules,
         classificationCriteria: step1Values.classificationCriteria,
         allowVideos: step1Values.allowVideos,
         allowGoalAward: step1Values.allowGoalAward,
         playerCount: step1Values.playerCount,
+        numGrupos: (step1Values.format === "groups" || step1Values.format === "groups_knockout") ? numGrupos : undefined,
+        modoConfrontoMataMata: step1Values.format === "groups_knockout" ? modoConfrontoMataMata : undefined,
+        gruposClassificacaoModo: step1Values.format === "groups_knockout" ? gruposClassificacaoModo : undefined,
       });
 
       const updatedParticipantes = campeonato.participantes.map((autoP, i) => {
@@ -334,27 +351,226 @@ export default function TournamentCreateScreen() {
               </ScrollRow>
             </View>
 
-            {/* Player count */}
-            <View className="gap-2">
-              <Text className="text-sm font-semibold text-arena-text">Quantidade de jogadores</Text>
-              <Controller
-                control={control}
-                name="playerCount"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    className="rounded-2xl border border-arena-line bg-arena-surface px-4 py-4 text-arena-text"
-                    placeholder="16"
-                    placeholderTextColor="#7481A2"
-                    keyboardType="numeric"
-                    value={String(value)}
-                    onChangeText={onChange}
-                  />
+            {/* Match mode — only for pure knockout (groups_knockout uses modoConfrontoMataMata below) */}
+            {currentFormat === "knockout" && <View className="gap-2">
+              <Text className="text-sm font-semibold text-arena-text">Tipo de partida</Text>
+              <View className="flex-row gap-3">
+                {([
+                  { value: "single_game", label: "Jogo único" },
+                  { value: "home_away", label: "Casa e fora" },
+                ] as const).map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setModoConfronto(opt.value)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: modoConfronto === opt.value ? "rgba(87,255,124,0.55)" : "rgba(255,255,255,0.12)",
+                      backgroundColor: modoConfronto === opt.value ? "rgba(87,255,124,0.10)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: modoConfronto === opt.value ? "#CFFFD9" : "#A0AEC0",
+                        fontSize: 13,
+                        fontWeight: "800",
+                      }}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>}
+
+            {/* Groups config — shown for both "groups" and "groups_knockout" */}
+            {usesGroupConfig ? (
+              <View
+                className="gap-4 rounded-[20px] border p-4"
+                style={{ borderColor: "rgba(139,92,246,0.28)", backgroundColor: "rgba(139,92,246,0.06)" }}
+              >
+                <Text style={{ color: "#C4B5FD", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>
+                  Configuração dos grupos
+                </Text>
+
+                {/* Number of groups */}
+                <View className="gap-2">
+                  <Text className="text-sm font-semibold text-arena-text">Número de grupos</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {[2, 3, 4, 6, 8].map((n) => (
+                      <Pressable
+                        key={n}
+                        onPress={() => setNumGrupos(n)}
+                        style={{
+                          paddingHorizontal: 18,
+                          paddingVertical: 10,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: numGrupos === n ? "rgba(139,92,246,0.65)" : "rgba(255,255,255,0.12)",
+                          backgroundColor: numGrupos === n ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <Text style={{ color: numGrupos === n ? "#E9D5FF" : "#A0AEC0", fontSize: 14, fontWeight: "800" }}>
+                          {n} grupos
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Players per group */}
+                <View className="gap-2">
+                  <Text className="text-sm font-semibold text-arena-text">Jogadores por grupo</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {[2, 3, 4, 5, 6, 8].map((n) => (
+                      <Pressable
+                        key={n}
+                        onPress={() => setJogadoresPerGrupo(n)}
+                        style={{
+                          paddingHorizontal: 18,
+                          paddingVertical: 10,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: jogadoresPerGrupo === n ? "rgba(139,92,246,0.65)" : "rgba(255,255,255,0.12)",
+                          backgroundColor: jogadoresPerGrupo === n ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <Text style={{ color: jogadoresPerGrupo === n ? "#E9D5FF" : "#A0AEC0", fontSize: 14, fontWeight: "800" }}>
+                          {n} por grupo
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={{ color: "#A0AEC0", fontSize: 12 }}>
+                    Total: {numGrupos * jogadoresPerGrupo} jogadores ({numGrupos} grupo{numGrupos !== 1 ? "s" : ""} × {jogadoresPerGrupo})
+                  </Text>
+                </View>
+
+                {/* Classificação para o mata-mata (groups_knockout only) */}
+                {currentFormat === "groups_knockout" && (
+                  <>
+                    <View className="gap-2">
+                      <Text className="text-sm font-semibold text-arena-text">Classificação para o mata-mata</Text>
+                      <View className="gap-2">
+                        {([
+                          {
+                            value: "first_only" as const,
+                            label: "Só o 1º classifica",
+                            desc: "Apenas o líder de cada grupo avança. Mata-mata direto entre os primeiros colocados.",
+                          },
+                          {
+                            value: "top_two" as const,
+                            label: "Os 2 primeiros classificam",
+                            desc: "1º e 2º avançam. Chaveamento cruzado estilo Copa do Mundo: 1ºA × 2ºB, 1ºB × 2ºA…",
+                          },
+                          {
+                            value: "first_direct_second_playoff" as const,
+                            label: "1º direto · 2º na repescagem",
+                            desc: "O 1º de cada grupo avança direto. Os 2ºs colocados jogam repescagem entre si — o vencedor conquista a vaga restante.",
+                          },
+                          {
+                            value: "first_direct_second_vs_third_playoff" as const,
+                            label: "1º direto · 2º × 3º na repescagem",
+                            desc: "O 1º avança direto. O 2º de cada grupo enfrenta o 3º de outro grupo na repescagem — o vencedor se classifica.",
+                          },
+                        ]).map((opt) => {
+                          const selected = gruposClassificacaoModo === opt.value;
+                          return (
+                            <Pressable
+                              key={opt.value}
+                              onPress={() => setGruposClassificacaoModo(opt.value)}
+                              style={{
+                                borderRadius: 14,
+                                borderWidth: 1.5,
+                                borderColor: selected ? "rgba(139,92,246,0.70)" : "rgba(255,255,255,0.10)",
+                                backgroundColor: selected ? "rgba(139,92,246,0.14)" : "rgba(255,255,255,0.03)",
+                                padding: 14,
+                                gap: 4,
+                              }}
+                            >
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <View
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 8,
+                                    borderWidth: 2,
+                                    borderColor: selected ? "#A78BFA" : "rgba(255,255,255,0.25)",
+                                    backgroundColor: selected ? "#8B5CF6" : "transparent",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                />
+                                <Text style={{ color: selected ? "#E9D5FF" : "#D1D5DB", fontSize: 13, fontWeight: "800" }}>
+                                  {opt.label}
+                                </Text>
+                              </View>
+                              <Text style={{ color: selected ? "rgba(233,213,255,0.72)" : "rgba(255,255,255,0.40)", fontSize: 12, lineHeight: 17, paddingLeft: 24 }}>
+                                {opt.desc}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    {/* Mata-mata match mode */}
+                    <View className="gap-2">
+                      <Text className="text-sm font-semibold text-arena-text">Partidas do mata-mata</Text>
+                      <View className="flex-row gap-3">
+                        {([
+                          { value: "single_game" as const, label: "Jogo único" },
+                          { value: "home_away" as const, label: "Casa e fora" },
+                        ]).map((opt) => (
+                          <Pressable
+                            key={opt.value}
+                            onPress={() => setModoConfrontoMataMata(opt.value)}
+                            style={{
+                              flex: 1,
+                              paddingVertical: 12,
+                              borderRadius: 14,
+                              alignItems: "center",
+                              borderWidth: 1,
+                              borderColor: modoConfrontoMataMata === opt.value ? "rgba(139,92,246,0.65)" : "rgba(255,255,255,0.12)",
+                              backgroundColor: modoConfrontoMataMata === opt.value ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            <Text style={{ color: modoConfrontoMataMata === opt.value ? "#E9D5FF" : "#A0AEC0", fontSize: 13, fontWeight: "800" }}>
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  </>
                 )}
-              />
-              {errors.playerCount ? (
-                <Text className="text-sm text-arena-danger">{errors.playerCount.message}</Text>
-              ) : null}
-            </View>
+              </View>
+            ) : (
+              /* Player count input — only shown for non-group formats */
+              <View className="gap-2">
+                <Text className="text-sm font-semibold text-arena-text">Quantidade de jogadores</Text>
+                <Controller
+                  control={control}
+                  name="playerCount"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      className="rounded-2xl border border-arena-line bg-arena-surface px-4 py-4 text-arena-text"
+                      placeholder="16"
+                      placeholderTextColor="#7481A2"
+                      keyboardType="numeric"
+                      value={String(value)}
+                      onChangeText={onChange}
+                    />
+                  )}
+                />
+                {errors.playerCount ? (
+                  <Text className="text-sm text-arena-danger">{errors.playerCount.message}</Text>
+                ) : null}
+              </View>
+            )}
 
             {/* Rules */}
             <View className="gap-2">
@@ -478,7 +694,7 @@ export default function TournamentCreateScreen() {
           <SectionHeader
             eyebrow="Etapa 2 de 3 — Jogadores"
             title="Registrar participantes"
-            subtitle={`Preencha nome e time de cada jogador. Use o botão de escudo para escolher o time pelo catálogo de continentes. WhatsApp é opcional.`}
+            subtitle="Preencha o nome de cada jogador e escolha o time pelo catálogo de continentes. WhatsApp é opcional."
           />
 
           {/* Global error banner */}
@@ -596,72 +812,52 @@ export default function TournamentCreateScreen() {
                     ) : null}
                   </View>
 
-                  {/* Time — campo + botão catálogo */}
+                  {/* Time — somente via catálogo */}
                   <View style={{ gap: 6 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      {/* Badge do time selecionado pelo catálogo */}
+                    <Pressable
+                      onPress={() => setPickerOpenForIndex(index)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        borderColor: missingTime
+                          ? "rgba(212,79,98,0.60)"
+                          : hasTeamFromCatalog
+                            ? "rgba(59,91,255,0.35)"
+                            : "rgba(255,255,255,0.10)",
+                        backgroundColor: missingTime
+                          ? "rgba(212,79,98,0.08)"
+                          : hasTeamFromCatalog
+                            ? "rgba(59,91,255,0.08)"
+                            : "#132028",
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        minHeight: 50,
+                      }}
+                    >
                       {hasTeamFromCatalog ? (
-                        <TeamBadge
-                          imageUri={participant.timeImagem}
-                          name={participant.time}
-                          tipoIcone={participant.timeTipoIcone}
-                        />
-                      ) : null}
-
-                      <TextInput
-                        style={{
-                          flex: 1,
-                          borderRadius: 14,
-                          borderWidth: 1,
-                          borderColor: missingTime
-                            ? "rgba(212,79,98,0.60)"
-                            : hasTeamFromCatalog
-                              ? "rgba(59,91,255,0.35)"
-                              : "rgba(255,255,255,0.10)",
-                          backgroundColor: missingTime
-                            ? "rgba(212,79,98,0.08)"
-                            : hasTeamFromCatalog
-                              ? "rgba(59,91,255,0.08)"
-                              : "#132028",
-                          color: "#F3F7FF",
-                          paddingHorizontal: 16,
-                          paddingVertical: 12,
-                          fontSize: 15,
-                        }}
-                        placeholder="Nome do time *"
-                        placeholderTextColor={missingTime ? "#FF8A97" : "#7481A2"}
-                        autoCapitalize="words"
-                        value={participant.time}
-                        onChangeText={(v) => {
-                          updateParticipant(index, "time", v);
-                          // Clear catalog data when user types manually
-                          setDraftParticipants((prev) =>
-                            prev.map((p, i) =>
-                              i === index
-                                ? { ...p, time: v, timeImagem: undefined, timeTipoIcone: undefined }
-                                : p,
-                            ),
-                          );
-                        }}
-                      />
-
-                      {/* Botão abrir catálogo */}
-                      <Pressable
-                        onPress={() => setPickerOpenForIndex(index)}
-                        style={{
-                          width: 46,
-                          height: 46,
-                          borderRadius: 12,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "rgba(59,91,255,0.14)",
-                          borderWidth: 1,
-                          borderColor: "rgba(59,91,255,0.32)",
-                        }}
-                      >
-                        <Text style={{ fontSize: 20 }}>🌍</Text>
-                      </Pressable>
-                    </View>
+                        <>
+                          <TeamBadge
+                            imageUri={participant.timeImagem}
+                            name={participant.time}
+                            tipoIcone={participant.timeTipoIcone}
+                          />
+                          <Text style={{ flex: 1, color: "#F3F7FF", fontSize: 15, fontWeight: "700" }}>
+                            {participant.time}
+                          </Text>
+                          <Text style={{ color: "#6B8FD4", fontSize: 13 }}>🔄</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={{ fontSize: 20 }}>🌍</Text>
+                          <Text style={{ flex: 1, color: missingTime ? "#FF8A97" : "#7481A2", fontSize: 15 }}>
+                            {missingTime ? "Selecione um time *" : "Selecionar time do catálogo"}
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
 
                     {missingTime ? (
                       <Text style={{ color: "#FF8A97", fontSize: 12, fontWeight: "600", paddingLeft: 4 }}>
@@ -669,7 +865,7 @@ export default function TournamentCreateScreen() {
                       </Text>
                     ) : hasTeamFromCatalog ? (
                       <Text style={{ color: "#6B8FD4", fontSize: 11, paddingLeft: 4 }}>
-                        Time selecionado do catálogo
+                        Toque para trocar o time
                       </Text>
                     ) : null}
                   </View>

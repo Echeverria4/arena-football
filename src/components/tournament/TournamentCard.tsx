@@ -206,7 +206,7 @@ export function TournamentCard({
               }}
             >
               {crest ? (
-                <Image source={{ uri: crest }} style={{ width: "72%", height: "72%" }} resizeMode="contain" />
+                <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
               ) : (
                 <Text
                   style={{

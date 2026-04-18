@@ -60,7 +60,7 @@ const PADDING_TOP = 18;
 const PADDING_BOTTOM = 28;
 const PADDING_LEFT = AXIS_LABEL_WIDTH + 20;
 const PADDING_RIGHT = 28;
-const MARKER_SIZE = 18;
+const MARKER_SIZE = 32;
 const X_AXIS_LABEL_WIDTH = 24;
 const GRID_LINE_THICKNESS = 0.6;
 const SEGMENT_THICKNESS = 2.5;
@@ -400,7 +400,9 @@ export function LeagueProgressChart({
     : "Rodadas ainda nao geradas";
   const emptyStateDescription = !hasParticipants
     ? "Este campeonato foi salvo sem jogadores vinculados. Enquanto isso nao for corrigido, nao ha linha de evolucao para mostrar."
-    : "O campeonato esta em pontos corridos, mas ainda nao existem confrontos estruturados para montar a curva de evolucao.";
+    : format === "groups" || format === "groups_knockout"
+      ? "O campeonato esta na fase de grupos, mas ainda nao existem rodadas finalizadas para montar a curva de evolucao."
+      : "O campeonato esta em pontos corridos, mas ainda nao existem confrontos estruturados para montar a curva de evolucao.";
 
   function handleLayout(event: LayoutChangeEvent) {
     const nextWidth = Math.max(Math.round(event.nativeEvent.layout.width), 320);
@@ -410,7 +412,7 @@ export function LeagueProgressChart({
     }
   }
 
-  if (format !== "league") return null;
+  if (format === "knockout") return null;
 
   return (
     <View className="gap-4">

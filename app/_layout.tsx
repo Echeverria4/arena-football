@@ -30,7 +30,7 @@ function TournamentDeadlineAutoSync() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1, minHeight: 0 }}>
+    <GestureHandlerRootView style={{ flex: 1, width: "100%", minHeight: 0 }}>
       <TournamentDeadlineAutoSync />
       <StatusBar style="light" />
       <Stack

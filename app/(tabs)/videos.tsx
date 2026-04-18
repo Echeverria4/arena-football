@@ -517,7 +517,7 @@ export default function VideosScreen() {
                     </Text>
                   </View>
 
-                  <VideoPlayerSurface videoUrl={openedVideo.videoUrl} title={openedVideo.title} />
+                  <VideoPlayerSurface videoUrl={openedVideo.videoUrl} title={openedVideo.title} mimeType={openedVideo.mimeType} />
 
                   {openedVideo.description || openedVideo.teamName || openedVideo.playerPhone ? (
                     <View

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, Image, Text, TextInput, View } from "react-native";
 
 import { Badge } from "@/components/ui/Badge";
 import { BackButton } from "@/components/ui/BackButton";
@@ -16,7 +16,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
 import { canEditTournament, useTournamentAccessMode } from "@/lib/tournament-access";
 import { formatPhone } from "@/lib/formatters";
-import { normalizeTeamDisplayName } from "@/lib/team-visuals";
+import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import { getTournamentBundle } from "@/lib/tournament-display";
 import { updateParticipantDisplay } from "@/services/participants";
 import { useTournamentStore } from "@/stores/tournament-store";
@@ -253,13 +253,35 @@ export default function TournamentParticipantsScreen() {
                             borderColor: isEditing
                               ? "rgba(118,255,169,0.24)"
                               : "rgba(154,184,255,0.16)",
+                            overflow: "hidden",
                           }}
                         >
-                          <Ionicons
-                            name={participant.isOrganizer ? "shield-outline" : "person-outline"}
-                            size={34}
-                            color={isEditing ? "#7BFFAF" : participant.isOrganizer ? "#FFD76A" : "#9AB8FF"}
-                          />
+                          {(() => {
+                            const crest = resolveTeamVisualByName(teamName);
+                            if (crest) {
+                              return (
+                                <Image
+                                  source={{ uri: crest }}
+                                  style={{ width: "90%", height: "90%" }}
+                                  resizeMode="contain"
+                                />
+                              );
+                            }
+                            if (teamName && teamName !== "A definir") {
+                              return (
+                                <Text style={{ color: "#9AB8FF", fontSize: 16, fontWeight: "900", letterSpacing: 1 }}>
+                                  {getTeamInitials(teamName)}
+                                </Text>
+                              );
+                            }
+                            return (
+                              <Ionicons
+                                name={participant.isOrganizer ? "shield-outline" : "person-outline"}
+                                size={34}
+                                color={isEditing ? "#7BFFAF" : participant.isOrganizer ? "#FFD76A" : "#9AB8FF"}
+                              />
+                            );
+                          })()}
                         </View>
 
                         <View className="flex-1 gap-2">

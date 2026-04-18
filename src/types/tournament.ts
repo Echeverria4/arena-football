@@ -3,6 +3,12 @@ export type TournamentFormat =
   | "groups"
   | "knockout"
   | "groups_knockout";
+
+export type TournamentGroupAdvancementMode =
+  | "first_only"
+  | "top_two"
+  | "first_direct_second_playoff"
+  | "first_direct_second_vs_third_playoff";
 export type ClassificationCriterion =
   | "points"
   | "goal_difference"
@@ -126,6 +132,16 @@ export type Campeonato = {
   tempoExtraRodadasMs?: Record<string, number>;
   formato?: TournamentFormat;
   modoConfronto?: TournamentMatchMode;
+  /** Número de grupos para formato groups_knockout */
+  numGrupos?: number;
+  /** Modo das partidas da fase mata-mata (para groups_knockout) */
+  modoConfrontoMataMata?: TournamentMatchMode;
+  /** Quantas rodadas pertencem à fase de grupos (rodadas acima = mata-mata) */
+  numRodadasGrupos?: number;
+  /** Regra de classificação dos grupos para o mata-mata */
+  gruposClassificacaoModo?: TournamentGroupAdvancementMode;
+  /** IDs dos classificados diretos aguardando repescagem (modo first_direct_second_playoff) */
+  classificadosDiretosIds?: string[];
   regraTimes?: TournamentTeamRule;
   regras?: string;
   criteriosClassificacao?: ClassificationCriterion[];

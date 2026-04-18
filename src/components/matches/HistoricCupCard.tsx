@@ -27,6 +27,7 @@ export interface HistoricCupItem {
 interface HistoricCupCardProps {
   item: HistoricCupItem;
   onPress?: () => void;
+  compact?: boolean;
 }
 
 const statusAccent: Record<MatchStatus, string> = {
@@ -39,15 +40,17 @@ function FlagTile({
   imageUrl,
   fallbackLabel,
   variant = "team",
+  small = false,
 }: {
   imageUrl?: string | null;
   fallbackLabel: string;
   variant?: "host" | "team";
+  small?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const isHost = variant === "host";
-  const tileWidth = isHost ? 54 : 62;
-  const tileHeight = isHost ? 34 : 42;
+  const tileWidth = isHost ? 54 : small ? 44 : 62;
+  const tileHeight = isHost ? 34 : small ? 30 : 42;
   const innerScale = isHost ? "88%" : "84%";
 
   return (
@@ -84,7 +87,7 @@ function FlagTile({
         <Text
           style={{
             color: isHost ? "#111111" : "#FFFFFF",
-            fontSize: isHost ? 11 : 14,
+            fontSize: isHost ? 11 : small ? 10 : 14,
             fontWeight: "900",
             letterSpacing: 1,
           }}
@@ -96,13 +99,15 @@ function FlagTile({
   );
 }
 
-function ScoreBlock({ top, bottom }: { top: string; bottom?: string }) {
-  const scoreFontSize = bottom ? 24 : top === "VS" ? 28 : 26;
+function ScoreBlock({ top, bottom, compact = false }: { top: string; bottom?: string; compact?: boolean }) {
+  const scoreFontSize = compact
+    ? bottom ? 16 : top === "VS" ? 18 : 17
+    : bottom ? 24 : top === "VS" ? 28 : 26;
 
   return (
     <View
       style={{
-        minWidth: 68,
+        minWidth: compact ? 44 : 68,
         alignItems: "center",
         justifyContent: "center",
       }}
@@ -112,7 +117,7 @@ function ScoreBlock({ top, bottom }: { top: string; bottom?: string }) {
           color: "#FFFFFF",
           fontSize: scoreFontSize,
           fontWeight: "300",
-          lineHeight: bottom ? 28 : 30,
+          lineHeight: compact ? (bottom ? 20 : 22) : (bottom ? 28 : 30),
         }}
       >
         {top}
@@ -121,9 +126,9 @@ function ScoreBlock({ top, bottom }: { top: string; bottom?: string }) {
         <Text
           style={{
             color: "#FFFFFF",
-            fontSize: 24,
+            fontSize: compact ? 16 : 24,
             fontWeight: "300",
-            lineHeight: 28,
+            lineHeight: compact ? 20 : 28,
           }}
         >
           {bottom}
@@ -137,26 +142,29 @@ function TeamColumn({
   code,
   flagUrl,
   player,
+  compact = false,
 }: {
   code: string;
   flagUrl?: string | null;
   player?: string;
+  compact?: boolean;
 }) {
   return (
     <View
       style={{
-        width: 82,
+        flex: compact ? 1 : undefined,
+        width: compact ? undefined : 82,
         alignItems: "center",
         justifyContent: "flex-start",
       }}
     >
-      <FlagTile imageUrl={flagUrl} fallbackLabel={code} />
+      <FlagTile imageUrl={flagUrl} fallbackLabel={code} small={compact} />
       <Text
         numberOfLines={1}
         style={{
-          marginTop: 8,
+          marginTop: compact ? 5 : 8,
           color: "#FFFFFF",
-          fontSize: 13,
+          fontSize: compact ? 10 : 13,
           fontWeight: "800",
           textTransform: "uppercase",
         }}
@@ -165,12 +173,12 @@ function TeamColumn({
       </Text>
       {player ? (
         <Text
-          numberOfLines={2}
+          numberOfLines={1}
           style={{
-            marginTop: 3,
+            marginTop: 2,
             color: "rgba(255,255,255,0.74)",
-            fontSize: 11,
-            lineHeight: 13,
+            fontSize: compact ? 9 : 11,
+            lineHeight: compact ? 11 : 13,
             textAlign: "center",
           }}
         >
@@ -181,7 +189,7 @@ function TeamColumn({
   );
 }
 
-export function HistoricCupCard({ item, onPress }: HistoricCupCardProps) {
+export function HistoricCupCard({ item, onPress, compact = false }: HistoricCupCardProps) {
   const accent = statusAccent[item.status ?? "pending"];
   const borderAccent =
     item.status === "finished" ? "emerald" : item.status === "in_progress" ? "blue" : "gold";
@@ -200,19 +208,19 @@ export function HistoricCupCard({ item, onPress }: HistoricCupCardProps) {
       >
         <View
           style={{
-            minHeight: 228,
+            minHeight: compact ? 180 : 228,
             backgroundColor: "#343434",
           }}
         >
         <View
           style={{
-            minHeight: 38,
+            minHeight: compact ? 30 : 38,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: "#F0F0F0",
-            paddingHorizontal: 10,
-            paddingVertical: 7,
+            paddingHorizontal: compact ? 6 : 10,
+            paddingVertical: compact ? 5 : 7,
             borderLeftWidth: 4,
             borderLeftColor: accent,
             position: "relative",
@@ -240,23 +248,23 @@ export function HistoricCupCard({ item, onPress }: HistoricCupCardProps) {
             numberOfLines={1}
             style={{
               color: "#111111",
-              fontSize: 12,
+              fontSize: compact ? 10 : 12,
               fontWeight: "700",
               textAlign: "center",
-              paddingHorizontal: item.hostFlagUrl ? 56 : 0,
+              paddingHorizontal: item.hostFlagUrl ? (compact ? 40 : 56) : 0,
             }}
           >
             {item.editionLabel}
           </Text>
         </View>
 
-          <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 16 }}>
+          <View style={{ paddingHorizontal: compact ? 8 : 14, paddingTop: compact ? 8 : 14, paddingBottom: compact ? 10 : 16 }}>
             <Text
               style={{
                 textAlign: "center",
                 color: "#FFFFFF",
-                fontSize: 13,
-                marginBottom: 14,
+                fontSize: compact ? 10 : 13,
+                marginBottom: compact ? 8 : 14,
               }}
             >
               {item.dateLabel}
@@ -269,34 +277,36 @@ export function HistoricCupCard({ item, onPress }: HistoricCupCardProps) {
                 justifyContent: "space-between",
               }}
             >
-              <TeamColumn code={item.homeCode} flagUrl={item.homeFlagUrl} player={item.homePlayer} />
-              <ScoreBlock top={item.scoreTop} bottom={item.scoreBottom} />
-              <TeamColumn code={item.awayCode} flagUrl={item.awayFlagUrl} player={item.awayPlayer} />
+              <TeamColumn code={item.homeCode} flagUrl={item.homeFlagUrl} player={item.homePlayer} compact={compact} />
+              <ScoreBlock top={item.scoreTop} bottom={item.scoreBottom} compact={compact} />
+              <TeamColumn code={item.awayCode} flagUrl={item.awayFlagUrl} player={item.awayPlayer} compact={compact} />
             </View>
 
-            <View style={{ marginTop: 14 }}>
+            <View style={{ marginTop: compact ? 8 : 14 }}>
               <Text
                 numberOfLines={2}
                 style={{
                   color: "#FFFFFF",
-                  fontSize: 12,
-                  lineHeight: 16,
+                  fontSize: compact ? 10 : 12,
+                  lineHeight: compact ? 13 : 16,
                   textAlign: "center",
                 }}
               >
                 {item.stadium}
               </Text>
-              <Text
-                numberOfLines={2}
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 12,
-                  lineHeight: 16,
-                  textAlign: "center",
-                }}
-              >
-                {item.city}
-              </Text>
+              {item.city ? (
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: compact ? 10 : 12,
+                    lineHeight: compact ? 13 : 16,
+                    textAlign: "center",
+                  }}
+                >
+                  {item.city}
+                </Text>
+              ) : null}
             </View>
           </View>
         </View>

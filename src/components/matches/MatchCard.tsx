@@ -64,7 +64,7 @@ function TeamCrest({
       {flagUrl && !failed ? (
         <Image
           source={{ uri: flagUrl }}
-          style={{ width: "86%", height: "86%" }}
+          style={{ width: "94%", height: "94%" }}
           resizeMode="contain"
           onError={() => setFailed(true)}
         />

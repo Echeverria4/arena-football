@@ -335,7 +335,7 @@ export function ChampionShowcaseCard({
                     }}
                   >
                     {crest ? (
-                      <Image source={{ uri: crest }} style={{ width: "72%", height: "72%" }} resizeMode="contain" />
+                      <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
                     ) : (
                       <Ionicons
                         name={championLabel.toLowerCase().includes("líder") ? "flame-outline" : "trophy-outline"}
@@ -414,7 +414,7 @@ export function ChampionShowcaseCard({
                     }}
                   >
                     {crest ? (
-                      <Image source={{ uri: crest }} style={{ width: "72%", height: "72%" }} resizeMode="contain" />
+                      <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
                     ) : (
                       <Text
                         style={{

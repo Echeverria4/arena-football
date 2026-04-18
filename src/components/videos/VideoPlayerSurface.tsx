@@ -8,11 +8,13 @@ import { buildYouTubeEmbedUrl } from "@/lib/video-links";
 interface VideoPlayerSurfaceProps {
   videoUrl: string;
   title: string;
+  mimeType?: string | null;
 }
 
-export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps) {
+export function VideoPlayerSurface({ videoUrl, title, mimeType }: VideoPlayerSurfaceProps) {
   const [playbackUrl, setPlaybackUrl] = useState<string>("");
   const [resolved, setResolved] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<Video>(null);
   const embedUrl = Platform.OS === "web" ? buildYouTubeEmbedUrl(videoUrl) : null;
 
@@ -23,6 +25,7 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
     async function load() {
       setResolved(false);
       setPlaybackUrl("");
+      setVideoError(false);
       const nextUrl = await resolvePlayableVideoUrl(videoUrl);
 
       if (!active) {
@@ -96,7 +99,7 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
   }
 
   // ── Web: loading / error state ─────────────────────────────────────────────
-  if (!playbackUrl) {
+  if (!playbackUrl || videoError) {
     return (
       <View
         style={{
@@ -112,9 +115,9 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
         }}
       >
         <Text style={{ color: "#F3F7FF", fontSize: 16, fontWeight: "800", textAlign: "center" }}>
-          {resolved ? "Video indisponivel" : "Carregando video"}
+          {!resolved ? "Carregando video..." : videoError ? "Erro ao reproduzir" : "Video indisponivel"}
         </Text>
-        {resolved ? (
+        {(resolved || videoError) ? (
           <Text
             style={{
               marginTop: 8,
@@ -124,7 +127,9 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
               textAlign: "center",
             }}
           >
-            O arquivo original nao esta acessivel neste aparelho. Use uma URL publica para compartilhar a reproducao.
+            {videoError
+              ? "O formato do arquivo pode nao ser suportado neste navegador. Tente converter para MP4 (H.264)."
+              : "O arquivo original nao esta acessivel. Use uma URL publica para compartilhar a reproducao."}
           </Text>
         ) : null}
       </View>
@@ -158,19 +163,27 @@ export function VideoPlayerSurface({ videoUrl, title }: VideoPlayerSurfaceProps)
               backgroundColor: "#000000",
             },
           })
-        : createElement("video", {
-            src: playbackUrl,
-            controls: true,
-            playsInline: true,
-            preload: "metadata",
-            "aria-label": title,
-            style: {
-              display: "block",
-              width: "100%",
-              maxHeight: "70vh",
-              backgroundColor: "#000000",
+        : createElement(
+            "video",
+            {
+              controls: true,
+              playsInline: true,
+              "webkit-playsinline": true,
+              preload: "auto",
+              "aria-label": title,
+              onError: () => setVideoError(true),
+              style: {
+                display: "block",
+                width: "100%",
+                maxHeight: "70vh",
+                backgroundColor: "#000000",
+              },
             },
-          })}
+            createElement("source", {
+              src: playbackUrl,
+              ...(mimeType ? { type: mimeType } : {}),
+            }),
+          )}
     </View>
   );
 }

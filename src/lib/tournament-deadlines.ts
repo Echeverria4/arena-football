@@ -104,17 +104,22 @@ export function syncExpiredCampeonatoRounds(campeonato: Campeonato, now = new Da
     };
   }
 
-  const allMatchesFinished = updatedRounds.flat().every(
+  const allDone = updatedRounds.flat().every(
     (jogo) =>
       jogo.status === "finalizado" &&
       jogo.placarMandante != null &&
       jogo.placarVisitante != null,
   );
+  // groups_knockout: only finalize after knockout rounds are generated and completed
+  const complete =
+    allDone &&
+    (normalized.formato !== "groups_knockout" ||
+      updatedRounds.length > (normalized.numRodadasGrupos ?? 0));
 
   const nextCampeonato = hydrateCampeonatoStructure({
     ...normalized,
-    status: allMatchesFinished ? "finalizado" : normalized.status,
-    fimEm: allMatchesFinished ? normalized.fimEm ?? now.toISOString() : normalized.fimEm,
+    status: complete ? "finalizado" : normalized.status,
+    fimEm: complete ? normalized.fimEm ?? now.toISOString() : normalized.fimEm,
     rodadas: updatedRounds,
     classificacao: recomputeCampeonatoClassificacao({
       ...normalized,
