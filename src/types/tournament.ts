@@ -129,6 +129,7 @@ export type Campeonato = {
   fimEm?: string;
   temporada?: string;
   prazoRodadaDias?: number;
+  prazoFinalEm?: string;
   tempoExtraRodadasMs?: Record<string, number>;
   formato?: TournamentFormat;
   modoConfronto?: TournamentMatchMode;

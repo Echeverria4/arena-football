@@ -1,6 +1,8 @@
 import { router, Stack, useGlobalSearchParams, usePathname } from "expo-router";
 import { useEffect } from "react";
+import { View } from "react-native";
 
+import { TournamentDeadlinePill } from "@/components/tournament/TournamentDeadlinePill";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
 
@@ -90,11 +92,14 @@ export default function TournamentLayout() {
   }, [currentTournamentId, routeKey, shouldRedirect]);
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: "#050A11", flex: 1, width: "100%", maxWidth: "100vw" as never, minHeight: 0, overflow: "hidden" as never },
-      }}
-    />
+    <View style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#050A11", flex: 1, width: "100%", maxWidth: "100vw" as never, minHeight: 0, overflow: "hidden" as never },
+        }}
+      />
+      <TournamentDeadlinePill />
+    </View>
   );
 }

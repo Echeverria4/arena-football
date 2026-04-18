@@ -131,6 +131,11 @@ export function getParticipantTeam(participante?: Participante | null, classific
 
 export function getRoundDeadline(campeonato: Campeonato, round: number) {
   const normalized = normalizeCampeonato(campeonato);
+
+  if (normalized.prazoFinalEm) {
+    return normalized.prazoFinalEm;
+  }
+
   if (!normalized.inicioEm || !normalized.prazoRodadaDias) {
     return null;
   }

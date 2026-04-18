@@ -1,11 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { memo, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Alert, Platform, Text, View } from "react-native";
 
-import { getCurrentOpenRound, getRoundDeadlineCountdown, HOUR_MS } from "@/lib/tournament-deadlines";
 import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
 import { LeagueProgressChart } from "@/components/tournament/LeagueProgressChart";
-import { RoundDeadlineSetupCard } from "@/components/tournament/RoundDeadlineSetupCard";
 import { BackButton } from "@/components/ui/BackButton";
 import { Card3D } from "@/components/ui/Card3D";
 import { ChoiceChip } from "@/components/ui/ChoiceChip";
@@ -24,76 +22,17 @@ import {
   resolveTournamentAccessMode,
   useTournamentAccessMode,
 } from "@/lib/tournament-access";
-import {
-  formatRoundDeadlineDays,
-  getCampeonatoSeasonLabel,
-} from "@/lib/season-tournaments";
-import { normalizeTeamDisplayName } from "@/lib/team-visuals";
+import { getCampeonatoSeasonLabel } from "@/lib/season-tournaments";
 import { getTournamentBundle } from "@/lib/tournament-display";
 import { useAppStore } from "@/stores/app-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
 
-// Isolated so the 1-second tick ONLY re-renders this subtree, not the whole screen
-const CountdownSection = memo(function CountdownSection({
-  campeonato,
-  currentOpenRound,
-  roundsStarted,
-  canManageTournament,
-  onSaveRoundDeadline,
-  onDecreaseExtraHour,
-  onIncreaseExtraHour,
-}: {
-  campeonato: ReturnType<typeof getTournamentBundle> extends null ? never : NonNullable<ReturnType<typeof getTournamentBundle>>["campeonato"];
-  currentOpenRound: number | null;
-  roundsStarted: boolean;
-  canManageTournament: boolean;
-  onSaveRoundDeadline: (days: number) => void;
-  onDecreaseExtraHour: () => void;
-  onIncreaseExtraHour: () => void;
-}) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!roundsStarted || currentOpenRound == null) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [roundsStarted, currentOpenRound]);
-
-  const countdown =
-    currentOpenRound != null
-      ? getRoundDeadlineCountdown(campeonato, currentOpenRound, new Date(now))
-      : null;
-
-  if (!canManageTournament) return null;
-
-  return (
-    <RevealOnScroll delay={60}>
-      <RoundDeadlineSetupCard
-        title={roundsStarted ? "Alterar prazo das rodadas" : "Definir prazo das rodadas"}
-        subtitle={
-          roundsStarted
-            ? "O campeonato já está em andamento. Ajuste a quantidade de dias por rodada sempre que precisar."
-            : "Depois de finalizar as inscrições, defina quantos dias cada rodada terá. O prazo passa a valer assim que for salvo."
-        }
-        buttonLabel={roundsStarted ? "Salvar novo prazo" : "Salvar prazo e iniciar"}
-        defaultDays={campeonato.prazoRodadaDias ?? 3}
-        countdown={countdown}
-        canAdjustExtraTime={roundsStarted && currentOpenRound != null}
-        onDecreaseExtraHour={onDecreaseExtraHour}
-        onIncreaseExtraHour={onIncreaseExtraHour}
-        onSave={onSaveRoundDeadline}
-      />
-    </RevealOnScroll>
-  );
-});
 
 export default function TournamentDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const campeonatos = useTournamentStore((state) => state.campeonatos);
-  const atualizarCampeonato = useTournamentStore((state) => state.atualizarCampeonato);
-  const ajustarTempoExtraRodada = useTournamentStore((state) => state.ajustarTempoExtraRodada);
   const removerCampeonato = useTournamentStore((state) => state.removerCampeonato);
   const gerarFaseMataMataCampeonato = useTournamentStore((state) => state.gerarFaseMataMataCampeonato);
   const videos = useVideoStore((state) => state.videos);
@@ -182,14 +121,12 @@ export default function TournamentDetailsScreen() {
     accessMode === "owner" &&
     isPersistedTournament &&
     isCurrentTournament;
-  const roundsStarted = Boolean(bundle.campeonato.inicioEm && bundle.campeonato.prazoRodadaDias);
   const activeTournamentAccessMode = resolveTournamentAccessMode(
     tournamentAccess,
     currentTournamentId,
   );
   const lockToActiveTournament =
     Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
-  const currentOpenRound = getCurrentOpenRound(bundle.campeonato);
 
   useEffect(() => {
     if (bundle.campeonato.id !== currentTournamentId) {
@@ -204,26 +141,6 @@ export default function TournamentDetailsScreen() {
 
     router.replace({ pathname: "/tournament/[id]", params: { id: currentTournamentId } });
   }, [bundle.campeonato.id, currentTournamentId, lockToActiveTournament]);
-
-  function handleSaveRoundDeadline(days: number) {
-    atualizarCampeonato(bundle.campeonato.id, {
-      inicioEm: bundle.campeonato.inicioEm ?? new Date().toISOString(),
-      prazoRodadaDias: days,
-    });
-
-    Alert.alert(
-      bundle.campeonato.prazoRodadaDias ? "Prazo atualizado" : "Prazos ativados",
-      `O campeonato agora usa ${days} dias como prazo para cada rodada.`,
-    );
-  }
-
-  function handleAdjustRoundExtraTime(deltaMs: number) {
-    if (currentOpenRound == null) {
-      return;
-    }
-
-    ajustarTempoExtraRodada(bundle.campeonato.id, currentOpenRound, deltaMs);
-  }
 
   function performDeleteTournament() {
     const tournamentId = bundle.campeonato.id;
@@ -433,15 +350,6 @@ export default function TournamentDetailsScreen() {
           />
         </RevealOnScroll>
 
-        <CountdownSection
-          campeonato={bundle.campeonato}
-          currentOpenRound={currentOpenRound}
-          roundsStarted={roundsStarted}
-          canManageTournament={canManageTournament}
-          onSaveRoundDeadline={handleSaveRoundDeadline}
-          onDecreaseExtraHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
-          onIncreaseExtraHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
-        />
 
         <View style={{ gap: 12 }}>
           <RevealOnScroll delay={0}>
