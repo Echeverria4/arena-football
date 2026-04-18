@@ -384,7 +384,7 @@ export function LeagueProgressChart({
     { length: Math.floor(yAxisMax / tickStep) + 1 },
     (_, index) => index * tickStep,
   );
-  const chartHeight = 360;
+  const chartHeight = 440;
   const chartCanvasWidth = Math.max(
     chartViewportWidth,
     PADDING_LEFT + PADDING_RIGHT + Math.max(420, Math.max(visiblePointCount - 1, 1) * 92),

@@ -413,11 +413,7 @@ export default function TournamentDetailsScreen() {
             eyebrow="Tela principal"
             badge={bundle.tournament.status === "finished" ? "Finalizado" : "Em andamento"}
             hideHeroPanel
-            subtitle={
-              roundsStarted
-                ? `${getCampeonatoSeasonLabel(bundle.campeonato)} • prazo de ${formatRoundDeadlineDays(bundle.campeonato.prazoRodadaDias).toLowerCase()} por rodada • estrutura central com status, navegação interna e evolução rodada a rodada.`
-                : `${getCampeonatoSeasonLabel(bundle.campeonato)} • inscrições concluídas e campeonato pronto para iniciar as rodadas quando o organizador definir o prazo.`
-            }
+            minHeight={540}
             footerLeft={`${bundle.participants.length} jogadores`}
             content={
               showBracketPanel ? (

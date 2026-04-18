@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import type { Campeonato, Jogo, Participante } from "@/types/tournament";
@@ -354,6 +354,7 @@ export interface KnockoutBracketProps {
 }
 
 export function KnockoutBracket({ campeonato, participantes, onPressMatch }: KnockoutBracketProps) {
+  const [containerW, setContainerW] = useState(0);
   const columns = buildBracketColumns(campeonato, participantes);
   if (columns.length === 0) return null;
 
@@ -422,56 +423,62 @@ export function KnockoutBracket({ campeonato, participantes, onPressMatch }: Kno
     }
   }
 
+  const innerPad = 24;
+  const fitsContainer = containerW > 0 && totalWidth <= containerW - innerPad;
+
+  const bracketCanvas = (
+    <View style={{ width: totalWidth, height: totalHeight }}>
+      {connectors}
+      {columns.map((col, phIdx) => (
+        <React.Fragment key={`ph-${phIdx}`}>
+          <Text
+            style={{
+              position: "absolute",
+              left: 0,
+              width: totalWidth,
+              top: phIdx * (phaseBlockH + ROW_GAP),
+              textAlign: "center",
+              color: phIdx === numPhases - 1 ? "#F59E0B" : "#6B8FD4",
+              fontSize: 10,
+              fontWeight: "900",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+            }}
+          >
+            {col.label}
+          </Text>
+          {col.slots.map((slot, si) => (
+            <View
+              key={si}
+              style={{ position: "absolute", left: xLeftOf(phIdx, si), top: yCardOf(phIdx) }}
+            >
+              <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
+            </View>
+          ))}
+        </React.Fragment>
+      ))}
+    </View>
+  );
+
   return (
     <ScrollView
+      onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}
       showsVerticalScrollIndicator={false}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 24 }}
+      contentContainerStyle={{
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 24,
+        alignItems: fitsContainer ? "center" : "flex-start",
+      }}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        <View style={{ width: totalWidth, height: totalHeight }}>
-
-          {/* Connectors (drawn under cards) */}
-          {connectors}
-
-          {/* Cards phase by phase */}
-          {columns.map((col, phIdx) => (
-            <React.Fragment key={`ph-${phIdx}`}>
-              {/* Phase label */}
-              <Text
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  width: totalWidth,
-                  top: phIdx * (phaseBlockH + ROW_GAP),
-                  textAlign: "center",
-                  color: phIdx === numPhases - 1 ? "#F59E0B" : "#6B8FD4",
-                  fontSize: 10,
-                  fontWeight: "900",
-                  letterSpacing: 1.4,
-                  textTransform: "uppercase",
-                }}
-              >
-                {col.label}
-              </Text>
-
-              {/* Slot cards */}
-              {col.slots.map((slot, si) => (
-                <View
-                  key={si}
-                  style={{ position: "absolute", left: xLeftOf(phIdx, si), top: yCardOf(phIdx) }}
-                >
-                  <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
-                </View>
-              ))}
-            </React.Fragment>
-          ))}
-
-        </View>
-      </ScrollView>
+      {fitsContainer ? (
+        bracketCanvas
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {bracketCanvas}
+        </ScrollView>
+      )}
     </ScrollView>
   );
 }

@@ -7,7 +7,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=0.80, maximum-scale=0.85, minimum-scale=0.80, user-scalable=no"
+          content="width=device-width, initial-scale=0.80, maximum-scale=0.75, minimum-scale=0.75, user-scalable=no"
         />
         <ScrollViewStyleReset />
         <style
