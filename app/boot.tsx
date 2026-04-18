@@ -50,6 +50,7 @@ export default function BootScreen() {
   const releaseSharedTournamentAccess = useAppStore(
     (state) => state.releaseSharedTournamentAccess,
   );
+  const setBootCompleted = useAppStore((state) => state.setBootCompleted);
   const horizontalAnimations = useRef(horizontalGuides.map(() => new Animated.Value(-1800))).current;
   const horizontalReverseAnimations = useRef(horizontalGuides.map(() => new Animated.Value(1800))).current;
   const verticalAnimations = useRef(verticalGuides.map(() => new Animated.Value(-1800))).current;
@@ -270,7 +271,7 @@ export default function BootScreen() {
 
   return (
     <Screen className="flex-1" backgroundVariant="none">
-      <Pressable className="flex-1" onPress={() => router.replace("/loading")}>
+      <Pressable className="flex-1" onPress={() => { setBootCompleted(true); router.replace("/tournaments"); }}>
         <View className="flex-1 bg-black">
           <View className="absolute inset-0 bg-[#010302]" />
 
