@@ -103,7 +103,7 @@ export default function TournamentDetailsScreen() {
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
   const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
   const clearTournamentAccess = useAppStore((state) => state.clearTournamentAccess);
-  const { cardWidth, contentMaxWidth } = usePanelGrid();
+  const { cardWidth, contentMaxWidth, gap } = usePanelGrid();
   const hydrated = useTournamentDataHydrated();
   const accessMode = useTournamentAccessMode(id);
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((campeonato) => campeonato.id === id)));
@@ -444,18 +444,13 @@ export default function TournamentDetailsScreen() {
           onIncreaseExtraHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
         />
 
-        <View className="flex-row flex-wrap gap-5">
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap }}
           <RevealOnScroll delay={0}>
             <FeatureCard
               icon="people-outline"
               title="Participantes"
               subtitle="Elenco da temporada"
-              description={
-                canManageTournament
-                  ? "Veja todas as vagas do campeonato e substitua nome ou WhatsApp do jogador sem mexer nas rodadas."
-                  : "Veja todas as vagas ativas do campeonato, acompanhe times e confira quem ocupa cada posicao da temporada."
-              }
-              meta="Abrir elenco"
+              meta="Abrir"
               width={cardWidth}
               onPress={() =>
                 router.push({ pathname: "/tournament/participants", params: { id: bundle.campeonato.id } })
@@ -467,8 +462,7 @@ export default function TournamentDetailsScreen() {
               icon="git-network-outline"
               title="Jogos"
               subtitle="Confrontos"
-              description="Cartões de duelo com status vivo, layout game e botão direto para entrar na partida."
-              meta="Abrir jogos"
+              meta="Abrir"
               width={cardWidth}
               onPress={() =>
                 router.push({ pathname: "/tournament/matches", params: { id: bundle.campeonato.id } })
@@ -480,8 +474,7 @@ export default function TournamentDetailsScreen() {
               icon="podium-outline"
               title="Classificacao"
               subtitle="Ranking visual"
-              description="Top 3 destacado, barras de pontuação, grupos e leitura rápida da campanha do torneio."
-              meta="Ver tabela"
+              meta="Abrir"
               width={cardWidth}
               onPress={() =>
                 router.push({ pathname: "/tournament/standings", params: { id: bundle.campeonato.id } })
@@ -493,8 +486,7 @@ export default function TournamentDetailsScreen() {
               icon="stats-chart-outline"
               title="Estatisticas"
               subtitle="Ataque, defesa e destaque"
-              description="Rankings verticais com números grandes, cards separados e destaque do melhor desempenho."
-              meta="Abrir painel"
+              meta="Abrir"
               width={cardWidth}
               accent="blue"
               onPress={() =>
@@ -507,8 +499,7 @@ export default function TournamentDetailsScreen() {
               icon="videocam-outline"
               title="Videos"
               subtitle="Reels do campeonato"
-              description="Fluxo visual de vídeos com votação, favoritos e marcação do lance vencedor."
-              meta="Abrir videos"
+              meta="Abrir"
               width={cardWidth}
               accent="gold"
               onPress={() =>
@@ -522,8 +513,7 @@ export default function TournamentDetailsScreen() {
                 icon="link-outline"
                 title="Links"
                 subtitle="Editor e visualizador"
-                description="Gere dois links: um para edição da cópia compartilhada e outro somente para visualização."
-                meta="Abrir links"
+                meta="Abrir"
                 width={cardWidth}
                 accent="blue"
                 onPress={() =>
