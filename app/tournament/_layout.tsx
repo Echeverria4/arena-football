@@ -89,5 +89,12 @@ export default function TournamentLayout() {
     router.replace(buildLockedTournamentTarget(routeKey, currentTournamentId));
   }, [currentTournamentId, routeKey, shouldRedirect]);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "#050A11", flex: 1, width: "100%", minHeight: 0 },
+      }}
+    />
+  );
 }

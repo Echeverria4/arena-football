@@ -211,7 +211,7 @@ export async function signInWithGoogle() {
     throw new Error("Configure o Supabase antes de ativar o login com Google.");
   }
 
-  const redirectTo = Linking.createURL("/loading");
+  const redirectTo = Linking.createURL("/tournaments");
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

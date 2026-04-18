@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, Text, useWindowDimensions, View } from "react-native";
 
@@ -47,6 +47,7 @@ const diagonalReverseBeams = [
 
 export default function BootScreen() {
   const { width, height } = useWindowDimensions();
+  const { redirect } = useLocalSearchParams<{ redirect?: string }>();
   const releaseSharedTournamentAccess = useAppStore(
     (state) => state.releaseSharedTournamentAccess,
   );
@@ -271,7 +272,7 @@ export default function BootScreen() {
 
   return (
     <Screen className="flex-1" backgroundVariant="none">
-      <Pressable className="flex-1" onPress={() => { setBootCompleted(true); router.replace("/tournaments"); }}>
+      <Pressable className="flex-1" onPress={() => { setBootCompleted(true); router.replace((redirect as string) || "/tournaments"); }}>
         <View className="flex-1 bg-black">
           <View className="absolute inset-0 bg-[#010302]" />
 
