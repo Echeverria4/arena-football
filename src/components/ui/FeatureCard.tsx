@@ -8,7 +8,7 @@ interface FeatureCardProps {
   icon: ComponentProps<typeof Ionicons>["name"];
   title: string;
   subtitle: string;
-  description: string;
+  description?: string;
   meta: string;
   width?: DimensionValue;
   onPress?: () => void;
@@ -86,7 +86,7 @@ export function FeatureCard({
         <View
           className="gap-4"
           style={{
-            minHeight: isSmallPhone ? 160 : isPhone ? 196 : 236,
+            minHeight: isSmallPhone ? 100 : isPhone ? 120 : 140,
             padding: isSmallPhone ? 14 : isPhone ? 18 : 24,
           }}
         >
@@ -124,16 +124,6 @@ export function FeatureCard({
               </Text>
             </View>
           </View>
-
-          <Text
-            style={{
-              color: "#5E7197",
-              fontSize: isSmallPhone ? 13 : isPhone ? 14 : 16,
-              lineHeight: isSmallPhone ? 20 : isPhone ? 22 : 27,
-            }}
-          >
-            {description}
-          </Text>
 
           <View className="mt-auto flex-row items-center gap-2">
             <Ionicons name="flash-outline" size={14} color={styles.meta} />

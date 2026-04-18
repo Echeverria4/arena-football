@@ -26,14 +26,14 @@ function StatSummaryCard({
   helper: string;
 }) {
   return (
-    <LiveBorderCard accent="blue" radius={16} padding={1.2} backgroundColor="#F8FAFC" style={{ minWidth: 180, flex: 1 }}>
-      <View className="px-4 py-4">
+    <LiveBorderCard accent="blue" radius={14} padding={1.2} backgroundColor="#F8FAFC" style={{ minWidth: 100, flex: 1 }}>
+      <View className="px-3 py-3">
         <Text
           style={{
             color: "#4B5E93",
-            fontSize: 11,
+            fontSize: 9,
             fontWeight: "800",
-            letterSpacing: 1.6,
+            letterSpacing: 1.4,
             textTransform: "uppercase",
           }}
         >
@@ -41,20 +41,21 @@ function StatSummaryCard({
         </Text>
         <Text
           style={{
-            marginTop: 10,
+            marginTop: 6,
             color: "#1E2B5C",
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: "900",
           }}
         >
           {value}
         </Text>
         <Text
+          numberOfLines={2}
           style={{
-            marginTop: 4,
+            marginTop: 3,
             color: "#5E6E91",
-            fontSize: 13,
-            lineHeight: 18,
+            fontSize: 11,
+            lineHeight: 15,
           }}
         >
           {helper}
@@ -83,105 +84,36 @@ function StatisticRow({
 }) {
   return (
     <View
-      className="flex-row items-center gap-3 rounded-[18px] px-3 py-3"
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderWidth: 1,
-        borderColor: "#E6EBF2",
-      }}
+      className="flex-row items-center gap-2 rounded-[12px] px-2 py-2"
+      style={{ backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E6EBF2" }}
     >
       <View
         style={{
-          width: 34,
-          height: 34,
-          borderRadius: 17,
+          width: 26, height: 26, borderRadius: 13, flexShrink: 0,
           backgroundColor: rank === 1 ? "rgba(244,197,66,0.18)" : "#EDF2F7",
-          alignItems: "center",
-          justifyContent: "center",
+          alignItems: "center", justifyContent: "center",
         }}
       >
-        <Text
-          style={{
-            color: "#1E2B5C",
-            fontSize: 15,
-            fontWeight: "900",
-          }}
-        >
-          {rank}
-        </Text>
+        <Text style={{ color: "#1E2B5C", fontSize: 12, fontWeight: "900" }}>{rank}</Text>
       </View>
 
       {crest ? (
-        <Image source={{ uri: crest }} style={{ width: 36, height: 36 }} resizeMode="contain" />
+        <Image source={{ uri: crest }} style={{ width: 28, height: 28, flexShrink: 0 }} resizeMode="contain" />
       ) : (
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: "#DBE4F0",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ color: "#223C7B", fontSize: 11, fontWeight: "800" }}>
-            {teamName.slice(0, 2).toUpperCase()}
-          </Text>
+        <View style={{ width: 28, height: 28, borderRadius: 14, flexShrink: 0, backgroundColor: "#DBE4F0", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ color: "#223C7B", fontSize: 9, fontWeight: "800" }}>{teamName.slice(0, 2).toUpperCase()}</Text>
         </View>
       )}
 
-      <View className="flex-1 gap-1">
-        <Text
-          numberOfLines={1}
-          style={{
-            color: "#1E2B5C",
-            fontSize: 16,
-            fontWeight: "800",
-          }}
-        >
-          {teamName}
-        </Text>
-        <Text
-          numberOfLines={1}
-          style={{
-            color: "#64748B",
-            fontSize: 12,
-          }}
-        >
-          {playerName}
-        </Text>
-        <Text
-          numberOfLines={1}
-          style={{
-            color: "#667085",
-            fontSize: 12,
-          }}
-        >
-          {helper}
-        </Text>
+      <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={{ color: "#1E2B5C", fontSize: 12, fontWeight: "800" }}>{teamName}</Text>
+        <Text numberOfLines={1} style={{ color: "#64748B", fontSize: 10 }}>{playerName}</Text>
+        <Text numberOfLines={1} style={{ color: "#667085", fontSize: 10 }}>{helper}</Text>
       </View>
 
-      <View className="items-end">
-        <Text
-          style={{
-            color: "#223C7B",
-            fontSize: 22,
-            fontWeight: "900",
-          }}
-        >
-          {metricValue}
-        </Text>
-        <Text
-          style={{
-            color: "#64748B",
-            fontSize: 11,
-            fontWeight: "700",
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-          }}
-        >
-          {metricLabel}
-        </Text>
+      <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
+        <Text style={{ color: "#223C7B", fontSize: 17, fontWeight: "900" }}>{metricValue}</Text>
+        <Text style={{ color: "#64748B", fontSize: 9, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>{metricLabel}</Text>
       </View>
     </View>
   );
@@ -207,25 +139,9 @@ function StatisticSection({
   return (
     <LiveBorderCard accent="blue" radius={18} padding={1.3} backgroundColor="#F8FAFC">
       <View className="gap-4 p-4">
-        <View className="gap-1">
-          <Text
-            style={{
-              color: "#1E2B5C",
-              fontSize: 22,
-              fontWeight: "800",
-            }}
-          >
-            {title}
-          </Text>
-          <Text
-            style={{
-              color: "#64748B",
-              fontSize: 14,
-              lineHeight: 20,
-            }}
-          >
-            {subtitle}
-          </Text>
+        <View className="gap-0.5">
+          <Text style={{ color: "#1E2B5C", fontSize: 15, fontWeight: "800" }}>{title}</Text>
+          <Text style={{ color: "#64748B", fontSize: 11, lineHeight: 16 }}>{subtitle}</Text>
         </View>
 
         <View className="gap-3">
@@ -410,35 +326,12 @@ export default function TournamentStatisticsScreen() {
       <View className="gap-6 py-8" style={{ backgroundColor: "#0a1220" }}>
         <BackButton fallbackHref={{ pathname: "/tournament/[id]", params: { id: bundle.campeonato.id } }} />
 
-        <View className="gap-2">
-          <Text
-            style={{
-              color: "#F3F7FF",
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 3,
-              textTransform: "uppercase",
-            }}
-          >
+        <View className="gap-1">
+          <Text style={{ color: "#7B9FD4", fontSize: 10, fontWeight: "800", letterSpacing: 2.5, textTransform: "uppercase" }}>
             Estatísticas
           </Text>
-          <Text
-            style={{
-              color: "#F8FAFC",
-              fontSize: 30,
-              fontWeight: "800",
-            }}
-          >
+          <Text style={{ color: "#F8FAFC", fontSize: 22, fontWeight: "800" }}>
             {bundle.tournament.name}
-          </Text>
-          <Text
-            style={{
-              color: "#AEBBDA",
-              fontSize: 16,
-              lineHeight: 28,
-            }}
-          >
-            Painel estatístico da temporada com ataque, defesa e aproveitamento de vitórias atualizados pelo placar salvo.
           </Text>
         </View>
 

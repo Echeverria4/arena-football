@@ -236,13 +236,13 @@ export default function TournamentParticipantsScreen() {
               return (
                 <RevealOnScroll key={participant.id} delay={index * 45}>
                   <LiveBorderCard accent={accent} radius={18} padding={1.3} backgroundColor="#09121C">
-                    <View className="gap-4 p-5">
-                      <View className="flex-row items-center gap-4">
+                    <View className="gap-3 p-4">
+                      <View className="flex-row items-center gap-3">
                         <View
-                          className="items-center justify-center rounded-[24px]"
+                          className="items-center justify-center rounded-[16px]"
                           style={{
-                            width: 74,
-                            height: 74,
+                            width: 52,
+                            height: 52,
                             backgroundColor: "rgba(255,255,255,0.05)",
                             borderWidth: 1,
                             borderColor: isEditing
@@ -279,12 +279,12 @@ export default function TournamentParticipantsScreen() {
                           })()}
                         </View>
 
-                        <View className="flex-1 gap-2">
-                          <Text className="text-xl font-black text-[#F3F7FF]">
+                        <View className="flex-1 gap-1">
+                          <Text className="text-base font-black text-[#F3F7FF]">
                             {participant.displayName}
                           </Text>
-                          <Text className="text-base text-[#AEBBDA]">{teamName}</Text>
-                          <Text className="text-sm font-medium text-[#8EA4CE]">{phoneLabel}</Text>
+                          <Text className="text-sm text-[#AEBBDA]">{teamName}</Text>
+                          <Text style={{ fontSize: 11, color: "#8EA4CE" }}>{phoneLabel}</Text>
 
                           <View className="flex-row flex-wrap gap-2">
                             {participant.isOrganizer ? <Badge label="organizador" tone="gold" /> : null}
@@ -294,56 +294,32 @@ export default function TournamentParticipantsScreen() {
                         </View>
                       </View>
 
-                      <View className="flex-row flex-wrap gap-3">
-                        <View
-                          className="min-w-[110px] flex-1 rounded-[20px] px-4 py-4"
-                          style={{
-                            borderWidth: 1,
-                            borderColor: "rgba(154,184,255,0.12)",
-                            backgroundColor: "rgba(255,255,255,0.04)",
-                          }}
-                        >
-                          <Text className="text-xs font-black uppercase tracking-[2px] text-[#8EA4CE]">
-                            Classificacao
-                          </Text>
-                          <Text className="mt-2 text-2xl font-black text-[#F3F7FF]">
-                            {standingContext?.position ? `${standingContext.position}º` : "--"}
-                          </Text>
-                        </View>
-
-                        <View
-                          className="min-w-[110px] flex-1 rounded-[20px] px-4 py-4"
-                          style={{
-                            borderWidth: 1,
-                            borderColor: "rgba(154,184,255,0.12)",
-                            backgroundColor: "rgba(255,255,255,0.04)",
-                          }}
-                        >
-                          <Text className="text-xs font-black uppercase tracking-[2px] text-[#8EA4CE]">
-                            Historico
-                          </Text>
-                          <Text className="mt-2 text-2xl font-black text-[#F3F7FF]">
-                            {standing?.wins ?? 0}V
-                          </Text>
-                        </View>
-
-                        <View
-                          className="min-w-[110px] flex-1 rounded-[20px] px-4 py-4"
-                          style={{
-                            borderWidth: 1,
-                            borderColor: "rgba(154,184,255,0.12)",
-                            backgroundColor: "rgba(255,255,255,0.04)",
-                          }}
-                        >
-                          <Text className="text-xs font-black uppercase tracking-[2px] text-[#8EA4CE]">
-                            Saldo
-                          </Text>
-                          <Text className="mt-2 text-2xl font-black text-[#F3F7FF]">
-                            {standing
-                              ? `${standing.goalDifference >= 0 ? "+" : ""}${standing.goalDifference}`
-                              : "+0"}
-                          </Text>
-                        </View>
+                      <View className="flex-row gap-2">
+                        {[
+                          { label: "Posição", value: standingContext?.position ? `${standingContext.position}º` : "--" },
+                          { label: "Vitórias", value: `${standing?.wins ?? 0}V` },
+                          { label: "Saldo", value: standing ? `${standing.goalDifference >= 0 ? "+" : ""}${standing.goalDifference}` : "+0" },
+                        ].map((stat) => (
+                          <View
+                            key={stat.label}
+                            style={{
+                              flex: 1,
+                              borderRadius: 12,
+                              paddingHorizontal: 10,
+                              paddingVertical: 8,
+                              borderWidth: 1,
+                              borderColor: "rgba(154,184,255,0.12)",
+                              backgroundColor: "rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            <Text style={{ color: "#8EA4CE", fontSize: 8, fontWeight: "800", letterSpacing: 1.4, textTransform: "uppercase" }}>
+                              {stat.label}
+                            </Text>
+                            <Text style={{ color: "#F3F7FF", fontSize: 18, fontWeight: "900", marginTop: 4 }}>
+                              {stat.value}
+                            </Text>
+                          </View>
+                        ))}
                       </View>
 
                       {canManageTournament ? (
