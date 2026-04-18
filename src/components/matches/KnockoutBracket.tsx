@@ -3,30 +3,37 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import type { Campeonato, Jogo, Participante } from "@/types/tournament";
 
-// ── Layout constants ─────────────────────────────────────────────────────────
+// ── Layout constants (vertical bracket) ──────────────────────────────────────
 
-const CARD_H = 96;
-const CARD_W = 178;
-const UNIT = CARD_H + 8; // 104px per bracket slot
-const COL_GAP = 44;
-const PHASE_STEP = CARD_W + COL_GAP; // 222px
-const HEADER_H = 40;
-const CENTER_GAP = COL_GAP;
+const CARD_H = 76;
+const CARD_W = 100;
+const CARD_GAP_H = 6;          // horizontal gap between cards in the same phase
+const UNIT_W = CARD_W + CARD_GAP_H; // 106px per first-round slot
+const ROW_GAP = 32;            // vertical space between phases (connector zone)
+const HEADER_H = 20;           // phase label height
 const CONN = "rgba(139,92,246,0.45)";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function topForSide(phaseIdx: number, matchIdx: number): number {
-  return (matchIdx + 0.5) * Math.pow(2, phaseIdx) * UNIT - CARD_H / 2;
-}
-
 function phaseName(matchCount: number): string {
   if (matchCount >= 16) return "Rodada de 32";
   if (matchCount === 8) return "Oitavas";
-  if (matchCount === 4) return "Quartas de final";
+  if (matchCount === 4) return "Quartas";
   if (matchCount === 2) return "Semifinal";
   if (matchCount === 1) return "Final";
-  return `Fase de ${matchCount}`;
+  return `Fase ${matchCount}`;
+}
+
+// X center of slot `slotIdx` in phase `phIdx` (0 = first/widest phase)
+function xCenterOf(phIdx: number, slotIdx: number): number {
+  return (slotIdx + 0.5) * Math.pow(2, phIdx) * UNIT_W - CARD_GAP_H / 2;
+}
+function xLeftOf(phIdx: number, slotIdx: number): number {
+  return xCenterOf(phIdx, slotIdx) - CARD_W / 2;
+}
+// Y top of cards in phase `phIdx`
+function yCardOf(phIdx: number): number {
+  return phIdx * (HEADER_H + CARD_H + ROW_GAP) + HEADER_H;
 }
 
 // ── Data types ───────────────────────────────────────────────────────────────
@@ -185,7 +192,7 @@ export function buildBracketColumns(
   return result;
 }
 
-// ── Match card subcomponents ─────────────────────────────────────────────────
+// ── Team row (compact for narrow cards) ─────────────────────────────────────
 
 interface TeamRowProps {
   name: string;
@@ -200,62 +207,62 @@ function TeamRow({ name, flagUrl, goalsD1, goalsD2, isWinner, showD2 }: TeamRowP
   const isDefined = name !== "A definir";
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, gap: 5, minHeight: 22 }}>
-      <View style={{ width: 22, height: 15, justifyContent: "center", alignItems: "center", flexShrink: 0 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 6, gap: 4, minHeight: 20 }}>
+      {/* Flag / initials */}
+      <View style={{ width: 18, height: 13, justifyContent: "center", alignItems: "center", flexShrink: 0 }}>
         {flagUrl && isDefined ? (
-          <Image source={{ uri: flagUrl }} style={{ width: 22, height: 15 }} resizeMode="contain" />
+          <Image source={{ uri: flagUrl }} style={{ width: 18, height: 13 }} resizeMode="contain" />
         ) : (
-          <View
-            style={{
-              width: 22, height: 15, borderRadius: 2,
-              backgroundColor: "rgba(154,184,255,0.09)",
-              justifyContent: "center", alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#4B6A99", fontSize: 7, fontWeight: "900" }}>
+          <View style={{ width: 18, height: 13, borderRadius: 2, backgroundColor: "rgba(154,184,255,0.09)", justifyContent: "center", alignItems: "center" }}>
+            <Text style={{ color: "#4B6A99", fontSize: 6, fontWeight: "900" }}>
               {isDefined ? getTeamInitials(name).slice(0, 3) : "—"}
             </Text>
           </View>
         )}
       </View>
 
+      {/* Name */}
       <Text
         numberOfLines={1}
         style={{
           flex: 1,
           color: !isDefined ? "rgba(255,255,255,0.22)" : isWinner ? "#FFFFFF" : "rgba(255,255,255,0.72)",
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: isWinner ? "900" : "700",
         }}
       >
         {name}
       </Text>
 
-      <View style={{ flexDirection: "row", gap: 3, flexShrink: 0 }}>
+      {/* Score boxes */}
+      <View style={{ flexDirection: "row", gap: 2, flexShrink: 0 }}>
         {[goalsD1, ...(showD2 ? [goalsD2] : [])].map((g, i) => (
           <View
             key={i}
             style={{
-              width: 20, height: 20, borderRadius: 4,
+              width: 18, height: 18, borderRadius: 3,
               backgroundColor: isWinner ? "rgba(245,158,11,0.22)" : "rgba(255,255,255,0.07)",
               justifyContent: "center", alignItems: "center",
             }}
           >
-            <Text style={{ color: isWinner ? "#FDE68A" : "rgba(255,255,255,0.52)", fontSize: 11, fontWeight: "900" }}>
+            <Text style={{ color: isWinner ? "#FDE68A" : "rgba(255,255,255,0.52)", fontSize: 10, fontWeight: "900" }}>
               {g !== null ? String(g) : "–"}
             </Text>
           </View>
         ))}
       </View>
 
+      {/* Winner arrow */}
       {isWinner ? (
-        <Text style={{ color: "#F59E0B", fontSize: 9, fontWeight: "900", flexShrink: 0 }}>◀</Text>
+        <Text style={{ color: "#F59E0B", fontSize: 8, fontWeight: "900", flexShrink: 0 }}>◀</Text>
       ) : (
-        <View style={{ width: 12 }} />
+        <View style={{ width: 10 }} />
       )}
     </View>
   );
 }
+
+// ── Match card ───────────────────────────────────────────────────────────────
 
 interface BracketMatchCardProps {
   slot: BracketSlot;
@@ -267,10 +274,8 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
   const homeIsWinner = isDefined && slot.winnerId === slot.homeId;
   const awayIsWinner = isDefined && slot.winnerId === slot.awayId;
   const showD2 = slot.isHomeAway;
-
   const homeGoalsD2 = showD2 ? slot.leg2AwayGoals : null;
   const awayGoalsD2 = showD2 ? slot.leg2HomeGoals : null;
-
   const showAggregate = showD2 && slot.isDone && isDefined;
   const totalHome = showAggregate ? (slot.leg1HomeGoals ?? 0) + (homeGoalsD2 ?? 0) : null;
   const totalAway = showAggregate ? (slot.leg1AwayGoals ?? 0) + (awayGoalsD2 ?? 0) : null;
@@ -281,7 +286,7 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
       style={{
         width: CARD_W,
         height: CARD_H,
-        borderRadius: 10,
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: isDefined ? "rgba(139,92,246,0.28)" : "rgba(255,255,255,0.07)",
         backgroundColor: isDefined ? "rgba(7,4,18,0.94)" : "rgba(7,4,18,0.50)",
@@ -290,18 +295,19 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
       }}
     >
       {!isDefined ? (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 4 }}>
-          <Text style={{ color: "rgba(255,255,255,0.16)", fontSize: 20 }}>🛡️</Text>
-          <Text style={{ color: "rgba(255,255,255,0.22)", fontSize: 10 }}>A definir</Text>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 3 }}>
+          <Text style={{ color: "rgba(255,255,255,0.16)", fontSize: 16 }}>🛡️</Text>
+          <Text style={{ color: "rgba(255,255,255,0.22)", fontSize: 9 }}>A definir</Text>
         </View>
       ) : (
         <>
-          <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 8, paddingTop: 5, gap: 3 }}>
-            <Text style={{ width: 20, textAlign: "center", color: "#3B5580", fontSize: 9, fontWeight: "800" }}>D1</Text>
+          {/* D1/D2 column headers */}
+          <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 6, paddingTop: 4, gap: 2 }}>
+            <Text style={{ width: 18, textAlign: "center", color: "#3B5580", fontSize: 8, fontWeight: "800" }}>D1</Text>
             {showD2 && (
-              <Text style={{ width: 20, textAlign: "center", color: "#3B5580", fontSize: 9, fontWeight: "800" }}>D2</Text>
+              <Text style={{ width: 18, textAlign: "center", color: "#3B5580", fontSize: 8, fontWeight: "800" }}>D2</Text>
             )}
-            <View style={{ width: 12 }} />
+            <View style={{ width: 10 }} />
           </View>
 
           <TeamRow
@@ -313,7 +319,7 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
             showD2={showD2}
           />
 
-          <View style={{ height: 1, backgroundColor: "rgba(139,92,246,0.12)", marginHorizontal: 6 }} />
+          <View style={{ height: 1, backgroundColor: "rgba(139,92,246,0.12)", marginHorizontal: 5 }} />
 
           <TeamRow
             name={slot.awayName}
@@ -325,13 +331,13 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
           />
 
           {showAggregate ? (
-            <View style={{ paddingHorizontal: 6, paddingBottom: 4 }}>
-              <Text style={{ color: "rgba(167,139,250,0.50)", fontSize: 9, textAlign: "center" }}>
-                Agregado: {totalHome} – {totalAway}
+            <View style={{ paddingHorizontal: 5, paddingBottom: 3 }}>
+              <Text style={{ color: "rgba(167,139,250,0.50)", fontSize: 8, textAlign: "center" }}>
+                Agr: {totalHome}–{totalAway}
               </Text>
             </View>
           ) : (
-            <View style={{ height: 5 }} />
+            <View style={{ height: 4 }} />
           )}
         </>
       )}
@@ -339,7 +345,7 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
   );
 }
 
-// ── Main component — Libertadores two-sided bracket ───────────────────────────
+// ── Main component — vertical bracket ────────────────────────────────────────
 
 export interface KnockoutBracketProps {
   campeonato: Campeonato;
@@ -362,191 +368,110 @@ export function KnockoutBracket({ campeonato, participantes, onPressMatch }: Kno
   if (numPhases === 1 || firstCount < 2) {
     const slot = columns[numPhases - 1]!.slots[0]!;
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ padding: 16 }}>
-        <View>
-          <Text style={{ textAlign: "center", color: "#F59E0B", fontSize: 10, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 8 }}>
-            Final
-          </Text>
-          <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
-        </View>
-      </ScrollView>
+      <View style={{ alignItems: "center", padding: 16 }}>
+        <Text style={{ color: "#F59E0B", fontSize: 10, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 8 }}>
+          Final
+        </Text>
+        <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
+      </View>
     );
   }
 
-  // ── Libertadores two-sided layout ────────────────────────────────────────
+  // ── Canvas dimensions ────────────────────────────────────────────────────
 
-  const numSidePhases = numPhases - 1;
-  const slotsPerSide = Math.floor(firstCount / 2);
+  const totalWidth = firstCount * UNIT_W - CARD_GAP_H;
+  const phaseBlockH = HEADER_H + CARD_H;
+  const totalHeight = numPhases * phaseBlockH + (numPhases - 1) * ROW_GAP;
 
-  // finalX = x position of the Final card
-  const finalX = numSidePhases * PHASE_STEP + CENTER_GAP;
-  const totalWidth = 2 * numSidePhases * PHASE_STEP + CARD_W + 2 * CENTER_GAP;
-  const canvasHeight = slotsPerSide * UNIT;
+  // ── Connectors between consecutive phases ────────────────────────────────
+  // For each pair (2i, 2i+1) in phase phIdx → parent slot i in phase phIdx+1:
+  //   1. Arm down from each card bottom to mergeY
+  //   2. Horizontal spine from leftCX to rightCX at mergeY
+  //   3. Arm down from parentCX to next card top
 
-  // Both SFs and the Final share the same vertical center
-  const finalCenterY = canvasHeight / 2;
-  const finalTop = finalCenterY - CARD_H / 2;
+  const connectors: React.ReactNode[] = [];
 
-  function rightColX(phIdx: number): number {
-    return totalWidth - CARD_W - phIdx * PHASE_STEP;
+  for (let phIdx = 0; phIdx < numPhases - 1; phIdx++) {
+    const slotsInPhase = columns[phIdx]!.slots.length;
+    const yBottom = yCardOf(phIdx) + CARD_H;
+    const mergeY = yBottom + ROW_GAP / 2;
+    const yNextCard = yCardOf(phIdx + 1);
+
+    for (let i = 0; i < Math.ceil(slotsInPhase / 2); i++) {
+      const leftSlot = 2 * i;
+      const rightSlot = 2 * i + 1 < slotsInPhase ? 2 * i + 1 : 2 * i;
+      const leftCX = xCenterOf(phIdx, leftSlot);
+      const rightCX = xCenterOf(phIdx, rightSlot);
+      const parentCX = xCenterOf(phIdx + 1, i);
+      const spineW = Math.abs(rightCX - leftCX);
+
+      connectors.push(
+        // Arm down from left card
+        <View key={`aL-${phIdx}-${i}`} style={{ position: "absolute", left: leftCX - 0.5, top: yBottom, width: 1, height: mergeY - yBottom, backgroundColor: CONN }} />,
+        // Arm down from right card (only if different from left)
+        leftSlot !== rightSlot && (
+          <View key={`aR-${phIdx}-${i}`} style={{ position: "absolute", left: rightCX - 0.5, top: yBottom, width: 1, height: mergeY - yBottom, backgroundColor: CONN }} />
+        ),
+        // Horizontal spine at mergeY
+        spineW > 0 && (
+          <View key={`sp-${phIdx}-${i}`} style={{ position: "absolute", left: Math.min(leftCX, rightCX), top: mergeY - 0.5, width: spineW, height: 1, backgroundColor: CONN }} />
+        ),
+        // Arm down from spine midpoint to next card
+        <View key={`dn-${phIdx}-${i}`} style={{ position: "absolute", left: parentCX - 0.5, top: mergeY, width: 1, height: yNextCard - mergeY, backgroundColor: CONN }} />,
+      );
+    }
   }
-
-  // Split each non-final column into left (top half) and right (bottom half)
-  const leftPhases = columns.slice(0, numSidePhases).map((col) => ({
-    label: col.label,
-    slots: col.slots.slice(0, Math.ceil(col.slots.length / 2)),
-  }));
-  const rightPhases = columns.slice(0, numSidePhases).map((col) => ({
-    label: col.label,
-    slots: col.slots.slice(Math.ceil(col.slots.length / 2)),
-  }));
-  const finalSlot = columns[numPhases - 1]!.slots[0]!;
-
-  const labelStyle = {
-    position: "absolute" as const,
-    width: CARD_W,
-    top: 0,
-    textAlign: "center" as const,
-    color: "#6B8FD4",
-    fontSize: 10,
-    fontWeight: "900" as const,
-    letterSpacing: 1.4,
-    textTransform: "uppercase" as const,
-  };
 
   return (
     <ScrollView
-      horizontal
+      showsVerticalScrollIndicator={false}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 }}
+      contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 24 }}
     >
-      <View style={{ width: totalWidth, height: canvasHeight + HEADER_H }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        <View style={{ width: totalWidth, height: totalHeight }}>
 
-        {/* ── LEFT SIDE phases (branch left→right toward Final) ── */}
-        {leftPhases.map((phase, k) => {
-          const colX = k * PHASE_STEP;
-          const isInner = k === numSidePhases - 1;
+          {/* Connectors (drawn under cards) */}
+          {connectors}
 
-          return (
-            <React.Fragment key={`L${k}`}>
-              <Text style={{ ...labelStyle, left: colX }}>{phase.label}</Text>
+          {/* Cards phase by phase */}
+          {columns.map((col, phIdx) => (
+            <React.Fragment key={`ph-${phIdx}`}>
+              {/* Phase label */}
+              <Text
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  width: totalWidth,
+                  top: phIdx * (phaseBlockH + ROW_GAP),
+                  textAlign: "center",
+                  color: phIdx === numPhases - 1 ? "#F59E0B" : "#6B8FD4",
+                  fontSize: 10,
+                  fontWeight: "900",
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                {col.label}
+              </Text>
 
-              {phase.slots.map((slot, mi) => {
-                const cardTop = HEADER_H + topForSide(k, mi);
-                const myCenter = cardTop + CARD_H / 2;
-                const cardRight = colX + CARD_W;
-
-                const isTop = mi % 2 === 0;
-                const pairTop = HEADER_H + topForSide(k, isTop ? mi + 1 : mi - 1);
-                const pairCenter = pairTop + CARD_H / 2;
-                const spineY = Math.min(myCenter, pairCenter);
-                const spineH = Math.abs(myCenter - pairCenter);
-                const midY = (myCenter + pairCenter) / 2;
-                const spineX = cardRight + COL_GAP / 2;
-
-                return (
-                  <React.Fragment key={mi}>
-                    <View style={{ position: "absolute", left: colX, top: cardTop }}>
-                      <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
-                    </View>
-
-                    {/* Horizontal arm from card right edge */}
-                    <View style={{
-                      position: "absolute",
-                      left: cardRight,
-                      top: myCenter - 0.5,
-                      width: isInner ? (finalX - cardRight) : COL_GAP / 2,
-                      height: 1,
-                      backgroundColor: CONN,
-                    }} />
-
-                    {/* Internal connector (spine + midpoint arm) — non-inner phases only */}
-                    {!isInner && isTop && (
-                      <>
-                        <View style={{ position: "absolute", left: spineX - 0.5, top: spineY, width: 1, height: spineH, backgroundColor: CONN }} />
-                        <View style={{ position: "absolute", left: spineX, top: midY - 0.5, width: COL_GAP / 2, height: 1, backgroundColor: CONN }} />
-                      </>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+              {/* Slot cards */}
+              {col.slots.map((slot, si) => (
+                <View
+                  key={si}
+                  style={{ position: "absolute", left: xLeftOf(phIdx, si), top: yCardOf(phIdx) }}
+                >
+                  <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
+                </View>
+              ))}
             </React.Fragment>
-          );
-        })}
+          ))}
 
-        {/* ── FINAL card (center) ── */}
-        <Text style={{ ...labelStyle, left: finalX, color: "#F59E0B" }}>Final</Text>
-        <View style={{ position: "absolute", left: finalX, top: HEADER_H + finalTop }}>
-          <BracketMatchCard slot={finalSlot} onPress={() => pressSlot(finalSlot)} />
         </View>
-
-        {/* ── RIGHT SIDE phases (branch right→left toward Final, mirrored) ── */}
-        {rightPhases.map((phase, k) => {
-          const colX = rightColX(k);
-          const isInner = k === numSidePhases - 1;
-
-          return (
-            <React.Fragment key={`R${k}`}>
-              <Text style={{ ...labelStyle, left: colX }}>{phase.label}</Text>
-
-              {phase.slots.map((slot, mi) => {
-                const cardTop = HEADER_H + topForSide(k, mi);
-                const myCenter = cardTop + CARD_H / 2;
-                // For right side, arm extends LEFT from the card's left edge
-                const spineX = colX - COL_GAP / 2;
-
-                const isTop = mi % 2 === 0;
-                const pairTop = HEADER_H + topForSide(k, isTop ? mi + 1 : mi - 1);
-                const pairCenter = pairTop + CARD_H / 2;
-                const spineY = Math.min(myCenter, pairCenter);
-                const spineH = Math.abs(myCenter - pairCenter);
-                const midY = (myCenter + pairCenter) / 2;
-                const nextColRight = rightColX(k + 1) + CARD_W;
-
-                return (
-                  <React.Fragment key={mi}>
-                    <View style={{ position: "absolute", left: colX, top: cardTop }}>
-                      <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
-                    </View>
-
-                    {/* Horizontal arm from card left edge going left */}
-                    {isInner ? (
-                      // Inner right (SF) → Final right edge
-                      <View style={{
-                        position: "absolute",
-                        left: finalX + CARD_W,
-                        top: myCenter - 0.5,
-                        width: colX - (finalX + CARD_W),
-                        height: 1,
-                        backgroundColor: CONN,
-                      }} />
-                    ) : (
-                      // Arm: spine → card left edge
-                      <View style={{
-                        position: "absolute",
-                        left: spineX,
-                        top: myCenter - 0.5,
-                        width: COL_GAP / 2,
-                        height: 1,
-                        backgroundColor: CONN,
-                      }} />
-                    )}
-
-                    {/* Internal connector — non-inner phases only */}
-                    {!isInner && isTop && (
-                      <>
-                        <View style={{ position: "absolute", left: spineX - 0.5, top: spineY, width: 1, height: spineH, backgroundColor: CONN }} />
-                        <View style={{ position: "absolute", left: nextColRight, top: midY - 0.5, width: COL_GAP / 2, height: 1, backgroundColor: CONN }} />
-                      </>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </React.Fragment>
-          );
-        })}
-
-      </View>
+      </ScrollView>
     </ScrollView>
   );
 }
