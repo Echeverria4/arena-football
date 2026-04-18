@@ -6,7 +6,6 @@ import { getCurrentOpenRound, getRoundDeadlineCountdown, HOUR_MS } from "@/lib/t
 import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
 import { LeagueProgressChart } from "@/components/tournament/LeagueProgressChart";
 import { RoundDeadlineSetupCard } from "@/components/tournament/RoundDeadlineSetupCard";
-import { SeasonPodiumBoard } from "@/components/trophies/SeasonPodiumBoard";
 import { BackButton } from "@/components/ui/BackButton";
 import { Card3D } from "@/components/ui/Card3D";
 import { ChoiceChip } from "@/components/ui/ChoiceChip";
@@ -524,49 +523,6 @@ export default function TournamentDetailsScreen() {
           ) : null}
         </View>
 
-        <View className="gap-4">
-          <SectionHeader
-            eyebrow="Ranking rapido"
-            title="Pódio do campeonato"
-          />
-
-          {bundle.standings.length > 0 ? (
-            <RevealOnScroll delay={0}>
-              <SeasonPodiumBoard
-                title={bundle.tournament.name}
-                entries={[...bundle.standings]
-                  .sort((current, next) => {
-                    if (next.points !== current.points) return next.points - current.points;
-                    if (next.goalDifference !== current.goalDifference) {
-                      return next.goalDifference - current.goalDifference;
-                    }
-                    return next.goalsFor - current.goalsFor;
-                  })
-                  .slice(0, 3)
-                  .map((entry, index) => {
-                    const participant = bundle.participants.find((item) => item.id === entry.participantId);
-
-                    return {
-                      id: entry.participantId,
-                      position: (index + 1) as 1 | 2 | 3,
-                      teamName: normalizeTeamDisplayName(participant?.teamName ?? "Time"),
-                      playerName: participant?.displayName ?? "Jogador",
-                      points: entry.points,
-                      wins: entry.wins,
-                      goalDifference: entry.goalDifference,
-                      played: entry.played,
-                    };
-                  })}
-              />
-            </RevealOnScroll>
-          ) : (
-            <ScreenState
-              title="Classificacao indisponivel"
-              description="Este campeonato ainda nao tem campanha suficiente para montar o podio. Revise participantes, rodadas e placares."
-            />
-          )}
-        </View>
-
         {canManageTournament && canDeleteTournament ? (
           <View className="gap-4">
             <SectionHeader
@@ -578,8 +534,8 @@ export default function TournamentDetailsScreen() {
               <PrimaryButton
                 label="EXCLUIR"
                 variant="danger"
+                size="sm"
                 onPress={handleDeleteTournament}
-                className="rounded-[18px] px-5 py-3"
               />
             </View>
           </View>

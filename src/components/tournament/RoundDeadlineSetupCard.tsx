@@ -171,6 +171,31 @@ export function RoundDeadlineSetupCard({
         <Text style={{ color: "#1C2B4A", fontSize: 18, fontWeight: "700", lineHeight: 20 }}>+</Text>
       </Pressable>
 
+      {/* Reset */}
+      <Pressable
+        onPress={() => {
+          setDays(0);
+          onSave(0);
+          setOpen(false);
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          paddingHorizontal: 11,
+          paddingVertical: 7,
+          borderRadius: 999,
+          backgroundColor: "rgba(220,60,60,0.10)",
+          borderWidth: 1,
+          borderColor: "rgba(220,60,60,0.22)",
+        }}
+      >
+        <Ionicons name="refresh-outline" size={12} color="#DC4040" />
+        <Text style={{ color: "#DC4040", fontSize: 12, fontWeight: "800", letterSpacing: 0.5 }}>
+          Zerar
+        </Text>
+      </Pressable>
+
       {/* Save */}
       <Pressable
         onPress={handleSave}
