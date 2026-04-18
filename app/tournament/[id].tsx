@@ -444,7 +444,7 @@ export default function TournamentDetailsScreen() {
           onIncreaseExtraHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
         />
 
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap }}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap }}>
           <RevealOnScroll delay={0}>
             <FeatureCard
               icon="people-outline"
