@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import type { Campeonato, Jogo, Participante } from "@/types/tournament";
 
@@ -423,62 +423,61 @@ export function KnockoutBracket({ campeonato, participantes, onPressMatch }: Kno
     }
   }
 
-  const innerPad = 24;
-  const fitsContainer = containerW > 0 && totalWidth <= containerW - innerPad;
-
-  const bracketCanvas = (
-    <View style={{ width: totalWidth, height: totalHeight }}>
-      {connectors}
-      {columns.map((col, phIdx) => (
-        <React.Fragment key={`ph-${phIdx}`}>
-          <Text
-            style={{
-              position: "absolute",
-              left: 0,
-              width: totalWidth,
-              top: phIdx * (phaseBlockH + ROW_GAP),
-              textAlign: "center",
-              color: phIdx === numPhases - 1 ? "#F59E0B" : "#6B8FD4",
-              fontSize: 10,
-              fontWeight: "900",
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-            }}
-          >
-            {col.label}
-          </Text>
-          {col.slots.map((slot, si) => (
-            <View
-              key={si}
-              style={{ position: "absolute", left: xLeftOf(phIdx, si), top: yCardOf(phIdx) }}
-            >
-              <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
-            </View>
-          ))}
-        </React.Fragment>
-      ))}
-    </View>
-  );
+  // Scale bracket to fill available width (0.45 min → readable; 2.2 max → not oversized)
+  const availableW = containerW > 0 ? containerW - 24 : 0;
+  const rawScale = availableW > 0 ? availableW / totalWidth : 1;
+  const scale = Math.min(2.2, Math.max(0.45, rawScale));
+  const scaledW = Math.round(totalWidth * scale);
+  const scaledH = Math.round(totalHeight * scale);
 
   return (
-    <ScrollView
+    <View
       onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}
-      showsVerticalScrollIndicator={false}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{
-        paddingHorizontal: 12,
-        paddingTop: 12,
-        paddingBottom: 24,
-        alignItems: fitsContainer ? "center" : "flex-start",
-      }}
+      style={{ paddingTop: 12, paddingBottom: 24, alignItems: "center" }}
     >
-      {fitsContainer ? (
-        bracketCanvas
-      ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {bracketCanvas}
-        </ScrollView>
-      )}
-    </ScrollView>
+      {/* Outer box defines the visual footprint after scaling */}
+      <View style={{ width: scaledW, height: scaledH, overflow: "hidden" as never }}>
+        {/* Inner canvas scaled from top-left so positions stay correct */}
+        <View
+          style={{
+            width: totalWidth,
+            height: totalHeight,
+            // @ts-ignore — web-only, gracefully ignored on native
+            transformOrigin: "top left",
+            transform: [{ scale }],
+          }}
+        >
+          {connectors}
+          {columns.map((col, phIdx) => (
+            <React.Fragment key={`ph-${phIdx}`}>
+              <Text
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  width: totalWidth,
+                  top: phIdx * (phaseBlockH + ROW_GAP),
+                  textAlign: "center",
+                  color: phIdx === numPhases - 1 ? "#F59E0B" : "#6B8FD4",
+                  fontSize: 10,
+                  fontWeight: "900",
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                {col.label}
+              </Text>
+              {col.slots.map((slot, si) => (
+                <View
+                  key={si}
+                  style={{ position: "absolute", left: xLeftOf(phIdx, si), top: yCardOf(phIdx) }}
+                >
+                  <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
+                </View>
+              ))}
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+    </View>
   );
 }

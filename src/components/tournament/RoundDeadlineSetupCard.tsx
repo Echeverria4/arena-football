@@ -1,8 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
-
-import { RoundDeadlineCountdownCard } from "@/components/tournament/RoundDeadlineCountdownCard";
-import { PrimaryButton } from "@/components/ui/PrimaryButton";
 
 type CountdownData = {
   round: number;
@@ -30,179 +28,172 @@ interface RoundDeadlineSetupCardProps {
 }
 
 export function RoundDeadlineSetupCard({
-  buttonLabel = "Iniciar rodadas",
+  buttonLabel = "Salvar",
   countdown = null,
-  canAdjustExtraTime = false,
   defaultDays = 3,
-  onDecreaseExtraHour,
-  onIncreaseExtraHour,
-  subtitle,
-  title,
   variant = "light",
   onSave,
 }: RoundDeadlineSetupCardProps) {
+  const [open, setOpen] = useState(false);
   const [days, setDays] = useState(defaultDays);
-
-  const palette =
-    variant === "dark"
-      ? {
-          containerBackground: "#343434",
-          containerBorder: "rgba(255,255,255,0.12)",
-          eyebrow: "#D9D9D9",
-          title: "#FFFFFF",
-          subtitle: "rgba(255,255,255,0.78)",
-          label: "#FFFFFF",
-          controlBackground: "#242424",
-          controlBorder: "rgba(255,255,255,0.14)",
-          controlText: "#FFFFFF",
-          valueBackground: "rgba(255,255,255,0.06)",
-          valueBorder: "rgba(255,255,255,0.14)",
-          valueText: "#FFFFFF",
-          valueHelper: "rgba(255,255,255,0.58)",
-          buttonVariant: "secondary" as const,
-        }
-      : {
-          containerBackground: "#F7FAFF",
-          containerBorder: "rgba(59,91,255,0.10)",
-          eyebrow: "#5678C9",
-          title: "#1C2B4A",
-          subtitle: "#6B7EA3",
-          label: "#1C2B4A",
-          controlBackground: "#FFFFFF",
-          controlBorder: "rgba(59,91,255,0.10)",
-          controlText: "#1C2B4A",
-          valueBackground: "#FFFFFF",
-          valueBorder: "rgba(59,91,255,0.10)",
-          valueText: "#1C2B4A",
-          valueHelper: "#7481A2",
-          buttonVariant: "primary" as const,
-        };
 
   useEffect(() => {
     setDays(defaultDays);
   }, [defaultDays]);
 
+  function adjustDays(delta: number) {
+    setDays((v) => Math.max(1, Math.min(30, v + delta)));
+  }
+
   function handleSave() {
     if (!Number.isInteger(days) || days < 1 || days > 30) {
-      Alert.alert("Prazo inválido", "Informe um prazo entre 1 e 30 dias para cada rodada.");
+      Alert.alert("Prazo inválido", "Informe um prazo entre 1 e 30 dias.");
       return;
     }
-
     onSave(days);
+    setOpen(false);
   }
 
-  function adjustDays(delta: number) {
-    setDays((currentValue) => Math.max(1, Math.min(30, currentValue + delta)));
+  // Countdown label for collapsed pill
+  function getClockLabel() {
+    if (!countdown) return `${defaultDays}d / rodada`;
+    if (countdown.expired) return "Prazo vencido";
+    const parts: string[] = [];
+    if (countdown.days > 0) parts.push(`${countdown.days}d`);
+    parts.push(`${String(countdown.hours).padStart(2, "0")}h`);
+    parts.push(`${String(countdown.minutes).padStart(2, "0")}m`);
+    return parts.join(" ");
   }
 
+  const isExpired = countdown?.expired ?? false;
+  const hasCountdown = Boolean(countdown && !countdown.expired);
+
+  const pillBg = variant === "dark"
+    ? "rgba(30,30,40,0.92)"
+    : "rgba(255,255,255,0.96)";
+  const pillBorder = hasCountdown
+    ? "rgba(59,91,255,0.28)"
+    : isExpired
+      ? "rgba(220,60,60,0.35)"
+      : "rgba(59,91,255,0.16)";
+  const clockColor = hasCountdown ? "#3B82F6" : isExpired ? "#DC4040" : "#5678C9";
+  const labelColor = variant === "dark" ? "#E0EAFF" : "#1C2B4A";
+
+  if (!open) {
+    return (
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={{
+          alignSelf: "flex-start",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingHorizontal: 14,
+          paddingVertical: 9,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: pillBorder,
+          backgroundColor: pillBg,
+          shadowColor: "#3B5BFF",
+          shadowOpacity: 0.10,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 3 },
+        }}
+      >
+        <Ionicons name="timer-outline" size={15} color={clockColor} />
+        <Text style={{ color: labelColor, fontSize: 13, fontWeight: "800", letterSpacing: 0.3 }}>
+          {getClockLabel()}
+        </Text>
+        <View style={{ width: 1, height: 12, backgroundColor: pillBorder, marginHorizontal: 2 }} />
+        <Ionicons name="pencil-outline" size={12} color={clockColor} />
+      </Pressable>
+    );
+  }
+
+  // Expanded inline editor
   return (
     <View
-      className="w-full max-w-[760px] gap-3 rounded-[20px] p-4"
       style={{
-        backgroundColor: palette.containerBackground,
-        borderWidth: 0.8,
-        borderColor: palette.containerBorder,
-        shadowColor: "#000000",
-        shadowOpacity: 0.04,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "rgba(59,91,255,0.28)",
+        backgroundColor: pillBg,
+        shadowColor: "#3B5BFF",
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 4 },
+        flexWrap: "wrap",
       }}
     >
-      <View className="gap-1.5">
-        <Text
-          style={{
-            color: palette.eyebrow,
-            fontSize: 11,
-            fontWeight: "900",
-            letterSpacing: 1.6,
-            textTransform: "uppercase",
-          }}
-        >
-          Rodadas
-        </Text>
-        <Text style={{ color: palette.title, fontSize: 21, fontWeight: "900" }}>{title}</Text>
-        <Text style={{ color: palette.subtitle, fontSize: 14, lineHeight: 24 }}>{subtitle}</Text>
+      <Ionicons name="timer-outline" size={15} color="#3B82F6" />
+
+      {/* Stepper */}
+      <Pressable
+        onPress={() => adjustDays(-1)}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 999,
+          backgroundColor: "rgba(59,91,255,0.08)",
+          borderWidth: 1,
+          borderColor: "rgba(59,91,255,0.18)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ color: "#1C2B4A", fontSize: 18, fontWeight: "700", lineHeight: 20 }}>−</Text>
+      </Pressable>
+
+      <View style={{ alignItems: "center", minWidth: 52 }}>
+        <Text style={{ color: "#1C2B4A", fontSize: 18, fontWeight: "900" }}>{days}</Text>
+        <Text style={{ color: "#7481A2", fontSize: 8, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>dias</Text>
       </View>
 
-      <View className="gap-1.5">
-        <Text style={{ color: palette.label, fontSize: 13, fontWeight: "700" }}>
-          Prazo por rodada
-        </Text>
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={() => adjustDays(-1)}
-            className="items-center justify-center rounded-[18px]"
-            style={{
-              width: 48,
-              height: 48,
-              backgroundColor: palette.controlBackground,
-              borderWidth: 0.8,
-              borderColor: palette.controlBorder,
-            }}
-          >
-            <Text style={{ color: palette.controlText, fontSize: 24, fontWeight: "700" }}>-</Text>
-          </Pressable>
+      <Pressable
+        onPress={() => adjustDays(1)}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 999,
+          backgroundColor: "rgba(59,91,255,0.08)",
+          borderWidth: 1,
+          borderColor: "rgba(59,91,255,0.18)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ color: "#1C2B4A", fontSize: 18, fontWeight: "700", lineHeight: 20 }}>+</Text>
+      </Pressable>
 
-          <View
-            className="items-center justify-center rounded-[14px] px-2 py-1.5"
-            style={{
-              width: 78,
-              minHeight: 28,
-              backgroundColor: palette.valueBackground,
-              borderWidth: 0.8,
-              borderColor: palette.valueBorder,
-            }}
-          >
-            <Text style={{ color: palette.valueText, fontSize: 14, fontWeight: "900" }}>
-              {days}
-            </Text>
-            <Text style={{ color: palette.valueHelper, fontSize: 8, fontWeight: "700", letterSpacing: 0.9, textTransform: "uppercase" }}>
-              dias
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={() => adjustDays(1)}
-            className="items-center justify-center rounded-[18px]"
-            style={{
-              width: 48,
-              height: 48,
-              backgroundColor: palette.controlBackground,
-              borderWidth: 0.8,
-              borderColor: palette.controlBorder,
-            }}
-          >
-            <Text style={{ color: palette.controlText, fontSize: 24, fontWeight: "700" }}>+</Text>
-          </Pressable>
-        </View>
-
-        <Text
-          style={{
-            color: palette.valueHelper,
-            fontSize: 12,
-            lineHeight: 18,
-          }}
-        >
-          Use os botões para ajustar entre 1 e 30 dias por rodada.
-        </Text>
-      </View>
-
-      <PrimaryButton
-        label={buttonLabel}
+      {/* Save */}
+      <Pressable
         onPress={handleSave}
-        variant={palette.buttonVariant}
-        size="sm"
-        className="self-start rounded-[16px] px-4 py-2"
-        style={{ borderWidth: 0.8 }}
-      />
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+          paddingHorizontal: 14,
+          paddingVertical: 7,
+          borderRadius: 999,
+          backgroundColor: "#2447A6",
+        }}
+      >
+        <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+        <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800", letterSpacing: 0.8 }}>
+          {buttonLabel}
+        </Text>
+      </Pressable>
 
-      <RoundDeadlineCountdownCard
-        countdown={countdown}
-        tone={variant === "dark" ? "dark" : "light"}
-        canAdjust={canAdjustExtraTime}
-        onDecreaseHour={onDecreaseExtraHour}
-        onIncreaseHour={onIncreaseExtraHour}
-      />
+      {/* Close */}
+      <Pressable onPress={() => setOpen(false)} style={{ padding: 4 }}>
+        <Ionicons name="close" size={15} color="#94A3B8" />
+      </Pressable>
     </View>
   );
 }

@@ -162,7 +162,6 @@ export default function TournamentParticipantsScreen() {
         <SectionHeader
           eyebrow="Participantes"
           title={`Jogadores de ${bundle.tournament.name}`}
-          subtitle="Veja o elenco atual e, se um jogador sair, substitua nome e WhatsApp da vaga sem mexer no time, rodadas ou pontuacao."
         />
 
         <ScrollRow>
@@ -204,22 +203,18 @@ export default function TournamentParticipantsScreen() {
             padding={1.3}
             backgroundColor="#09121C"
           >
-            <View className="gap-3 p-5">
+            <View className="flex-row items-center gap-3 px-5 py-4">
+              <Ionicons
+                name={canManageTournament ? "swap-horizontal-outline" : "eye-outline"}
+                size={18}
+                color={canManageTournament ? "#9AB8FF" : "#FFD76A"}
+              />
               <Text
-                className="text-xs font-black uppercase tracking-[2px]"
-                style={{ color: canManageTournament ? "#D7E5FF" : "#FFD76A" }}
+                className="text-sm font-black text-[#F3F7FF]"
               >
-                {canManageTournament ? "Substituicao de vaga" : "Consulta do elenco"}
-              </Text>
-              <Text className="text-2xl font-black text-[#F3F7FF]">
                 {canManageTournament
                   ? "Trocar jogador sem refazer o campeonato"
-                  : "Participantes visiveis em modo leitura"}
-              </Text>
-              <Text className="text-sm leading-6 text-[#AEBBDA]">
-                {canManageTournament
-                  ? "Cada vaga continua com o mesmo time, pontos e historico. Os cards abaixo destacam o jogador atual e abrem uma area de edicao limpa para atualizar nome e WhatsApp."
-                  : "Este acesso permite acompanhar o elenco real do campeonato, mas a substituicao de nome e WhatsApp fica bloqueada em modo visualizacao."}
+                  : "Elenco em modo leitura"}
               </Text>
             </View>
           </LiveBorderCard>
@@ -365,22 +360,16 @@ export default function TournamentParticipantsScreen() {
                           }}
                         >
                           <View className="flex-row items-center justify-between gap-3">
-                            <View className="flex-1 gap-1">
-                              <Text
-                                className="text-xs font-black uppercase tracking-[2px]"
-                                style={{ color: isEditing ? "#CFFFD9" : "#D7E5FF" }}
-                              >
-                                Menu de substituicao
-                              </Text>
-                              <Text className="text-sm leading-6 text-[#AEBBDA]">
-                                A vaga continua com o mesmo time e os mesmos resultados. Apenas o nome e o
-                                WhatsApp do jogador sao atualizados.
-                              </Text>
-                            </View>
+                            <Text
+                              className="text-xs font-black uppercase tracking-[2px]"
+                              style={{ color: isEditing ? "#CFFFD9" : "#D7E5FF" }}
+                            >
+                              Substituicao
+                            </Text>
 
                             {!isEditing ? (
                               <PrimaryButton
-                                label="Editar jogador"
+                                label="Editar"
                                 size="sm"
                                 variant="light"
                                 onPress={() => startParticipantEdit(participant.id)}
