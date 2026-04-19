@@ -123,10 +123,7 @@ export function SharedTournamentEntryScreen({
 
         if (!cancelled) {
           setTimeout(() => {
-            router.replace({
-              pathname: "/tournament/[id]",
-              params: { id: resolvedShare.campeonato.id },
-            });
+            router.replace("/(tabs)/hall-of-fame");
           }, 0);
         }
       } catch (error) {
