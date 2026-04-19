@@ -5,6 +5,7 @@ import { Animated, Easing, Pressable, Text, useWindowDimensions, View } from "re
 
 import { Screen } from "@/components/ui/Screen";
 import { useAppStore } from "@/stores/app-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 const bootNeon = "#57FF7C";
 const horizontalBeamColors = [
@@ -52,6 +53,7 @@ export default function BootScreen() {
     (state) => state.releaseSharedTournamentAccess,
   );
   const setBootCompleted = useAppStore((state) => state.setBootCompleted);
+  const authStatus = useAuthStore((state) => state.status);
   const horizontalAnimations = useRef(horizontalGuides.map(() => new Animated.Value(-1800))).current;
   const horizontalReverseAnimations = useRef(horizontalGuides.map(() => new Animated.Value(1800))).current;
   const verticalAnimations = useRef(verticalGuides.map(() => new Animated.Value(-1800))).current;
@@ -272,7 +274,16 @@ export default function BootScreen() {
 
   return (
     <Screen className="flex-1" backgroundVariant="none">
-      <Pressable className="flex-1" onPress={() => { setBootCompleted(true); router.replace((redirect as string) || "/tournaments"); }}>
+      <Pressable className="flex-1" onPress={() => {
+        setBootCompleted(true);
+        if (redirect) {
+          router.replace(redirect as never);
+        } else if (authStatus === "authenticated") {
+          router.replace("/tournaments");
+        } else {
+          router.replace("/login");
+        }
+      }}>
         <View className="flex-1 bg-black">
           <View className="absolute inset-0 bg-[#010302]" />
 

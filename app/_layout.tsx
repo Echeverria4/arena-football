@@ -12,24 +12,18 @@ function TournamentDeadlineAutoSync() {
   const hydrated = useTournamentStore((state) => state.hydrated);
 
   useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
+    if (!hydrated) return;
 
-    const sync = () => {
-      useTournamentStore.getState().sincronizarPrazosRodadas();
-    };
-
+    const sync = () => useTournamentStore.getState().sincronizarPrazosRodadas();
     sync();
     const interval = setInterval(sync, 1000);
-
     return () => clearInterval(interval);
   }, [hydrated]);
 
   return null;
 }
 
-function AuthGuard() {
+export default function RootLayout() {
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
   const status = useAuthStore((state) => state.status);
   const hydrated = useAuthStore((state) => state.hydrated);
@@ -37,6 +31,7 @@ function AuthGuard() {
   const router = useRouter();
   const hydrationStarted = useRef(false);
 
+  // Restore session once on mount
   useEffect(() => {
     if (!hydrationStarted.current) {
       hydrationStarted.current = true;
@@ -44,27 +39,23 @@ function AuthGuard() {
     }
   }, [hydrateSession]);
 
+  // Auth guard — runs whenever route or auth state changes
   useEffect(() => {
     if (!hydrated) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    // Only protect the main tab screens — tournament/* routes stay open for shared-link viewers
+    // Only block the main app tabs — /tournament/* stays open for shared-link viewers
     const inProtectedGroup = segments[0] === "(tabs)";
 
     if (status === "guest" && inProtectedGroup) {
-      router.replace("/(auth)/login");
+      router.replace("/login");
     } else if (status === "authenticated" && inAuthGroup) {
       router.replace("/tournaments");
     }
   }, [status, hydrated, segments, router]);
 
-  return null;
-}
-
-export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, width: "100%", minHeight: 0 }}>
-      <AuthGuard />
       <TournamentDeadlineAutoSync />
       <StatusBar style="light" />
       <Stack
