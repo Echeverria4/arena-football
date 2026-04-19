@@ -123,7 +123,7 @@ export function SharedTournamentEntryScreen({
 
         if (!cancelled) {
           setTimeout(() => {
-            router.replace("/(tabs)/hall-of-fame");
+            router.replace("/(tabs)/history");
           }, 0);
         }
       } catch (error) {

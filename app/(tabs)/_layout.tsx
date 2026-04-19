@@ -514,7 +514,7 @@ export default function TabsLayout() {
       return;
     }
 
-    if (pathname?.startsWith("/tournament/")) {
+    if (pathname?.startsWith("/tournament/") || pathname === "/history" || pathname === "/hall-of-fame") {
       return;
     }
 
