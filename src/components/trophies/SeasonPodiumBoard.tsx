@@ -11,8 +11,10 @@ import {
 } from "react-native";
 
 import { LiveBorderCard } from "@/components/ui/LiveBorderCard";
-import { CardFlameLayer } from "@/components/ui/CardFlameLayer";
+import { ElectricBorderLayer } from "@/components/ui/ElectricBorderLayer";
+import { CardLightningLayer } from "@/components/ui/CardLightningLayer";
 import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
+import type { TitleLeaderboardEntry } from "@/lib/championship-history";
 
 type PodiumEntry = {
   id: string;
@@ -29,29 +31,33 @@ type Props = {
   title: string;
   subtitle?: string;
   entries: PodiumEntry[];
+  titleLeaders?: TitleLeaderboardEntry[];
 };
 
 const stepPalette = {
   1: {
     accent: "#FFD76A",
     surface: "rgba(20, 12, 12, 0.88)",
-    border: "rgba(255, 199, 94, 0.42)",
+    border: "rgba(255, 199, 94, 0.28)",
     text: "#FFF7D4",
     icon: "trophy-outline" as const,
+    electricAccent: "gold" as const,
   },
   2: {
-    accent: "#DFE7F6",
+    accent: "#C8D8F8",
     surface: "rgba(18, 13, 15, 0.88)",
-    border: "rgba(223, 231, 246, 0.32)",
+    border: "rgba(180, 210, 255, 0.28)",
     text: "#F5F8FF",
     icon: "ribbon-outline" as const,
+    electricAccent: "silver" as const,
   },
   3: {
-    accent: "#E8A56E",
+    accent: "#CD7838",
     surface: "rgba(20, 12, 12, 0.88)",
-    border: "rgba(232, 165, 110, 0.34)",
+    border: "rgba(205, 125, 55, 0.28)",
     text: "#FFF2E7",
     icon: "medal-outline" as const,
+    electricAccent: "bronze" as const,
   },
 } as const;
 
@@ -116,11 +122,6 @@ function PodiumStep({
           justifyContent: "flex-end",
         }}
       >
-        <CardFlameLayer
-          tone={entry.position === 1 ? "gold" : entry.position === 2 ? "silver" : "bronze"}
-          compact={compact}
-        />
-
         <View
           style={{
             minHeight: orderedHeight,
@@ -296,13 +297,19 @@ function PodiumStep({
               </View>
             </View>
           </Animated.View>
+
+          {/* Electric border — 1st place only */}
+          {entry.position === 1 ? <ElectricBorderLayer accent={palette.electricAccent} radius={18} inset={0} /> : null}
+
+          {/* Lightning bolts — 1st place only, also contained within card */}
+          {entry.position === 1 ? <CardLightningLayer compact={compact} /> : null}
         </View>
       </View>
     </Pressable>
   );
 }
 
-export function SeasonPodiumBoard({ title, subtitle, entries }: Props) {
+export function SeasonPodiumBoard({ title, subtitle, entries, titleLeaders }: Props) {
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const normalizedEntries = useMemo(() => {
@@ -398,6 +405,100 @@ export function SeasonPodiumBoard({ title, subtitle, entries }: Props) {
             Segure qualquer card do pódio para revelar o time e as estatísticas da posição.
           </Text>
         </View>
+
+        {titleLeaders && titleLeaders.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <View style={{ height: 1, backgroundColor: "rgba(255,215,106,0.18)" }} />
+            <Text
+              style={{
+                color: "#FFD76A",
+                fontSize: 11,
+                fontWeight: "800",
+                letterSpacing: 2.2,
+                textTransform: "uppercase",
+              }}
+            >
+              Histórico de campeões
+            </Text>
+            {titleLeaders.map((leader, index) => (
+              <View
+                key={leader.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: index === 0 ? "rgba(255,215,106,0.07)" : "rgba(255,255,255,0.03)",
+                  borderWidth: 1,
+                  borderColor: index === 0 ? "rgba(255,215,106,0.20)" : "rgba(255,255,255,0.06)",
+                }}
+              >
+                <Text style={{ fontSize: compact ? 16 : 18, minWidth: 22, textAlign: "center" }}>
+                  {["🥇", "🥈", "🥉"][index] ?? "🏅"}
+                </Text>
+                <View style={{ flex: 1, gap: 1 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: index === 0 ? "#FFD76A" : "#F3F7FF",
+                      fontSize: compact ? 13 : 14,
+                      fontWeight: "900",
+                    }}
+                  >
+                    {leader.label}
+                  </Text>
+                  {leader.phone ? (
+                    <Text
+                      style={{
+                        color: "rgba(216,222,235,0.45)",
+                        fontSize: compact ? 10 : 11,
+                        fontWeight: "600",
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      {leader.phone}
+                    </Text>
+                  ) : null}
+                </View>
+                <View
+                  style={{
+                    borderRadius: 8,
+                    paddingHorizontal: 9,
+                    paddingVertical: 5,
+                    backgroundColor: index === 0 ? "rgba(255,215,106,0.14)" : "rgba(255,255,255,0.06)",
+                    borderWidth: 1,
+                    borderColor: index === 0 ? "rgba(255,215,106,0.28)" : "rgba(255,255,255,0.08)",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: index === 0 ? "#FFD76A" : "#94A3B8",
+                      fontSize: compact ? 15 : 17,
+                      fontWeight: "900",
+                      lineHeight: compact ? 18 : 20,
+                    }}
+                  >
+                    {leader.titles}
+                  </Text>
+                  <Text
+                    style={{
+                      color: index === 0 ? "#C8941A" : "#4B5E7A",
+                      fontSize: 8,
+                      fontWeight: "800",
+                      letterSpacing: 0.6,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {leader.titles === 1 ? "título" : "títulos"}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
     </LiveBorderCard>
   );

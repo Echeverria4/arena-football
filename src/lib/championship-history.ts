@@ -11,6 +11,7 @@ export interface ChampionshipHistoryEntry {
   campeonato: Campeonato;
   championPlayerName: string;
   championTeamName: string;
+  championPhone?: string;
   points: number;
   wins: number;
   goalDifference: number;
@@ -30,6 +31,7 @@ export interface TitleLeaderboardEntry {
   id: string;
   label: string;
   subtitle: string;
+  phone?: string;
   titles: number;
   seasons: string[];
   latestSeason: string;
@@ -47,6 +49,7 @@ function buildHistoryEntry(campeonato: Campeonato, videos: VideoHighlight[]): Ch
     campeonato: normalized,
     championPlayerName: championName,
     championTeamName: championTeam,
+    championPhone: leader.participante?.whatsapp ?? undefined,
     points: leader.classificacao?.pontos ?? 0,
     wins: leader.classificacao?.vitorias ?? 0,
     goalDifference: leader.classificacao?.saldo ?? 0,
@@ -102,6 +105,7 @@ export function getPlayerTitleLeaderboard(campeonatos: Campeonato[]) {
         id: `player-${key.replace(/\s+/g, "-")}`,
         label: entry.championPlayerName,
         subtitle: entry.championTeamName,
+        phone: entry.championPhone,
         titles: 1,
         seasons: [entry.campeonato.temporada ?? "Temporada atual"],
         latestSeason: entry.campeonato.temporada ?? "Temporada atual",
@@ -111,6 +115,9 @@ export function getPlayerTitleLeaderboard(campeonatos: Campeonato[]) {
 
     current.titles += 1;
     current.seasons.push(entry.campeonato.temporada ?? "Temporada atual");
+    if (entry.championPhone && !current.phone) {
+      current.phone = entry.championPhone;
+    }
   });
 
   return [...map.values()].sort((current, next) => {

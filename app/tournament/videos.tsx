@@ -236,6 +236,7 @@ function VideoFeedCard({
   votedThisVideo,
   onVote,
   onPlay,
+  onRemove,
 }: {
   video: VideoHighlight;
   rank: number;
@@ -243,6 +244,7 @@ function VideoFeedCard({
   votedThisVideo: boolean;
   onVote: () => void;
   onPlay: () => void;
+  onRemove?: () => void;
 }) {
   const { width } = useWindowDimensions();
   const isPhone = width < 768;
@@ -299,7 +301,7 @@ function VideoFeedCard({
             style={{
               position: "absolute",
               top: 14,
-              right: 14,
+              right: onRemove ? 52 : 14,
               borderRadius: 999,
               paddingHorizontal: 10,
               paddingVertical: 5,
@@ -312,6 +314,28 @@ function VideoFeedCard({
               GOL MAIS BONITO
             </Text>
           </View>
+        ) : null}
+
+        {/* remove button — owner/editor only */}
+        {onRemove ? (
+          <Pressable
+            onPress={onRemove}
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              backgroundColor: "rgba(0,0,0,0.65)",
+              borderWidth: 1,
+              borderColor: "rgba(255,107,122,0.45)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FF6B7A" />
+          </Pressable>
         ) : null}
 
         {/* play icon */}
@@ -977,6 +1001,7 @@ export default function TournamentVideosScreen() {
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const videosStore = useVideoStore((state) => state.videos);
   const addVideo = useVideoStore((state) => state.addVideo);
+  const removeVideo = useVideoStore((state) => state.removeVideo);
   const voteTournamentVideoByPhone = useVideoStore((state) => state.voteTournamentVideoByPhone);
   const tournamentVotesByPhone = useVideoStore((state) => state.tournamentVotesByPhone);
   const tournamentVoterNames = useVideoStore((state) => state.tournamentVoterNames);
@@ -1127,12 +1152,14 @@ export default function TournamentVideosScreen() {
           </View>
         </ScrollView>
 
-        {/* Add video button — available to all */}
-        <PrimaryButton
-          label="Adicionar Vídeo"
-          icon="add-circle-outline"
-          onPress={() => setShowAddVideo(true)}
-        />
+        {/* Add video button — owner/editor only */}
+        {(accessMode === "owner" || accessMode === "editor") ? (
+          <PrimaryButton
+            label="Adicionar Vídeo"
+            icon="add-circle-outline"
+            onPress={() => setShowAddVideo(true)}
+          />
+        ) : null}
       </View>
 
       {/* ── Feed Tab ── */}
@@ -1168,6 +1195,28 @@ export default function TournamentVideosScreen() {
                 votedThisVideo={false}
                 onPlay={() => setPlayingVideo(video)}
                 onVote={() => setVoteTargetVideo(video)}
+                onRemove={
+                  accessMode === "owner" || accessMode === "editor"
+                    ? () => {
+                        if (Platform.OS === "web") {
+                          const confirmed =
+                            globalThis.confirm?.(
+                              `Remover "${video.title}"? Esta ação não pode ser desfeita.`,
+                            ) ?? false;
+                          if (confirmed) removeVideo(video.id);
+                          return;
+                        }
+                        Alert.alert(
+                          "Remover vídeo",
+                          `Tem certeza que deseja remover "${video.title}"? Esta ação não pode ser desfeita.`,
+                          [
+                            { text: "Cancelar", style: "cancel" },
+                            { text: "Remover", style: "destructive", onPress: () => removeVideo(video.id) },
+                          ],
+                        );
+                      }
+                    : undefined
+                }
               />
             ))
           )}

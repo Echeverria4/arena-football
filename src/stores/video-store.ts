@@ -79,6 +79,7 @@ interface VideoState {
   reabrirVotacaoGlobal: () => void;
   definirVencedorGlobal: (videoId: string) => boolean;
   voteTournamentVideoByPhone: (tournamentId: string, phone: string, voterName: string, videoId: string) => boolean;
+  removeVideo: (videoId: string) => void;
   removerVideosDoCampeonato: (tournamentId: string) => void;
 }
 
@@ -462,6 +463,13 @@ export const useVideoStore = create<VideoState>()(
 
         return true;
       },
+      removeVideo: (videoId) =>
+        set((state) => ({
+          videos: state.videos.filter((video) => video.id !== videoId),
+          userVotes: Object.fromEntries(
+            Object.entries(state.userVotes).filter(([, votedVideoId]) => votedVideoId !== videoId),
+          ),
+        })),
       removerVideosDoCampeonato: (tournamentId) =>
         set((state) => ({
           videos: state.videos.filter((video) => video.tournamentId !== tournamentId),

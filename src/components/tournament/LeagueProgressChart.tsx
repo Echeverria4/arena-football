@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, Text, View, type LayoutChangeEvent } from "react-native";
+import { Image, Pressable, ScrollView, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 
 import {
   getTeamInitials,
@@ -342,6 +342,8 @@ export function LeagueProgressChart({
   campeonato,
   format,
 }: LeagueProgressChartProps) {
+  const { width: screenWidth } = useWindowDimensions();
+  const isPhone = screenWidth < 768;
   const [chartViewportWidth, setChartViewportWidth] = useState(420);
   const [legendVisible, setLegendVisible] = useState(true);
   const series = useMemo(() => buildSeries(campeonato), [campeonato]);
@@ -384,10 +386,11 @@ export function LeagueProgressChart({
     { length: Math.floor(yAxisMax / tickStep) + 1 },
     (_, index) => index * tickStep,
   );
-  const chartHeight = 440;
+  const chartHeight = isPhone ? 260 : 440;
+  const pointSpacing = isPhone ? 64 : 92;
   const chartCanvasWidth = Math.max(
     chartViewportWidth,
-    PADDING_LEFT + PADDING_RIGHT + Math.max(420, Math.max(visiblePointCount - 1, 1) * 92),
+    PADDING_LEFT + PADDING_RIGHT + Math.max(isPhone ? 280 : 420, Math.max(visiblePointCount - 1, 1) * pointSpacing),
   );
   const plotWidth = Math.max(chartCanvasWidth - PADDING_LEFT - PADDING_RIGHT, 260);
   const plotHeight = chartHeight - PADDING_TOP - PADDING_BOTTOM;

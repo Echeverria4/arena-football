@@ -125,12 +125,18 @@ function buildRoundRobinRounds(
     const matches: Jogo[] = [];
 
     for (let pairIndex = 0; pairIndex < half; pairIndex += 1) {
-      const home = rotation[pairIndex];
-      const away = rotation[totalSlots - 1 - pairIndex];
+      const a = rotation[pairIndex];
+      const b = rotation[totalSlots - 1 - pairIndex];
 
-      if (!home || !away || home === "__bye__" || away === "__bye__") {
+      if (!a || !b || a === "__bye__" || b === "__bye__") {
         continue;
       }
+
+      // rotation[0] is the fixed participant — without correction it is always home.
+      // Swap home/away for that pair on odd rounds so home advantage is distributed evenly.
+      const swapFixed = pairIndex === 0 && roundIndex % 2 === 1;
+      const home = swapFixed ? b : a;
+      const away = swapFixed ? a : b;
 
       matches.push(createMatch(home, away, roundOffset + roundIndex + 1, nextMatchOffset + 1));
       nextMatchOffset += 1;

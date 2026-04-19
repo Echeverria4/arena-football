@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
-import { Alert, Platform, Text, View } from "react-native";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
 import { LeagueProgressChart } from "@/components/tournament/LeagueProgressChart";
@@ -144,12 +145,13 @@ export default function TournamentDetailsScreen() {
 
   function performDeleteTournament() {
     const tournamentId = bundle.campeonato.id;
+    const isFinished = bundle.campeonato.status === "finalizado";
     const storageKeys = bundle.videos
       .map((video) => video.storageKey)
       .filter((storageKey): storageKey is string => Boolean(storageKey));
 
     // Navigate first so the tournament screen unmounts cleanly before store mutations
-    router.replace("/tournaments");
+    router.replace(isFinished ? "/history" : "/tournaments");
 
     removerVideosDoCampeonato(tournamentId);
     removerCampeonato(tournamentId);
@@ -167,12 +169,9 @@ export default function TournamentDetailsScreen() {
       return;
     }
 
-    if (bundle.campeonato.status !== "ativo") {
-      Alert.alert("Ação bloqueada", "Somente campeonatos em andamento podem ser removidos.");
-      return;
-    }
-
-    const confirmMessage = `Deseja excluir ${bundle.campeonato.nome}? Todos os jogos, classificação e vídeos ligados a esta temporada serão apagados e você será levado de volta para a lista de campeonatos.`;
+    const isFinished = bundle.campeonato.status === "finalizado";
+    const destination = isFinished ? "histórico de temporadas" : "lista de campeonatos";
+    const confirmMessage = `Deseja excluir ${bundle.campeonato.nome}? Todos os jogos, classificação e vídeos ligados a esta temporada serão apagados e você será levado de volta para o ${destination}.`;
 
     if (Platform.OS === "web") {
       const confirmed = globalThis.confirm?.(confirmMessage) ?? false;
@@ -229,6 +228,11 @@ export default function TournamentDetailsScreen() {
       active: false,
       onPress: () => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } }),
     },
+    {
+      label: "Pódio",
+      active: false,
+      onPress: () => router.push({ pathname: "/tournament/preview", params: { id: bundle.campeonato.id } }),
+    },
     ...(accessMode === "owner"
       ? [
           {
@@ -246,25 +250,16 @@ export default function TournamentDetailsScreen() {
       <View className="w-full self-center gap-8 py-8" style={{ maxWidth: contentMaxWidth }}>
         {lockToActiveTournament ? null : <BackButton fallbackHref="/tournaments" />}
 
-        {accessMode !== "owner" ? (
+        {accessMode === "editor" ? (
           <View
             className="items-start rounded-[18px] border px-4 py-3"
             style={{
-              borderColor:
-                accessMode === "viewer" ? "rgba(233,179,52,0.34)" : "rgba(59,91,255,0.32)",
-              backgroundColor: accessMode === "viewer" ? "rgba(80,54,10,0.72)" : "rgba(10,20,44,0.72)",
+              borderColor: "rgba(59,91,255,0.32)",
+              backgroundColor: "rgba(10,20,44,0.72)",
             }}
           >
-            <Text
-              style={{
-                color: accessMode === "viewer" ? "#FFD76A" : "#D7E5FF",
-                fontSize: 14,
-                fontWeight: "700",
-              }}
-            >
-              {accessMode === "viewer"
-                ? "Modo visualização ativo. Este acesso fica restrito ao campeonato atual."
-                : "Modo editor via link ativo. Este acesso também fica restrito ao campeonato atual."}
+            <Text style={{ color: "#D7E5FF", fontSize: 14, fontWeight: "700" }}>
+              Modo editor via link ativo. Este acesso fica restrito ao campeonato atual.
             </Text>
           </View>
         ) : null}
@@ -439,12 +434,21 @@ export default function TournamentDetailsScreen() {
               subtitle="A exclusão apaga o campeonato atual inteiro, incluindo rodadas, classificação e vídeos vinculados."
             />
             <View className="items-start">
-              <PrimaryButton
-                label="EXCLUIR"
-                variant="danger"
-                size="sm"
+              <Pressable
                 onPress={handleDeleteTournament}
-              />
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(192,70,91,0.14)",
+                  borderWidth: 1,
+                  borderColor: "rgba(192,70,91,0.40)",
+                }}
+              >
+                <Ionicons name="trash-outline" size={22} color="#C0465B" />
+              </Pressable>
             </View>
           </View>
         ) : null}

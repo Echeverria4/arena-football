@@ -440,6 +440,7 @@ export default function TournamentPreviewScreen() {
               title={tournament.name}
               subtitle={`${seasonLabel} • Classificação atual`}
               entries={podiumEntries}
+              titleLeaders={titleLeaders}
             />
           </RevealOnScroll>
         ) : null}
