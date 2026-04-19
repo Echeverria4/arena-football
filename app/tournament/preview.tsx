@@ -414,6 +414,17 @@ export default function TournamentPreviewScreen() {
           gap: 28,
         }}
       >
+        {/* Enter button */}
+        <RevealOnScroll delay={40}>
+          <PrimaryButton
+            label="Entrar no campeonato"
+            icon="trophy-outline"
+            size="sm"
+            onPress={handleEnterTournament}
+            className="self-center"
+          />
+        </RevealOnScroll>
+
         {/* Teams carousel */}
         <RevealOnScroll delay={60}>
           <View>
@@ -554,16 +565,6 @@ export default function TournamentPreviewScreen() {
           </RevealOnScroll>
         ) : null}
 
-        {/* Enter button */}
-        <RevealOnScroll delay={200}>
-          <PrimaryButton
-            label="Entrar no campeonato"
-            icon="trophy-outline"
-            size="sm"
-            onPress={handleEnterTournament}
-            className="self-center"
-          />
-        </RevealOnScroll>
       </ScrollView>
     </Screen>
   );

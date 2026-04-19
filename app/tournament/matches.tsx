@@ -2,6 +2,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Image,
+  ImageBackground,
   Modal,
   Pressable,
   ScrollView,
@@ -10,6 +12,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+import { LinearGradient } from "expo-linear-gradient";
+import { STADIUM_BG } from "../../assets/images/stadium-bg";
 import { HistoricCupGrid } from "@/components/matches/HistoricCupGrid";
 import type { HistoricCupItem } from "@/components/matches/HistoricCupCard";
 import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
@@ -38,6 +42,37 @@ import { useTournamentStore } from "@/stores/tournament-store";
 import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
 
+function SmallCrest({ teamName }: { teamName: string }) {
+  const [failed, setFailed] = useState(false);
+  const visual = resolveTeamVisualByName(teamName);
+  return (
+    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#0A1220", borderWidth: 1, borderColor: "rgba(154,184,255,0.18)", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+      {visual && !failed ? (
+        <Image source={{ uri: visual }} style={{ width: 26, height: 26 }} resizeMode="contain" onError={() => setFailed(true)} />
+      ) : (
+        <Text style={{ color: "#9AB8FF", fontSize: 10, fontWeight: "900" }}>{getTeamInitials(teamName)}</Text>
+      )}
+    </View>
+  );
+}
+
+function MatchCrest({ teamName, onPress }: { teamName: string; onPress: () => void }) {
+  const [failed, setFailed] = useState(false);
+  const visual = resolveTeamVisualByName(teamName);
+  return (
+    <Pressable onPress={onPress} style={{ alignItems: "center", gap: 3 }}>
+      <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: "#0E1520", borderWidth: 1, borderColor: "rgba(154,184,255,0.24)", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        {visual && !failed ? (
+          <Image source={{ uri: visual }} style={{ width: 32, height: 32 }} resizeMode="contain" onError={() => setFailed(true)} />
+        ) : (
+          <Text style={{ color: "#9AB8FF", fontSize: 13, fontWeight: "900" }}>{getTeamInitials(teamName)}</Text>
+        )}
+      </View>
+      <Text style={{ color: "#4A6490", fontSize: 9, fontWeight: "700", letterSpacing: 0.4 }}>ver jogos</Text>
+    </Pressable>
+  );
+}
+
 export default function TournamentMatchesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { width } = useWindowDimensions();
@@ -60,6 +95,7 @@ export default function TournamentMatchesScreen() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [quickHomeGoals, setQuickHomeGoals] = useState(0);
   const [quickAwayGoals, setQuickAwayGoals] = useState(0);
+  const [teamMatchesFor, setTeamMatchesFor] = useState<"home" | "away" | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [countdownExpanded, setCountdownExpanded] = useState(false);
@@ -207,6 +243,8 @@ export default function TournamentMatchesScreen() {
       awayPlayerName: rawAway?.nome ?? awayParticipant?.displayName ?? "Visitante",
       homePhone: rawHome?.whatsapp ?? null,
       awayPhone: rawAway?.whatsapp ?? null,
+      homeParticipantId: selectedMatch.homeParticipantId,
+      awayParticipantId: selectedMatch.awayParticipantId,
     };
   }, [bundle, selectedMatch]);
 
@@ -281,6 +319,7 @@ export default function TournamentMatchesScreen() {
 
   function closeQuickActions() {
     setSelectedMatchId(null);
+    setTeamMatchesFor(null);
   }
 
   function updateQuickScore(
@@ -308,8 +347,33 @@ export default function TournamentMatchesScreen() {
   const baseBottomPadding = isSmallPhone ? 108 : isPhone ? 118 : 132;
 
   return (
+    <View style={{ flex: 1 }}>
+      {STADIUM_BG ? (
+        <ImageBackground
+          source={STADIUM_BG}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          resizeMode="cover"
+          imageStyle={{ width: "100%", height: "100%" }}
+        >
+          {/* Base dark tint so image doesn't blow out in bright screens */}
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(3,5,11,0.28)" }} />
+          {/* Gradient: dark top (header legibility) → transparent middle (field visible) → dark bottom (tab bar) */}
+          <LinearGradient
+            colors={[
+              "rgba(3,5,11,0.78)",
+              "rgba(3,5,11,0.35)",
+              "rgba(3,5,11,0.10)",
+              "rgba(3,5,11,0.35)",
+              "rgba(3,5,11,0.72)",
+            ]}
+            locations={[0, 0.22, 0.50, 0.78, 1]}
+            style={{ flex: 1 }}
+          />
+        </ImageBackground>
+      ) : null}
     <Screen
-      ambientDiamond
+      backgroundVariant="none"
+      style={{ backgroundColor: "transparent" }}
       overlay={
         <Modal transparent visible={Boolean(selectedMatchContext)} animationType="fade" onRequestClose={closeQuickActions}>
           <Pressable
@@ -332,102 +396,165 @@ export default function TournamentMatchesScreen() {
                   borderColor: "rgba(154,184,255,0.18)",
                 }}
               >
-                <View className="gap-2">
-                  <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "800", letterSpacing: 1.8, textTransform: "uppercase" }}>
-                    Menu da partida
-                  </Text>
-                  <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "900" }}>
-                    {selectedMatchContext.homeTeamName} x {selectedMatchContext.awayTeamName}
-                  </Text>
-                  <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, lineHeight: 22 }}>
-                    Rodada {selectedMatchContext.round} • {selectedMatchContext.dateLabel}
-                  </Text>
-                  <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 13, lineHeight: 20 }}>
-                    {selectedMatchContext.homePlayerName} enfrenta {selectedMatchContext.awayPlayerName}.{" "}
-                    {canManageMatch
-                      ? "Use as ações abaixo para lançar o placar."
-                      : "Modo visualização: você pode chamar os jogadores no WhatsApp."}
-                  </Text>
-                </View>
-
-                <View className="mt-5 gap-3">
-                  {canManageMatch ? (
-                    <>
-                      <View className="gap-3 rounded-[18px] px-4 py-4" style={{ borderWidth: 1, borderColor: "rgba(154,184,255,0.16)", backgroundColor: "rgba(255,255,255,0.05)" }}>
-                        <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "800", letterSpacing: 1.6, textTransform: "uppercase" }}>
-                          Lançar placar
-                        </Text>
-
-                        <View className="flex-row gap-3">
-                          {[
-                            { label: selectedMatchContext.homeTeamName, player: selectedMatchContext.homePlayerName, goals: quickHomeGoals, setter: setQuickHomeGoals, phone: selectedMatchContext.homePhone, isHome: true },
-                            { label: selectedMatchContext.awayTeamName, player: selectedMatchContext.awayPlayerName, goals: quickAwayGoals, setter: setQuickAwayGoals, phone: selectedMatchContext.awayPhone, isHome: false },
-                          ].map(({ label, player, goals, setter, phone, isHome }) => (
-                            <View
-                              key={isHome ? "home" : "away"}
-                              style={{ flex: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: "rgba(7,13,24,0.68)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" }}
-                            >
-                              <Text numberOfLines={1} style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "800", textAlign: "center" }}>{label}</Text>
-                              <Text numberOfLines={1} style={{ marginTop: 4, color: "#AEBBDA", fontSize: 12, textAlign: "center" }}>{player}</Text>
-                              <View className="mt-3 flex-row items-center justify-between">
-                                <Pressable
-                                  className="h-11 w-11 items-center justify-center rounded-xl"
-                                  style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.10)", backgroundColor: "#171F2B" }}
-                                  onPress={(e) => { e.stopPropagation(); updateQuickScore(-1, setter); }}
-                                >
-                                  <Text className="text-2xl font-bold text-white">-</Text>
-                                </Pressable>
-                                <Text style={{ color: "#FFFFFF", fontSize: 34, fontWeight: "900" }}>{goals}</Text>
-                                <Pressable
-                                  className="h-11 w-11 items-center justify-center rounded-xl"
-                                  style={{ borderWidth: 1, borderColor: "rgba(154,184,255,0.30)", backgroundColor: "#9AB8FF" }}
-                                  onPress={(e) => { e.stopPropagation(); updateQuickScore(1, setter); }}
-                                >
-                                  <Text className="text-2xl font-bold text-[#0B1328]">+</Text>
-                                </Pressable>
-                              </View>
-                              <View className="mt-3">
-                                <WhatsAppButton
-                                  compact
-                                  label={`Chamar ${getShortPlayerName(player)}`}
-                                  phone={phone}
-                                  round={selectedMatchContext.round}
-                                  tournamentName={bundle.tournament.name}
-                                  recipientIsHomePlayer={isHome}
-                                />
-                              </View>
-                            </View>
-                          ))}
+                {/* ── Team matches inline view ── */}
+                {teamMatchesFor ? (() => {
+                  const tmTeamName = teamMatchesFor === "home" ? selectedMatchContext.homeTeamName : selectedMatchContext.awayTeamName;
+                  const tmParticipantId = teamMatchesFor === "home" ? selectedMatchContext.homeParticipantId : selectedMatchContext.awayParticipantId;
+                  const tmMatches = bundle.campeonato.rodadas.flat().filter(
+                    (m) => m.mandanteId === tmParticipantId || m.visitanteId === tmParticipantId,
+                  );
+                  return (
+                    <View style={{ gap: 12 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <Pressable onPress={(e) => { e.stopPropagation(); setTeamMatchesFor(null); }} style={{ padding: 6 }}>
+                          <Text style={{ color: "#9AB8FF", fontSize: 20 }}>←</Text>
+                        </Pressable>
+                        <SmallCrest teamName={tmTeamName} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: "#9AB8FF", fontSize: 10, fontWeight: "800", letterSpacing: 1.4, textTransform: "uppercase" }}>Jogos do time</Text>
+                          <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }} numberOfLines={1}>{tmTeamName}</Text>
                         </View>
                       </View>
-                      <PrimaryButton label="Salvar placar" onPress={handleSaveQuickScore} />
-                    </>
-                  ) : (
-                    <>
-                      <View className="rounded-[18px] border px-4 py-4" style={{ backgroundColor: "rgba(255,255,255,0.05)", borderColor: "rgba(233,179,52,0.24)" }}>
-                        <Text style={{ color: "#F3F7FF", fontSize: 16, fontWeight: "800" }}>Somente visualização</Text>
-                        <Text style={{ marginTop: 6, color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
-                          Este acesso permite acompanhar a rodada e chamar os jogadores no WhatsApp, mas não editar placar.
-                        </Text>
-                      </View>
-                      <View className="flex-row gap-3">
-                        {[
-                          { label: selectedMatchContext.homeTeamName, player: selectedMatchContext.homePlayerName, phone: selectedMatchContext.homePhone, isHome: true },
-                          { label: selectedMatchContext.awayTeamName, player: selectedMatchContext.awayPlayerName, phone: selectedMatchContext.awayPhone, isHome: false },
-                        ].map(({ label, player, phone, isHome }) => (
-                          <View key={isHome ? "home" : "away"} style={{ flex: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 14, backgroundColor: "rgba(7,13,24,0.68)", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)" }}>
-                            <Text numberOfLines={1} style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "800", textAlign: "center" }}>{label}</Text>
-                            <Text numberOfLines={1} style={{ marginTop: 4, color: "#AEBBDA", fontSize: 12, textAlign: "center" }}>{player}</Text>
-                            <View className="mt-3">
-                              <WhatsAppButton compact label={`Chamar ${getShortPlayerName(player)}`} phone={phone} round={selectedMatchContext.round} tournamentName={bundle.tournament.name} recipientIsHomePlayer={isHome} />
+
+                      <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                        {tmMatches.map((m) => {
+                          const isHome = m.mandanteId === tmParticipantId;
+                          const oppId = isHome ? m.visitanteId : m.mandanteId;
+                          const opp = bundle.campeonato.participantes.find((p) => p.id === oppId);
+                          const hasScore = m.placarMandante != null && m.placarVisitante != null;
+                          const myG = isHome ? (m.placarMandante ?? 0) : (m.placarVisitante ?? 0);
+                          const oppG = isHome ? (m.placarVisitante ?? 0) : (m.placarMandante ?? 0);
+                          const rc = !hasScore ? "#AEBBDA" : myG > oppG ? "#57FF7C" : myG < oppG ? "#FF6B7A" : "#FFD77A";
+                          const oppTeamName = normalizeTeamDisplayName(opp?.time ?? "");
+                          return (
+                            <View key={m.id} style={{ flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 12, paddingVertical: 10, gap: 10 }}>
+                              {/* Round badge */}
+                              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "rgba(154,184,255,0.10)", alignItems: "center", justifyContent: "center" }}>
+                                <Text style={{ color: "#9AB8FF", fontSize: 10, fontWeight: "800" }}>R{m.rodada}</Text>
+                              </View>
+
+                              {/* Opponent crest + team name */}
+                              <SmallCrest teamName={oppTeamName || "?"} />
+                              <Text style={{ flex: 1, color: "#F3F7FF", fontSize: 13, fontWeight: "700" }} numberOfLines={1}>
+                                {oppTeamName || "Adversário"}
+                              </Text>
+
+                              {/* Result */}
+                              <View style={{ alignItems: "flex-end", gap: 1 }}>
+                                {hasScore ? (
+                                  <>
+                                    <Text style={{ color: rc, fontSize: 16, fontWeight: "900" }}>{myG}–{oppG}</Text>
+                                    <Text style={{ color: rc, fontSize: 9, fontWeight: "800", letterSpacing: 0.6 }}>{myG > oppG ? "VITÓRIA" : myG < oppG ? "DERROTA" : "EMPATE"}</Text>
+                                  </>
+                                ) : (
+                                  <Text style={{ color: "#4A6490", fontSize: 11, fontWeight: "700" }}>Pendente</Text>
+                                )}
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </ScrollView>
+
+                      <PrimaryButton label="Fechar" variant="secondary" onPress={closeQuickActions} />
+                    </View>
+                  );
+                })() : (
+                  <>
+                    <View style={{ gap: 4 }}>
+                      <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "800", letterSpacing: 1.8, textTransform: "uppercase" }}>
+                        Menu da partida
+                      </Text>
+                      <Text style={{ color: "#FFFFFF", fontSize: isSmallPhone ? 18 : 21, fontWeight: "900" }}>
+                        {selectedMatchContext.homeTeamName} x {selectedMatchContext.awayTeamName}
+                      </Text>
+                      <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, lineHeight: 20 }}>
+                        Rodada {selectedMatchContext.round} • {selectedMatchContext.dateLabel}
+                      </Text>
+                      <Text style={{ color: "rgba(255,255,255,0.50)", fontSize: 12, lineHeight: 18 }}>
+                        {selectedMatchContext.homePlayerName} enfrenta {selectedMatchContext.awayPlayerName}.
+                      </Text>
+                    </View>
+
+                    <View style={{ marginTop: 14, gap: 10 }}>
+                      {canManageMatch ? (
+                        <>
+                          <View style={{ gap: 10, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 12, borderWidth: 1, borderColor: "rgba(154,184,255,0.16)", backgroundColor: "rgba(255,255,255,0.04)" }}>
+                            <Text style={{ color: "#9AB8FF", fontSize: 10, fontWeight: "800", letterSpacing: 1.6, textTransform: "uppercase" }}>
+                              Lançar placar
+                            </Text>
+
+                            <View style={{ flexDirection: "row", gap: 8 }}>
+                              {[
+                                { label: selectedMatchContext.homeTeamName, player: selectedMatchContext.homePlayerName, goals: quickHomeGoals, setter: setQuickHomeGoals, phone: selectedMatchContext.homePhone, isHome: true },
+                                { label: selectedMatchContext.awayTeamName, player: selectedMatchContext.awayPlayerName, goals: quickAwayGoals, setter: setQuickAwayGoals, phone: selectedMatchContext.awayPhone, isHome: false },
+                              ].map(({ label, player, goals, setter, phone, isHome }) => (
+                                  <View key={isHome ? "home" : "away"} style={{ flex: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: "rgba(7,13,24,0.70)", borderWidth: 1, borderColor: "rgba(255,255,255,0.09)", gap: 8 }}>
+                                    <Text numberOfLines={1} style={{ color: "#FFFFFF", fontSize: isSmallPhone ? 12 : 13, fontWeight: "800", textAlign: "center" }}>{label}</Text>
+
+                                    <MatchCrest
+                                      teamName={label}
+                                      onPress={() => setTeamMatchesFor(isHome ? "home" : "away")}
+                                    />
+
+                                    <Text numberOfLines={1} style={{ color: "#AEBBDA", fontSize: 11, textAlign: "center" }}>{player}</Text>
+
+                                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                                      <Pressable
+                                        style={{ width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.10)", backgroundColor: "#171F2B" }}
+                                        onPress={(e) => { e.stopPropagation(); updateQuickScore(-1, setter); }}
+                                      >
+                                        <Text style={{ color: "#FFFFFF", fontSize: 20, fontWeight: "700" }}>-</Text>
+                                      </Pressable>
+                                      <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "900" }}>{goals}</Text>
+                                      <Pressable
+                                        style={{ width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(154,184,255,0.30)", backgroundColor: "#9AB8FF" }}
+                                        onPress={(e) => { e.stopPropagation(); updateQuickScore(1, setter); }}
+                                      >
+                                        <Text style={{ color: "#0B1328", fontSize: 20, fontWeight: "700" }}>+</Text>
+                                      </Pressable>
+                                    </View>
+
+                                    <WhatsAppButton
+                                      compact
+                                      label={`Chamar ${getShortPlayerName(player)}`}
+                                      phone={phone}
+                                      round={selectedMatchContext.round}
+                                      tournamentName={bundle.tournament.name}
+                                      recipientIsHomePlayer={isHome}
+                                    />
+                                  </View>
+                              ))}
                             </View>
                           </View>
-                        ))}
-                      </View>
-                    </>
-                  )}
-                  <PrimaryButton label="Fechar" variant="secondary" onPress={closeQuickActions} />
-                </View>
+                          <PrimaryButton label="Salvar placar" onPress={handleSaveQuickScore} />
+                        </>
+                      ) : (
+                        <>
+                          <View style={{ borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: "rgba(255,255,255,0.04)", borderWidth: 1, borderColor: "rgba(233,179,52,0.22)" }}>
+                            <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>Somente visualização</Text>
+                            <Text style={{ marginTop: 4, color: "#AEBBDA", fontSize: 13, lineHeight: 20 }}>
+                              Você pode chamar os jogadores no WhatsApp, mas não editar o placar.
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                            {[
+                              { label: selectedMatchContext.homeTeamName, player: selectedMatchContext.homePlayerName, phone: selectedMatchContext.homePhone, isHome: true },
+                              { label: selectedMatchContext.awayTeamName, player: selectedMatchContext.awayPlayerName, phone: selectedMatchContext.awayPhone, isHome: false },
+                            ].map(({ label, player, phone, isHome }) => (
+                                <View key={isHome ? "home" : "away"} style={{ flex: 1, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 10, backgroundColor: "rgba(7,13,24,0.70)", borderWidth: 1, borderColor: "rgba(255,255,255,0.09)", gap: 8 }}>
+                                  <Text numberOfLines={1} style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800", textAlign: "center" }}>{label}</Text>
+                                  <MatchCrest teamName={label} onPress={() => setTeamMatchesFor(isHome ? "home" : "away")} />
+                                  <Text numberOfLines={1} style={{ color: "#AEBBDA", fontSize: 11, textAlign: "center" }}>{player}</Text>
+                                  <WhatsAppButton compact label={`Chamar ${getShortPlayerName(player)}`} phone={phone} round={selectedMatchContext.round} tournamentName={bundle.tournament.name} recipientIsHomePlayer={isHome} />
+                                </View>
+                            ))}
+                          </View>
+                        </>
+                      )}
+                      <PrimaryButton label="Fechar" variant="secondary" onPress={closeQuickActions} />
+                    </View>
+                  </>
+                )}
               </Pressable>
             ) : null}
           </Pressable>
@@ -443,7 +570,7 @@ export default function TournamentMatchesScreen() {
           gap: 10,
           borderBottomWidth: 1,
           borderBottomColor: "rgba(255,255,255,0.07)",
-          backgroundColor: "rgba(3,5,11,0.72)",
+          backgroundColor: "rgba(3,5,11,0.42)",
         }}
       >
         <BackButton fallbackHref={{ pathname: "/tournament/[id]", params: { id: bundle.campeonato.id } }} />
@@ -493,7 +620,7 @@ export default function TournamentMatchesScreen() {
             gap: 8,
             borderBottomWidth: 1,
             borderBottomColor: "rgba(255,255,255,0.06)",
-            backgroundColor: "rgba(3,5,11,0.60)",
+            backgroundColor: "rgba(3,5,11,0.35)",
           }}
         >
           {(["rounds", "bracket"] as const).map((mode) => {
@@ -534,7 +661,7 @@ export default function TournamentMatchesScreen() {
           style={{
             borderBottomWidth: 1,
             borderBottomColor: "rgba(255,255,255,0.08)",
-            backgroundColor: "rgba(3,5,11,0.60)",
+            backgroundColor: "rgba(3,5,11,0.35)",
           }}
         >
           <ScrollView
@@ -802,5 +929,6 @@ export default function TournamentMatchesScreen() {
         )}
       </ScrollView>}
     </Screen>
+    </View>
   );
 }

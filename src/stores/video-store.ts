@@ -20,6 +20,7 @@ interface AddVideoInput {
   tournamentName: string;
   title: string;
   teamName: string;
+  teamName2?: string | null;
   description?: string | null;
   playerPhone?: string | null;
   userId: string;
@@ -133,6 +134,7 @@ export const useVideoStore = create<VideoState>()(
         tournamentName,
         title,
         teamName,
+        teamName2,
         description,
         playerPhone,
         userId,
@@ -152,6 +154,7 @@ export const useVideoStore = create<VideoState>()(
           userId,
           title: title.trim() || `Lance da rodada ${nextIndex}`,
           teamName: teamName.trim() || null,
+          teamName2: teamName2?.trim() || null,
           playerPhone: playerPhone?.trim() || null,
           description: description?.trim() || null,
           videoUrl,

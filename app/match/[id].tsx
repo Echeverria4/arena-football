@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 
 import { WhatsAppButton } from "@/components/match/WhatsAppButton";
 import { Badge } from "@/components/ui/Badge";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/team-visuals";
 import { useMatchDataHydrated } from "@/stores/use-arena-hydration";
 import { useTournamentStore } from "@/stores/tournament-store";
+import type { Campeonato } from "@/types/tournament";
 
 function TeamVisual({
   teamName,
@@ -97,6 +98,182 @@ function TeamVisual({
   );
 }
 
+function TeamCrest({ teamName }: { teamName: string }) {
+  const [failed, setFailed] = useState(false);
+  const visual = resolveTeamVisualByName(teamName);
+  return (
+    <View
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: "#151B25",
+        borderWidth: 1,
+        borderColor: "rgba(154,184,255,0.20)",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      }}
+    >
+      {visual && !failed ? (
+        <Image
+          source={{ uri: visual }}
+          style={{ width: 26, height: 26 }}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 }}>
+          {getTeamInitials(teamName)}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function TeamMatchesModal({
+  visible,
+  teamName,
+  participantId,
+  campeonato,
+  onClose,
+}: {
+  visible: boolean;
+  teamName: string;
+  participantId: string | null;
+  campeonato: Campeonato;
+  onClose: () => void;
+}) {
+  const allMatches = campeonato.rodadas.flat();
+  const teamMatches = participantId
+    ? allMatches.filter(
+        (m) => m.mandanteId === participantId || m.visitanteId === participantId,
+      )
+    : [];
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.80)", justifyContent: "flex-end" }}>
+        <View
+          style={{
+            backgroundColor: "#0E171E",
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            borderTopWidth: 1,
+            borderColor: "rgba(154,184,255,0.20)",
+            maxHeight: "70%",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 24,
+              paddingTop: 24,
+              paddingBottom: 16,
+            }}
+          >
+            <View style={{ gap: 2 }}>
+              <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "700", letterSpacing: 1.4, textTransform: "uppercase" }}>
+                Jogos do time
+              </Text>
+              <Text style={{ color: "#F3F7FF", fontSize: 18, fontWeight: "900" }}>{teamName}</Text>
+            </View>
+            <Pressable onPress={onClose} style={{ padding: 8 }}>
+              <Text style={{ color: "#AEBBDA", fontSize: 22, lineHeight: 24 }}>×</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={{ paddingHorizontal: 24 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 36 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {teamMatches.length === 0 ? (
+              <Text style={{ color: "#AEBBDA", fontSize: 14, textAlign: "center", paddingVertical: 32 }}>
+                Nenhum jogo encontrado para este time.
+              </Text>
+            ) : (
+              teamMatches.map((match) => {
+                const isHome = match.mandanteId === participantId;
+                const opponentId = isHome ? match.visitanteId : match.mandanteId;
+                const opponent = campeonato.participantes.find((p) => p.id === opponentId);
+                const hasScore = match.placarMandante != null && match.placarVisitante != null;
+                const homeScore = match.placarMandante ?? 0;
+                const awayScore = match.placarVisitante ?? 0;
+                const myScore = isHome ? homeScore : awayScore;
+                const oppScore = isHome ? awayScore : homeScore;
+                const resultColor =
+                  !hasScore ? "#AEBBDA"
+                  : myScore > oppScore ? "#57FF7C"
+                  : myScore < oppScore ? "#FF6B7A"
+                  : "#FFD77A";
+
+                return (
+                  <View
+                    key={match.id}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#132028",
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.07)",
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      gap: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        backgroundColor: "rgba(154,184,255,0.10)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "800" }}>
+                        R{match.rodada}
+                      </Text>
+                    </View>
+
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={{ color: "#F3F7FF", fontSize: 13, fontWeight: "700" }} numberOfLines={1}>
+                        vs {opponent?.nome ?? "Adversário"}
+                      </Text>
+                      <Text style={{ color: "#AEBBDA", fontSize: 11 }} numberOfLines={1}>
+                        {normalizeTeamDisplayName(opponent?.time ?? "")}
+                      </Text>
+                    </View>
+
+                    <View style={{ alignItems: "flex-end", gap: 2 }}>
+                      {hasScore ? (
+                        <Text style={{ color: resultColor, fontSize: 18, fontWeight: "900" }}>
+                          {myScore}–{oppScore}
+                        </Text>
+                      ) : (
+                        <Text style={{ color: "#4A6490", fontSize: 12, fontWeight: "700" }}>Pendente</Text>
+                      )}
+                      {hasScore ? (
+                        <Text style={{ color: resultColor, fontSize: 10, fontWeight: "700", letterSpacing: 0.8 }}>
+                          {myScore > oppScore ? "VITÓRIA" : myScore < oppScore ? "DERROTA" : "EMPATE"}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function getShortPlayerName(value?: string | null) {
   const safeValue = (value ?? "").trim();
 
@@ -128,6 +305,7 @@ export default function MatchDetailsScreen() {
   const [showScoreEditor, setShowScoreEditor] = useState(false);
   const [homeGoals, setHomeGoals] = useState(persistedJogo?.placarMandante ?? 0);
   const [awayGoals, setAwayGoals] = useState(persistedJogo?.placarVisitante ?? 0);
+  const [teamMatchesFor, setTeamMatchesFor] = useState<"home" | "away" | null>(null);
 
   useEffect(() => {
     setHomeGoals(persistedJogo?.placarMandante ?? 0);
@@ -389,6 +567,14 @@ export default function MatchDetailsScreen() {
           />
         ) : null}
 
+        <TeamMatchesModal
+          visible={teamMatchesFor !== null}
+          teamName={teamMatchesFor === "home" ? homeTeamName : awayTeamName}
+          participantId={teamMatchesFor === "home" ? (home?.id ?? null) : (away?.id ?? null)}
+          campeonato={campeonato}
+          onClose={() => setTeamMatchesFor(null)}
+        />
+
         {canManageMatch && showScoreEditor ? (
           <View
             className="gap-5 rounded-[28px] p-5"
@@ -416,7 +602,10 @@ export default function MatchDetailsScreen() {
                 }}
               >
                 <Text className="text-xs uppercase tracking-[2px] text-[#9AB8FF]">Mandante</Text>
-                <Text className="text-lg font-semibold text-white">{homeTeamName}</Text>
+                <Pressable onPress={() => setTeamMatchesFor("home")} style={{ gap: 6 }}>
+                  <Text className="text-base font-semibold text-white">{homeTeamName}</Text>
+                  <TeamCrest teamName={homeTeamName} />
+                </Pressable>
                 <Text className="text-xs text-[#AEBBDA]">{home?.nome ?? "Jogador da casa"}</Text>
                 <View
                   className="flex-row items-center justify-between rounded-2xl px-3 py-3"
@@ -461,7 +650,10 @@ export default function MatchDetailsScreen() {
                 }}
               >
                 <Text className="text-xs uppercase tracking-[2px] text-[#9AB8FF]">Visitante</Text>
-                <Text className="text-lg font-semibold text-white">{awayTeamName}</Text>
+                <Pressable onPress={() => setTeamMatchesFor("away")} style={{ gap: 6 }}>
+                  <Text className="text-base font-semibold text-white">{awayTeamName}</Text>
+                  <TeamCrest teamName={awayTeamName} />
+                </Pressable>
                 <Text className="text-xs text-[#AEBBDA]">{away?.nome ?? "Jogador visitante"}</Text>
                 <View
                   className="flex-row items-center justify-between rounded-2xl px-3 py-3"

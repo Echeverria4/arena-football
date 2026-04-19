@@ -8,6 +8,7 @@ export interface VideoHighlight {
   userId: string;
   title: string;
   teamName?: string | null;
+  teamName2?: string | null;
   playerPhone?: string | null;
   description?: string | null;
   videoUrl: string;

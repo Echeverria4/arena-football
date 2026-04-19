@@ -63,9 +63,23 @@ function PodiumStep({
   compact: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const flipBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progress = useRef(new Animated.Value(0)).current;
   const palette = stepPalette[entry.position];
   const crest = resolveTeamVisualByName(normalizeTeamDisplayName(entry.teamName));
+
+  function showBack() {
+    if (flipBackTimer.current) clearTimeout(flipBackTimer.current);
+    setHovered(true);
+  }
+  function hideBackDelayed() {
+    if (flipBackTimer.current) clearTimeout(flipBackTimer.current);
+    flipBackTimer.current = setTimeout(() => setHovered(false), 4000);
+  }
+  function hideBackNow() {
+    if (flipBackTimer.current) clearTimeout(flipBackTimer.current);
+    setHovered(false);
+  }
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -89,10 +103,10 @@ function PodiumStep({
 
   return (
     <Pressable
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      onPressIn={() => setHovered(true)}
-      onPressOut={() => setHovered(false)}
+      onHoverIn={showBack}
+      onHoverOut={hideBackNow}
+      onPressIn={showBack}
+      onPressOut={hideBackDelayed}
       className="active:opacity-95"
       style={{ flex: 1 }}
     >
@@ -264,17 +278,22 @@ function PodiumStep({
                 {safeTeamName}
               </Text>
 
-              <Text
-                style={{
-                  color: "#D8DEEB",
-                  fontSize: compact ? 11 : 12,
-                  lineHeight: compact ? 16 : 18,
-                  textAlign: "center",
-                }}
-              >
-                {entry.points} pts • {entry.wins} vit. • saldo {entry.goalDifference >= 0 ? "+" : ""}
-                {entry.goalDifference}
-              </Text>
+              <View style={{ alignItems: "center", gap: 2 }}>
+                {[
+                  { label: "Pontos", value: `${entry.points} pts` },
+                  { label: "Vitórias", value: `${entry.wins} vit.` },
+                  { label: "Saldo", value: `${entry.goalDifference >= 0 ? "+" : ""}${entry.goalDifference}` },
+                ].map(({ label, value }) => (
+                  <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Text style={{ color: "rgba(216,222,235,0.50)", fontSize: compact ? 9 : 10, fontWeight: "700", letterSpacing: 0.5 }}>
+                      {label}
+                    </Text>
+                    <Text style={{ color: "#D8DEEB", fontSize: compact ? 11 : 12, fontWeight: "800" }}>
+                      {value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </Animated.View>
         </View>

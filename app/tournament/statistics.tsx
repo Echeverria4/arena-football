@@ -27,7 +27,7 @@ function StatSummaryCard({
 }) {
   return (
     <LiveBorderCard accent="blue" radius={14} padding={1.2} backgroundColor="#F8FAFC" style={{ minWidth: 100, flex: 1 }}>
-      <View className="px-3 py-3">
+      <View style={{ paddingHorizontal: 12, paddingVertical: 14, minHeight: 110, justifyContent: "space-between" }}>
         <Text
           style={{
             color: "#4B5E93",
@@ -41,7 +41,7 @@ function StatSummaryCard({
         </Text>
         <Text
           style={{
-            marginTop: 6,
+            marginTop: 8,
             color: "#1E2B5C",
             fontSize: 22,
             fontWeight: "900",
@@ -50,12 +50,11 @@ function StatSummaryCard({
           {value}
         </Text>
         <Text
-          numberOfLines={2}
           style={{
-            marginTop: 3,
+            marginTop: 6,
             color: "#5E6E91",
             fontSize: 11,
-            lineHeight: 15,
+            lineHeight: 16,
           }}
         >
           {helper}

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, Text, TextInput, useWindowDimensions, View } from "react-native";
 
-// Ordinal abbreviations avoid browser auto-translation of "Seg"→"Segmento" or "Sex"→"Sexo"
+// Ordinal abbreviations avoid browser auto-translation ("Seg"→"Segmento", "Sex"→"Sexo")
 const WEEKDAYS = ["Dom", "2ª", "3ª", "4ª", "5ª", "6ª", "Sáb"];
 const MONTHS = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -16,52 +16,60 @@ interface Props {
   onReset: () => void;
 }
 
+/** Add N months to (year, month) without any Date overflow. */
+function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
+  const total = year * 12 + month + delta;
+  return { year: Math.floor(total / 12), month: total % 12 };
+}
+
 export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, onReset }: Props) {
   const { width: screenW } = useWindowDimensions();
   const cardWidth = Math.min(316, screenW - 40);
 
-  // minDate = today (no past days). maxDate = last day of next month.
-  const todayMidnight = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
-  const maxDate = (() => {
-    const d = new Date(todayMidnight);
-    d.setMonth(d.getMonth() + 1);
-    // jump to last day of that month
-    d.setDate(new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate());
-    return d;
-  })();
+  // Reference date: today at midnight (no Date overflow tricks)
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDay = now.getDate();
+  const todayMidnight = new Date(todayYear, todayMonth, todayDay);
 
-  const init = currentDeadline && currentDeadline >= todayMidnight ? currentDeadline : todayMidnight;
-  const [viewYear, setViewYear] = useState(init.getFullYear());
-  const [viewMonth, setViewMonth] = useState(init.getMonth());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(
-    currentDeadline && currentDeadline >= todayMidnight ? currentDeadline : null,
-  );
+  // Navigation bounds: today's month ↔ 2 months ahead (integer arithmetic, zero overflow)
+  const minKey = todayYear * 12 + todayMonth;
+  const maxBound = addMonths(todayYear, todayMonth, 2);
+  const maxKey = maxBound.year * 12 + maxBound.month;
+
+  // Open on the current-deadline's month if it's still in the future, else on today's month
+  const initDeadline = currentDeadline && currentDeadline >= todayMidnight ? currentDeadline : null;
+  const initYear = initDeadline ? initDeadline.getFullYear() : todayYear;
+  const initMonth = initDeadline ? initDeadline.getMonth() : todayMonth;
+
+  const [viewYear, setViewYear] = useState(initYear);
+  const [viewMonth, setViewMonth] = useState(initMonth);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(initDeadline);
   const [timeInput, setTimeInput] = useState(
-    currentDeadline && currentDeadline >= todayMidnight
-      ? `${String(currentDeadline.getHours()).padStart(2, "0")}:${String(currentDeadline.getMinutes()).padStart(2, "0")}`
+    initDeadline
+      ? `${String(initDeadline.getHours()).padStart(2, "0")}:${String(initDeadline.getMinutes()).padStart(2, "0")}`
       : "20:00",
   );
 
-  // Use integer month keys for unambiguous comparison
   const viewKey = viewYear * 12 + viewMonth;
-  const minKey = todayMidnight.getFullYear() * 12 + todayMidnight.getMonth();
-  const maxKey = maxDate.getFullYear() * 12 + maxDate.getMonth();
-
   const canGoPrev = viewKey > minKey;
   const canGoNext = viewKey < maxKey;
 
   function goPrev() {
     if (!canGoPrev) return;
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
+    const prev = addMonths(viewYear, viewMonth, -1);
+    setViewYear(prev.year);
+    setViewMonth(prev.month);
   }
   function goNext() {
     if (!canGoNext) return;
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
+    const next = addMonths(viewYear, viewMonth, 1);
+    setViewYear(next.year);
+    setViewMonth(next.month);
   }
 
-  // Build calendar grid
+  // Build calendar grid (Sunday-first)
   const firstWeekday = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
@@ -74,8 +82,7 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(viewYear, viewMonth, d);
-    // Disable past days and days beyond maxDate
-    cells.push({ date, inMonth: true, disabled: date < todayMidnight || date > maxDate });
+    cells.push({ date, inMonth: true, disabled: date < todayMidnight });
   }
   for (let d = 1; cells.length < 42; d++) {
     cells.push({ date: new Date(viewYear, viewMonth + 1, d), inMonth: false, disabled: true });
@@ -102,12 +109,7 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
     );
   }
   function isToday(d: Date) {
-    const t = new Date();
-    return (
-      d.getDate() === t.getDate() &&
-      d.getMonth() === t.getMonth() &&
-      d.getFullYear() === t.getFullYear()
-    );
+    return d.getDate() === todayDay && d.getMonth() === todayMonth && d.getFullYear() === todayYear;
   }
 
   function handleConfirm() {
@@ -117,7 +119,7 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
     onConfirm(dl);
   }
 
-  const cellSize = Math.floor((cardWidth - 16) / 7);
+  const cellSize = Math.floor((cardWidth - 24) / 7);
 
   return (
     <View
@@ -136,21 +138,13 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
     >
       {/* Month navigation */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <Pressable
-          onPress={goPrev}
-          disabled={!canGoPrev}
-          style={{ padding: 8, opacity: canGoPrev ? 1 : 0.2 }}
-        >
+        <Pressable onPress={goPrev} disabled={!canGoPrev} style={{ padding: 8, opacity: canGoPrev ? 1 : 0.18 }}>
           <Ionicons name="chevron-back" size={17} color="#9AB8FF" />
         </Pressable>
         <Text style={{ color: "#F0F6FF", fontSize: 13, fontWeight: "800" }}>
           {MONTHS[viewMonth]}  {viewYear}
         </Text>
-        <Pressable
-          onPress={goNext}
-          disabled={!canGoNext}
-          style={{ padding: 8, opacity: canGoNext ? 1 : 0.2 }}
-        >
+        <Pressable onPress={goNext} disabled={!canGoNext} style={{ padding: 8, opacity: canGoNext ? 1 : 0.18 }}>
           <Ionicons name="chevron-forward" size={17} color="#9AB8FF" />
         </Pressable>
       </View>
@@ -193,10 +187,10 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
                     color: sel
                       ? "#FFFFFF"
                       : cell.disabled
-                        ? "rgba(255,255,255,0.2)"
+                        ? "rgba(255,255,255,0.18)"
                         : cell.inMonth
                           ? "#DCE9FF"
-                          : "rgba(255,255,255,0.2)",
+                          : "rgba(255,255,255,0.18)",
                     fontSize: 12,
                     fontWeight: sel ? "900" : "600",
                   }}
@@ -209,7 +203,7 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
         })}
       </View>
 
-      {/* Time input — compact row */}
+      {/* Time input — compact */}
       <View
         style={{
           flexDirection: "row",
@@ -250,14 +244,14 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
         />
       </View>
 
-      {/* Selected label */}
+      {/* Confirmation label */}
       {selectedDate && parsedTime && (
         <Text style={{ color: "#7AB2FF", fontSize: 11, fontWeight: "700", textAlign: "center", marginTop: 6 }}>
           {`${String(selectedDate.getDate()).padStart(2, "0")}/${String(selectedDate.getMonth() + 1).padStart(2, "0")} às ${timeInput}`}
         </Text>
       )}
 
-      {/* Action buttons */}
+      {/* Actions */}
       <View style={{ flexDirection: "row", gap: 7, marginTop: 12 }}>
         <Pressable
           onPress={onReset}
@@ -299,13 +293,7 @@ export function DeadlineCalendarPicker({ currentDeadline, onConfirm, onCancel, o
             alignItems: "center",
           }}
         >
-          <Text
-            style={{
-              color: canConfirm ? "#FFFFFF" : "rgba(255,255,255,0.3)",
-              fontSize: 11,
-              fontWeight: "800",
-            }}
-          >
+          <Text style={{ color: canConfirm ? "#FFFFFF" : "rgba(255,255,255,0.3)", fontSize: 11, fontWeight: "800" }}>
             Confirmar
           </Text>
         </Pressable>

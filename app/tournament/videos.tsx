@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode } from "expo-av";
+import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -26,6 +29,7 @@ import { getTournamentBundle } from "@/lib/tournament-display";
 import {
   formatImportedVideoSize,
   pickLocalVideoAsset,
+  resolvePlayableVideoUrl,
   type ImportedVideoAsset,
 } from "@/lib/local-video-assets";
 import { normalizeVideoVoterPhone } from "@/lib/video-panel";
@@ -36,6 +40,129 @@ import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
 import type { VideoHighlight } from "@/types/video";
 
+// ─── Video player helpers ─────────────────────────────────────────────────────
+
+function getYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1]! : null;
+}
+
+function VideoNativePlayer({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const containerRef = useRef<View>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    // @ts-ignore — web only: View renders as <div>, we inject a <video> element directly
+    const container = containerRef.current as unknown as HTMLElement | null;
+    if (!container) return;
+    const video = document.createElement("video");
+    video.src = uri;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.style.cssText = "width:100%;height:100%;object-fit:contain;background:#000;display:block;border-radius:12px;";
+    container.appendChild(video);
+    video.play().catch(() => {});
+    return () => {
+      video.pause();
+      container.removeChild(video);
+    };
+  }, [uri]);
+
+  if (Platform.OS !== "web") {
+    return (
+      <Video
+        source={{ uri }}
+        style={{ width, height, borderRadius: 12 }}
+        resizeMode={ResizeMode.CONTAIN}
+        shouldPlay
+        useNativeControls
+      />
+    );
+  }
+
+  return (
+    <View
+      ref={containerRef}
+      style={{ width, height, borderRadius: 12, overflow: "hidden", backgroundColor: "#000" }}
+    />
+  );
+}
+
+function VideoPlayerModal({ video, onClose }: { video: VideoHighlight; onClose: () => void }) {
+  const { width } = useWindowDimensions();
+  const playerW = Math.min(width - 32, 720);
+  const playerH = Math.round(playerW * 9 / 16);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(true);
+
+  const ytId = getYouTubeId(video.videoUrl);
+
+  useEffect(() => {
+    if (ytId) { setResolving(false); return; }
+    resolvePlayableVideoUrl(video.videoUrl).then((url) => {
+      setResolvedUrl(url);
+      setResolving(false);
+    });
+  }, [video.videoUrl, ytId]);
+
+  const header = (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+      <Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 14, flex: 1 }} numberOfLines={2}>{video.title}</Text>
+      <Pressable onPress={onClose} style={{ padding: 6 }}>
+        <Ionicons name="close" size={24} color="#FFFFFF" />
+      </Pressable>
+    </View>
+  );
+
+  // YouTube embed
+  if (ytId) {
+    if (Platform.OS === "web") {
+      const embedSrc = `https://www.youtube.com/embed/${ytId}?autoplay=1`;
+      return (
+        <Modal transparent animationType="fade" onRequestClose={onClose}>
+          <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.90)", alignItems: "center", justifyContent: "center" }}>
+            <Pressable onPress={(e) => e.stopPropagation()} style={{ width: playerW }}>
+              {header}
+              <View
+                style={{ width: playerW, height: playerH, borderRadius: 12, overflow: "hidden", backgroundColor: "#000" }}
+                // @ts-ignore web-only
+                dangerouslySetInnerHTML={{ __html: `<iframe src="${embedSrc}" width="${playerW}" height="${playerH}" frameborder="0" allow="autoplay; fullscreen" allowfullscreen style="display:block;border:0"></iframe>` }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      );
+    }
+    Linking.openURL(`https://www.youtube.com/watch?v=${ytId}`);
+    onClose();
+    return null;
+  }
+
+  // Local / direct URL — wait for resolution from IndexedDB
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" }}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ width: playerW }}>
+          {header}
+          {resolving ? (
+            <View style={{ width: playerW, height: playerH, borderRadius: 12, backgroundColor: "#111", alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>Carregando vídeo…</Text>
+            </View>
+          ) : !resolvedUrl ? (
+            <View style={{ width: playerW, height: playerH, borderRadius: 12, backgroundColor: "#111", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <Ionicons name="alert-circle-outline" size={32} color="#F87171" />
+              <Text style={{ color: "#F87171", fontSize: 13, textAlign: "center" }}>Não foi possível carregar o vídeo.{"\n"}Tente adicionar novamente.</Text>
+            </View>
+          ) : (
+            <VideoNativePlayer uri={resolvedUrl} width={playerW} height={playerH} />
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ActiveTab = "feed" | "ranking" | "votantes";
@@ -44,6 +171,7 @@ type AddVideoMode = "file" | "url";
 interface AddVideoForm {
   title: string;
   teamName: string;
+  teamName2: string;
   videoUrl: string;
   videoAsset: ImportedVideoAsset | null;
   mode: AddVideoMode;
@@ -221,7 +349,7 @@ function VideoFeedCard({
           </Text>
           {video.teamName ? (
             <Text style={{ color: "#FFD77A", fontWeight: "700", fontSize: 13, marginTop: 2 }}>
-              {video.teamName}
+              {video.teamName2 ? `${video.teamName}  ×  ${video.teamName2}` : video.teamName}
             </Text>
           ) : null}
         </View>
@@ -352,7 +480,7 @@ function AddVideoModal({
   onClose: () => void;
   onSubmit: (form: AddVideoForm) => void;
 }) {
-  const emptyForm: AddVideoForm = { title: "", teamName: "", videoUrl: "", videoAsset: null, mode: "file" };
+  const emptyForm: AddVideoForm = { title: "", teamName: "", teamName2: "", videoUrl: "", videoAsset: null, mode: "file" };
   const [form, setForm] = useState<AddVideoForm>(emptyForm);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
@@ -378,8 +506,8 @@ function AddVideoModal({
       setError("Informe o título do vídeo.");
       return;
     }
-    if (teams.length > 0 && !form.teamName) {
-      setError("Selecione o time do lance.");
+    if (teams.length > 0 && (!form.teamName || !form.teamName2)) {
+      setError("Selecione os dois jogadores do lance.");
       return;
     }
     if (form.mode === "file" && !form.videoAsset) {
@@ -505,62 +633,60 @@ function AddVideoModal({
               />
             </View>
 
-            {/* Team chips */}
-            <View style={{ gap: 8 }}>
-              <Text style={{ color: "#AEBBDA", fontSize: 12, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
-                Time do lance *
-              </Text>
+            {/* Player 1 chips */}
+            {[
+              { label: "Jogador 1 *", field: "teamName" as const },
+              { label: "Jogador 2 *", field: "teamName2" as const },
+            ].map(({ label, field }) => (
+              <View key={field} style={{ gap: 8 }}>
+                <Text style={{ color: "#AEBBDA", fontSize: 12, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
+                  {label}
+                </Text>
 
-              {teams.length > 0 ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {teams.map((team) => {
-                    const selected = form.teamName === team;
-                    return (
-                      <Pressable
-                        key={team}
-                        onPress={() => setForm((f) => ({ ...f, teamName: team }))}
-                        style={{
-                          paddingHorizontal: 14,
-                          paddingVertical: 9,
-                          borderRadius: 999,
-                          borderWidth: 1,
-                          borderColor: selected ? "rgba(87,255,124,0.50)" : "rgba(255,255,255,0.12)",
-                          backgroundColor: selected ? "rgba(87,255,124,0.12)" : "#132028",
-                        }}
-                      >
-                        <Text
+                {teams.length > 0 ? (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    {teams.map((team) => {
+                      const selected = form[field] === team;
+                      return (
+                        <Pressable
+                          key={team}
+                          onPress={() => setForm((f) => ({ ...f, [field]: team }))}
                           style={{
-                            color: selected ? "#57FF7C" : "#AEBBDA",
-                            fontWeight: "700",
-                            fontSize: 13,
+                            paddingHorizontal: 14,
+                            paddingVertical: 9,
+                            borderRadius: 999,
+                            borderWidth: 1,
+                            borderColor: selected ? "rgba(87,255,124,0.50)" : "rgba(255,255,255,0.12)",
+                            backgroundColor: selected ? "rgba(87,255,124,0.12)" : "#132028",
                           }}
                         >
-                          {team}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : (
-                /* Fallback: free text if tournament has no participants yet */
-                <TextInput
-                  value={form.teamName}
-                  onChangeText={(v) => setForm((f) => ({ ...f, teamName: v }))}
-                  placeholder="Ex: Real Madrid"
-                  placeholderTextColor="#4A5568"
-                  style={{
-                    backgroundColor: "#132028",
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.10)",
-                    color: "#F3F7FF",
-                    paddingHorizontal: 16,
-                    paddingVertical: 14,
-                    fontSize: 15,
-                  }}
-                />
-              )}
-            </View>
+                          <Text style={{ color: selected ? "#57FF7C" : "#AEBBDA", fontWeight: "700", fontSize: 13 }}>
+                            {team}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <TextInput
+                    value={form[field]}
+                    onChangeText={(v) => setForm((f) => ({ ...f, [field]: v }))}
+                    placeholder="Ex: Real Madrid"
+                    placeholderTextColor="#4A5568"
+                    style={{
+                      backgroundColor: "#132028",
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.10)",
+                      color: "#F3F7FF",
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      fontSize: 15,
+                    }}
+                  />
+                )}
+              </View>
+            ))}
 
             {/* File mode */}
             {form.mode === "file" ? (
@@ -763,7 +889,7 @@ function VoteModal({
               </Text>
               {video.teamName ? (
                 <Text style={{ color: "#FFD77A", fontWeight: "600", fontSize: 13 }}>
-                  {video.teamName}
+                  {video.teamName2 ? `${video.teamName}  ×  ${video.teamName2}` : video.teamName}
                 </Text>
               ) : null}
             </View>
@@ -868,6 +994,7 @@ export default function TournamentVideosScreen() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("feed");
   const [showAddVideo, setShowAddVideo] = useState(false);
   const [voteTargetVideo, setVoteTargetVideo] = useState<VideoHighlight | null>(null);
+  const [playingVideo, setPlayingVideo] = useState<VideoHighlight | null>(null);
 
   useEffect(() => {
     if (
@@ -960,6 +1087,7 @@ export default function TournamentVideosScreen() {
       tournamentName: bundle.campeonato.nome,
       title: form.title,
       teamName: form.teamName,
+      teamName2: form.teamName2 || null,
       videoUrl,
       userId: user?.id ?? "arena-organizer",
       fileName: form.videoAsset?.fileName ?? null,
@@ -993,7 +1121,9 @@ export default function TournamentVideosScreen() {
           <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 4, paddingBottom: 4 }}>
             <TabPill label="Vídeos" active={activeTab === "feed"} onPress={() => setActiveTab("feed")} />
             <TabPill label={`Ranking (${orderedVideos.length})`} active={activeTab === "ranking"} onPress={() => setActiveTab("ranking")} />
-            <TabPill label={`Votantes (${voterRows.length})`} active={activeTab === "votantes"} onPress={() => setActiveTab("votantes")} />
+            {(accessMode === "owner" || accessMode === "editor") && (
+              <TabPill label={`Votantes (${voterRows.length})`} active={activeTab === "votantes"} onPress={() => setActiveTab("votantes")} />
+            )}
           </View>
         </ScrollView>
 
@@ -1036,7 +1166,7 @@ export default function TournamentVideosScreen() {
                 rank={index + 1}
                 alreadyVoted={false}
                 votedThisVideo={false}
-                onPlay={() => {}}
+                onPlay={() => setPlayingVideo(video)}
                 onVote={() => setVoteTargetVideo(video)}
               />
             ))
@@ -1093,7 +1223,7 @@ export default function TournamentVideosScreen() {
                     </Text>
                     {video.teamName ? (
                       <Text style={{ color: "#FFD77A", fontWeight: "600", fontSize: 13 }}>
-                        {video.teamName}
+                        {video.teamName2 ? `${video.teamName}  ×  ${video.teamName2}` : video.teamName}
                       </Text>
                     ) : null}
                   </View>
@@ -1321,6 +1451,10 @@ export default function TournamentVideosScreen() {
         onClose={() => setVoteTargetVideo(null)}
         onSubmit={handleVoteSubmit}
       />
+
+      {playingVideo && (
+        <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
+      )}
     </Screen>
   );
 }

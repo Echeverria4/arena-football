@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import type { Campeonato, Jogo, Participante } from "@/types/tournament";
 
@@ -262,14 +262,16 @@ function TeamRow({ name, flagUrl, goalsD1, goalsD2, isWinner, showD2 }: TeamRowP
   );
 }
 
+const LIBERTADORES_TROPHY_URI = "https://www.futbox.com/img/v1/13f/b75/017/b9b/cebb6617eb4a21d62ca4.png";
+
 // ── Match card ───────────────────────────────────────────────────────────────
 
 interface BracketMatchCardProps {
   slot: BracketSlot;
-  onPress?: () => void;
+  isFinal?: boolean;
 }
 
-function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
+function BracketMatchCard({ slot, isFinal = false }: BracketMatchCardProps) {
   const isDefined = slot.homeId !== null && slot.awayId !== null;
   const homeIsWinner = isDefined && slot.winnerId === slot.homeId;
   const awayIsWinner = isDefined && slot.winnerId === slot.awayId;
@@ -280,32 +282,66 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
   const totalHome = showAggregate ? (slot.leg1HomeGoals ?? 0) + (homeGoalsD2 ?? 0) : null;
   const totalAway = showAggregate ? (slot.leg1AwayGoals ?? 0) + (awayGoalsD2 ?? 0) : null;
 
+  const borderColor = isFinal
+    ? (isDefined ? "rgba(245,158,11,0.75)" : "rgba(245,158,11,0.28)")
+    : (isDefined ? "rgba(139,92,246,0.28)" : "rgba(255,255,255,0.07)");
+  const bgColor = isFinal
+    ? (isDefined ? "rgba(20,12,2,0.96)" : "rgba(20,12,2,0.60)")
+    : (isDefined ? "rgba(7,4,18,0.94)" : "rgba(7,4,18,0.50)");
+
   return (
-    <Pressable
-      onPress={isDefined ? onPress : undefined}
+    <View
       style={{
         width: CARD_W,
         height: CARD_H,
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: isDefined ? "rgba(139,92,246,0.28)" : "rgba(255,255,255,0.07)",
-        backgroundColor: isDefined ? "rgba(7,4,18,0.94)" : "rgba(7,4,18,0.50)",
+        borderWidth: isFinal ? 1.5 : 1,
+        borderColor,
+        backgroundColor: bgColor,
         overflow: "hidden",
         justifyContent: "space-between",
+        shadowColor: isFinal ? "#F59E0B" : "transparent",
+        shadowOpacity: isFinal ? 0.55 : 0,
+        shadowRadius: isFinal ? 12 : 0,
+        shadowOffset: { width: 0, height: 0 },
       }}
     >
+      {/* Libertadores trophy — subtle background when card has teams defined */}
+      {isFinal && isDefined && (
+        <Image
+          source={{ uri: LIBERTADORES_TROPHY_URI }}
+          style={{
+            position: "absolute",
+            right: -6,
+            bottom: -2,
+            width: 52,
+            height: 52,
+            opacity: 0.12,
+          }}
+          resizeMode="contain"
+        />
+      )}
+
       {!isDefined ? (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 3 }}>
-          <Text style={{ color: "rgba(255,255,255,0.16)", fontSize: 16 }}>🛡️</Text>
-          <Text style={{ color: "rgba(255,255,255,0.22)", fontSize: 9 }}>A definir</Text>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 4 }}>
+          {isFinal ? (
+            <Image
+              source={{ uri: LIBERTADORES_TROPHY_URI }}
+              style={{ width: 38, height: 38 }}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={{ color: "rgba(255,255,255,0.16)", fontSize: 16 }}>🛡️</Text>
+          )}
+          <Text style={{ color: isFinal ? "rgba(245,158,11,0.70)" : "rgba(255,255,255,0.22)", fontSize: 9 }}>A definir</Text>
         </View>
       ) : (
         <>
           {/* D1/D2 column headers */}
           <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 6, paddingTop: 4, gap: 2 }}>
-            <Text style={{ width: 18, textAlign: "center", color: "#3B5580", fontSize: 8, fontWeight: "800" }}>D1</Text>
+            <Text style={{ width: 18, textAlign: "center", color: isFinal ? "rgba(245,158,11,0.55)" : "#3B5580", fontSize: 8, fontWeight: "800" }}>D1</Text>
             {showD2 && (
-              <Text style={{ width: 18, textAlign: "center", color: "#3B5580", fontSize: 8, fontWeight: "800" }}>D2</Text>
+              <Text style={{ width: 18, textAlign: "center", color: isFinal ? "rgba(245,158,11,0.55)" : "#3B5580", fontSize: 8, fontWeight: "800" }}>D2</Text>
             )}
             <View style={{ width: 10 }} />
           </View>
@@ -319,7 +355,7 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
             showD2={showD2}
           />
 
-          <View style={{ height: 1, backgroundColor: "rgba(139,92,246,0.12)", marginHorizontal: 5 }} />
+          <View style={{ height: 1, backgroundColor: isFinal ? "rgba(245,158,11,0.20)" : "rgba(139,92,246,0.12)", marginHorizontal: 5 }} />
 
           <TeamRow
             name={slot.awayName}
@@ -332,7 +368,7 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
 
           {showAggregate ? (
             <View style={{ paddingHorizontal: 5, paddingBottom: 3 }}>
-              <Text style={{ color: "rgba(167,139,250,0.50)", fontSize: 8, textAlign: "center" }}>
+              <Text style={{ color: isFinal ? "rgba(245,158,11,0.60)" : "rgba(167,139,250,0.50)", fontSize: 8, textAlign: "center" }}>
                 Agr: {totalHome}–{totalAway}
               </Text>
             </View>
@@ -341,7 +377,7 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
           )}
         </>
       )}
-    </Pressable>
+    </View>
   );
 }
 
@@ -350,20 +386,16 @@ function BracketMatchCard({ slot, onPress }: BracketMatchCardProps) {
 export interface KnockoutBracketProps {
   campeonato: Campeonato;
   participantes: Participante[];
-  onPressMatch: (matchId: string) => void;
+  onPressMatch?: (matchId: string) => void;
 }
 
-export function KnockoutBracket({ campeonato, participantes, onPressMatch }: KnockoutBracketProps) {
+export function KnockoutBracket({ campeonato, participantes }: KnockoutBracketProps) {
   const [containerW, setContainerW] = useState(0);
   const columns = buildBracketColumns(campeonato, participantes);
   if (columns.length === 0) return null;
 
   const numPhases = columns.length;
   const firstCount = columns[0]!.slots.length;
-
-  function pressSlot(slot: BracketSlot) {
-    if (slot.matchId) onPressMatch(slot.matchId);
-  }
 
   // Only a final — render it simply
   if (numPhases === 1 || firstCount < 2) {
@@ -373,7 +405,7 @@ export function KnockoutBracket({ campeonato, participantes, onPressMatch }: Kno
         <Text style={{ color: "#F59E0B", fontSize: 10, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 8 }}>
           Final
         </Text>
-        <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
+        <BracketMatchCard slot={slot} isFinal />
       </View>
     );
   }
@@ -471,7 +503,10 @@ export function KnockoutBracket({ campeonato, participantes, onPressMatch }: Kno
                   key={si}
                   style={{ position: "absolute", left: xLeftOf(phIdx, si), top: yCardOf(phIdx) }}
                 >
-                  <BracketMatchCard slot={slot} onPress={() => pressSlot(slot)} />
+                  <BracketMatchCard
+                    slot={slot}
+                    isFinal={phIdx === numPhases - 1}
+                  />
                 </View>
               ))}
             </React.Fragment>

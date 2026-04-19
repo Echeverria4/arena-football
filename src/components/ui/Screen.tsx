@@ -34,7 +34,7 @@ export function Screen({
   ...rest
 }: ScreenProps) {
   const { width } = useWindowDimensions();
-  const contentClassName = `flex-1 bg-arena-bg ${className}`.trim();
+  const contentClassName = (backgroundVariant === "none" ? `flex-1 ${className}` : `flex-1 bg-arena-bg ${className}`).trim();
   const isHorizontal = Boolean(scrollProps?.horizontal);
   const baseBottomPadding = isHorizontal ? 16 : width < 420 ? 108 : width < 768 ? 118 : 132;
   const baseScreenStyle =
