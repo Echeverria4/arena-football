@@ -140,7 +140,7 @@ export default function TournamentDetailsScreen() {
       return;
     }
 
-    router.replace({ pathname: "/tournament/[id]", params: { id: currentTournamentId } });
+    router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
   }, [bundle.campeonato.id, currentTournamentId, lockToActiveTournament]);
 
   function performDeleteTournament() {
@@ -227,11 +227,6 @@ export default function TournamentDetailsScreen() {
       label: "Videos",
       active: false,
       onPress: () => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } }),
-    },
-    {
-      label: "Pódio",
-      active: false,
-      onPress: () => router.push({ pathname: "/tournament/preview", params: { id: bundle.campeonato.id } }),
     },
     ...(accessMode === "owner"
       ? [

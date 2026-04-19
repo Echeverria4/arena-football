@@ -518,7 +518,7 @@ export default function TabsLayout() {
       return;
     }
 
-    router.replace({ pathname: "/tournament/[id]", params: { id: currentTournamentId } });
+    router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
   }, [currentTournamentId, lockToActiveTournament, pathname]);
 
   return (

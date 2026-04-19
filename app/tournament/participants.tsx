@@ -18,6 +18,7 @@ import { canEditTournament, useTournamentAccessMode } from "@/lib/tournament-acc
 import { formatPhone } from "@/lib/formatters";
 import { getTeamInitials, normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import { getTournamentBundle } from "@/lib/tournament-display";
+import { validateBrazilianPhone } from "@/lib/validations";
 import { updateParticipantDisplay } from "@/services/participants";
 import { useTournamentStore } from "@/stores/tournament-store";
 import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
@@ -109,8 +110,9 @@ export default function TournamentParticipantsScreen() {
       return;
     }
 
-    if (nextWhatsapp && nextWhatsappDigits.length < 10) {
-      Alert.alert("WhatsApp invalido", "Informe um numero valido ou deixe o campo vazio.");
+    const phoneError = validateBrazilianPhone(nextWhatsapp);
+    if (phoneError) {
+      Alert.alert("WhatsApp inválido", phoneError);
       return;
     }
 
@@ -387,7 +389,7 @@ export default function TournamentParticipantsScreen() {
                                     borderColor: "rgba(118,255,169,0.22)",
                                     color: "#F3F7FF",
                                   }}
-                                  placeholder="+55 11 99999-0000"
+                                  placeholder="55 67 9 1234-5678 (13 dígitos)"
                                   placeholderTextColor="#7E8FAF"
                                   keyboardType="phone-pad"
                                   value={draftWhatsapp}

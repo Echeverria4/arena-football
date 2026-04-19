@@ -37,7 +37,7 @@ export default function TournamentsScreen() {
       return;
     }
 
-    router.replace({ pathname: "/tournament/[id]", params: { id: currentTournamentId } });
+    router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
   }, [currentTournamentId, lockToActiveTournament]);
 
   if (lockToActiveTournament) {

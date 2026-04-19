@@ -42,6 +42,32 @@ export const participantSchema = z.object({
   whatsapp: z.string().optional(),
 });
 
+/**
+ * Valida número de WhatsApp brasileiro.
+ * Formato obrigatório: 55 + DDD (2 dígitos) + 9 + 8 dígitos = 13 dígitos no total.
+ * Exemplo: 5567912345678 → 55 67 9 1234-5678
+ * Retorna null se válido (ou vazio), ou string de erro se inválido.
+ */
+export function validateBrazilianPhone(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.length === 0) return null;
+
+  if (digits.length !== 13) {
+    return `O WhatsApp deve ter exatamente 13 dígitos.\nFormato: 55 + DDD + 9 + 8 dígitos\nExemplo: 55 67 9 1234-5678\n\nVocê informou ${digits.length} dígito${digits.length === 1 ? "" : "s"}.`;
+  }
+
+  if (!digits.startsWith("55")) {
+    return "O número deve começar com 55 (código do Brasil).\nExemplo: 55 67 9 1234-5678";
+  }
+
+  if (digits[4] !== "9") {
+    return "O 5º dígito deve ser 9 (obrigatório para celulares brasileiros).\nExemplo: 55 67 9 1234-5678";
+  }
+
+  return null;
+}
+
 export const tournamentSchema = z.object({
   name: z.string().min(3, "Informe o nome do campeonato."),
   format: z.enum(["league", "groups", "knockout", "groups_knockout"]),

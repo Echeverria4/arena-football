@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Image, Pressable, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, Switch, Text, TextInput, View } from "react-native";
 import { z } from "zod";
 
 import { TeamPickerModal } from "@/components/tournament/TeamPickerModal";
@@ -16,7 +16,7 @@ import { getNextSeasonLabel } from "@/lib/season-tournaments";
 import type { TeamItem } from "@/lib/team-data";
 import { getTeamInitials, resolveTeamVisual } from "@/lib/team-visuals";
 import { buildInitialCampeonato } from "@/lib/tournament-setup";
-import { classificationCriterionSchema } from "@/lib/validations";
+import { classificationCriterionSchema, validateBrazilianPhone } from "@/lib/validations";
 import type { TournamentMatchMode } from "@/types/tournament";
 import { useAppStore } from "@/stores/app-store";
 import { useTournamentStore } from "@/stores/tournament-store";
@@ -215,6 +215,17 @@ export default function TournamentCreateScreen() {
     setStep2Touched(true);
     const hasIncomplete = draftParticipants.some(isParticipantIncomplete);
     if (hasIncomplete) return;
+
+    const invalidPhone = draftParticipants.find((p) => {
+      const phone = p.whatsapp.trim();
+      return phone.length > 0 && validateBrazilianPhone(phone) !== null;
+    });
+    if (invalidPhone) {
+      const error = validateBrazilianPhone(invalidPhone.whatsapp.trim());
+      Alert.alert("WhatsApp inválido", `${invalidPhone.nome || "Participante"}:\n${error}`);
+      return;
+    }
+
     setStep(3);
   }
 
@@ -269,7 +280,7 @@ export default function TournamentCreateScreen() {
 
       adicionarCampeonato(finalCampeonato);
       setCurrentTournamentId(tournamentId);
-      router.replace({ pathname: "/tournament/[id]", params: { id: tournamentId } });
+      router.replace({ pathname: "/tournament/preview", params: { id: tournamentId } });
     } finally {
       setIsSubmitting(false);
     }
@@ -882,7 +893,7 @@ export default function TournamentCreateScreen() {
                       paddingVertical: 12,
                       fontSize: 15,
                     }}
-                    placeholder="WhatsApp (opcional) +55 11 99999-0000"
+                    placeholder="55 67 9 1234-5678 (13 dígitos, opcional)"
                     placeholderTextColor="#7481A2"
                     keyboardType="phone-pad"
                     value={participant.whatsapp}

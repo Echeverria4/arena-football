@@ -248,7 +248,7 @@ export default function TournamentAccessScreen() {
 
   useEffect(() => {
     if (lockToActiveTournament && currentTournamentId && currentTournamentId !== id) {
-      router.replace({ pathname: "/tournament/[id]", params: { id: currentTournamentId } });
+      router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
       return;
     }
 
@@ -256,7 +256,7 @@ export default function TournamentAccessScreen() {
       return;
     }
 
-    router.replace({ pathname: "/tournament/[id]", params: { id } });
+    router.replace({ pathname: "/tournament/preview", params: { id } });
   }, [accessMode, currentTournamentId, id, lockToActiveTournament]);
 
   if (!hydrated) {
