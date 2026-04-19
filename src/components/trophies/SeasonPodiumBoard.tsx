@@ -280,8 +280,8 @@ function PodiumStep({
 
               <View style={{ alignItems: "center", gap: 2 }}>
                 {[
-                  { label: "Pontos", value: `${entry.points} pts` },
-                  { label: "Vitórias", value: `${entry.wins} vit.` },
+                  { label: "Pontos", value: `${entry.points}` },
+                  { label: "Vitórias", value: `${entry.wins}` },
                   { label: "Saldo", value: `${entry.goalDifference >= 0 ? "+" : ""}${entry.goalDifference}` },
                 ].map(({ label, value }) => (
                   <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
