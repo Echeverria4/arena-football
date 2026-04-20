@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { Alert, Switch, Text, TextInput, View } from "react-native";
 
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -11,11 +12,19 @@ import { signInWithEmail, signInWithGoogle } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function LoginScreen() {
-  const [stayConnected, setStayConnected, setUser] = useAuthStore((state) => [
+  const [stayConnected, setStayConnected, setUser, status] = useAuthStore((state) => [
     state.stayConnected,
     state.setStayConnected,
     state.setUser,
+    state.status,
   ]);
+
+  // Already authenticated (e.g. persistent session) — skip login
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/tournaments");
+    }
+  }, [status]);
 
   const {
     control,

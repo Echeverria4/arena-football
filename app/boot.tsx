@@ -53,7 +53,7 @@ export default function BootScreen() {
     (state) => state.releaseSharedTournamentAccess,
   );
   const setBootCompleted = useAppStore((state) => state.setBootCompleted);
-  const authStatus = useAuthStore((state) => state.status);
+  const hydrateSession = useAuthStore((state) => state.hydrateSession);
   const horizontalAnimations = useRef(horizontalGuides.map(() => new Animated.Value(-1800))).current;
   const horizontalReverseAnimations = useRef(horizontalGuides.map(() => new Animated.Value(1800))).current;
   const verticalAnimations = useRef(verticalGuides.map(() => new Animated.Value(-1800))).current;
@@ -68,6 +68,10 @@ export default function BootScreen() {
   useEffect(() => {
     releaseSharedTournamentAccess();
   }, [releaseSharedTournamentAccess]);
+
+  useEffect(() => {
+    void hydrateSession();
+  }, []);
 
   useEffect(() => {
     const horizontalTravel = Math.max(width * 0.55, 520);
@@ -276,13 +280,8 @@ export default function BootScreen() {
     <Screen className="flex-1" backgroundVariant="none">
       <Pressable className="flex-1" onPress={() => {
         setBootCompleted(true);
-        if (redirect) {
-          router.replace(redirect as never);
-        } else if (authStatus === "authenticated") {
-          router.replace("/tournaments");
-        } else {
-          router.replace("/login");
-        }
+        const dest = (redirect as string | undefined) || "/tournaments";
+        router.replace(dest as never);
       }}>
         <View className="flex-1 bg-black">
           <View className="absolute inset-0 bg-[#010302]" />
