@@ -41,8 +41,11 @@ export function VideoGalleryCard({
         overflow: "hidden",
         borderRadius: 24,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
-        backgroundColor: "rgba(7,12,22,0.84)",
+        borderColor: "rgba(167,139,250,0.16)",
+        backgroundColor: "rgba(11,8,28,0.84)",
+        shadowColor: "#8B5CF6",
+        shadowOpacity: 0.22,
+        shadowRadius: 22,
       }}
     >
       <Pressable onPress={onOpen} className="active:opacity-90">
@@ -71,7 +74,7 @@ export function VideoGalleryCard({
           ) : null}
 
           <LinearGradient
-            colors={["rgba(5,8,14,0.08)", "rgba(5,8,14,0.22)", "rgba(5,8,14,0.92)"]}
+            colors={["rgba(6,8,22,0.12)", "rgba(10,5,28,0.34)", "rgba(4,6,16,0.96)"]}
             start={{ x: 0.2, y: 0 }}
             end={{ x: 0.8, y: 1 }}
             style={{
@@ -90,14 +93,14 @@ export function VideoGalleryCard({
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 6,
-                  backgroundColor: "rgba(0,0,0,0.56)",
+                  backgroundColor: "rgba(11,8,28,0.64)",
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.14)",
+                  borderColor: "rgba(167,139,250,0.38)",
                 }}
               >
                 <Text
                   style={{
-                    color: "#F4F7FF",
+                    color: "#E9D5FF",
                     fontSize: 11,
                     fontWeight: "900",
                     letterSpacing: 1.3,
@@ -113,14 +116,16 @@ export function VideoGalleryCard({
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 6,
-                  backgroundColor: "rgba(0,0,0,0.56)",
+                  backgroundColor: "rgba(11,8,28,0.64)",
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.14)",
+                  borderColor: shareableOutsideCurrentDevice
+                    ? "rgba(87,255,124,0.38)"
+                    : "rgba(255,215,106,0.38)",
                 }}
               >
                 <Text
                   style={{
-                    color: shareableOutsideCurrentDevice ? "#8CFFAC" : "#FFD39C",
+                    color: shareableOutsideCurrentDevice ? "#57FF7C" : "#FFD76A",
                     fontSize: 11,
                     fontWeight: "900",
                     letterSpacing: 1.3,
@@ -140,12 +145,15 @@ export function VideoGalleryCard({
                   borderRadius: 999,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: "rgba(255,255,255,0.12)",
+                  backgroundColor: "rgba(139,92,246,0.28)",
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.18)",
+                  borderColor: "rgba(196,181,253,0.62)",
+                  shadowColor: "#8B5CF6",
+                  shadowOpacity: 0.85,
+                  shadowRadius: 24,
                 }}
               >
-                <Ionicons name="play" size={34} color="#FFFFFF" />
+                <Ionicons name="play" size={34} color="#F5EEFF" />
               </View>
             </View>
 
@@ -154,7 +162,7 @@ export function VideoGalleryCard({
                 <Text
                   numberOfLines={2}
                   style={{
-                    color: "#FFFFFF",
+                    color: "#F5EEFF",
                     fontSize: 20,
                     fontWeight: "900",
                   }}
@@ -165,7 +173,7 @@ export function VideoGalleryCard({
                   <Text
                     numberOfLines={2}
                     style={{
-                      color: "#CED8EF",
+                      color: "#C4B5FD",
                       fontSize: 13,
                       lineHeight: 20,
                     }}
@@ -180,14 +188,14 @@ export function VideoGalleryCard({
                   borderRadius: 14,
                   paddingHorizontal: 10,
                   paddingVertical: 8,
-                  backgroundColor: "rgba(0,0,0,0.52)",
+                  backgroundColor: "rgba(11,8,28,0.62)",
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.12)",
+                  borderColor: "rgba(167,139,250,0.32)",
                 }}
               >
                 <Text
                   style={{
-                    color: "#E7EEFF",
+                    color: "#C4B5FD",
                     fontSize: 11,
                     fontWeight: "800",
                     letterSpacing: 1.1,
@@ -209,14 +217,14 @@ export function VideoGalleryCard({
               borderRadius: 999,
               paddingHorizontal: 10,
               paddingVertical: 6,
-              backgroundColor: "rgba(255,255,255,0.05)",
+              backgroundColor: "rgba(139,92,246,0.12)",
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.08)",
+              borderColor: "rgba(167,139,250,0.32)",
             }}
           >
             <Text
               style={{
-                color: "#DDE7FF",
+                color: "#C4B5FD",
                 fontSize: 11,
                 fontWeight: "800",
                 letterSpacing: 1.2,
@@ -233,14 +241,14 @@ export function VideoGalleryCard({
                 borderRadius: 999,
                 paddingHorizontal: 10,
                 paddingVertical: 6,
-                backgroundColor: "rgba(90,124,255,0.12)",
+                backgroundColor: "rgba(34,211,238,0.12)",
                 borderWidth: 1,
-                borderColor: "rgba(90,124,255,0.22)",
+                borderColor: "rgba(34,211,238,0.30)",
               }}
             >
               <Text
                 style={{
-                  color: "#BFD0FF",
+                  color: "#67E8F9",
                   fontSize: 11,
                   fontWeight: "800",
                   letterSpacing: 1.2,
@@ -260,12 +268,12 @@ export function VideoGalleryCard({
                 paddingVertical: 6,
                 backgroundColor: "rgba(87,255,124,0.10)",
                 borderWidth: 1,
-                borderColor: "rgba(87,255,124,0.22)",
+                borderColor: "rgba(87,255,124,0.28)",
               }}
             >
               <Text
                 style={{
-                  color: "#CFFFD9",
+                  color: "#C6F8D6",
                   fontSize: 11,
                   fontWeight: "800",
                   letterSpacing: 1.1,
@@ -278,7 +286,7 @@ export function VideoGalleryCard({
         </View>
 
         {statusNote ? (
-          <Text style={{ color: "#AEBBDA", fontSize: 13, lineHeight: 21 }}>
+          <Text style={{ color: "#94A3B8", fontSize: 13, lineHeight: 21 }}>
             {statusNote}
           </Text>
         ) : null}

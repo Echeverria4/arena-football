@@ -466,6 +466,33 @@ export default function VideosScreen() {
     ? `Encerrada${formatClosedAt(globalVotingClosedAt) ? ` em ${formatClosedAt(globalVotingClosedAt)}` : ""}.`
     : "Aberta para jogadores autorizados.";
 
+  const totalVotes = useMemo(
+    () => globalVideos.reduce((acc, video) => acc + (video.votesCount ?? 0), 0),
+    [globalVideos],
+  );
+
+  const panelStats: Array<{
+    label: string;
+    value: string;
+    accent: "neon" | "cyan" | "emerald" | "gold";
+  }> = [
+    { label: "Vídeos", value: String(globalVideos.length), accent: "neon" },
+    { label: "Votantes", value: String(globalVideoVoterPhones.length), accent: "cyan" },
+    { label: "Votos", value: String(totalVotes), accent: "emerald" },
+    {
+      label: "Status",
+      value: globalVotingClosed ? "Encerrada" : "Aberta",
+      accent: globalVotingClosed ? "gold" : "neon",
+    },
+  ];
+
+  const statAccentPalette = {
+    neon: { text: "#C4B5FD", border: "rgba(167,139,250,0.38)", bg: "rgba(139,92,246,0.12)", shadow: "#8B5CF6" },
+    cyan: { text: "#67E8F9", border: "rgba(34,211,238,0.36)", bg: "rgba(34,211,238,0.10)", shadow: "#22D3EE" },
+    emerald: { text: "#C6F8D6", border: "rgba(87,255,124,0.34)", bg: "rgba(87,255,124,0.10)", shadow: "#57FF7C" },
+    gold: { text: "#FFD76A", border: "rgba(255,215,106,0.40)", bg: "rgba(255,215,106,0.10)", shadow: "#FFD76A" },
+  } as const;
+
   return (
     <Screen
       scroll
@@ -491,16 +518,19 @@ export default function VideosScreen() {
                   maxWidth: 860,
                   borderRadius: 24,
                   padding: 20,
-                  backgroundColor: "rgba(8,15,28,0.88)",
+                  backgroundColor: "rgba(11,8,28,0.92)",
                   borderWidth: 1,
-                  borderColor: "rgba(154,184,255,0.18)",
+                  borderColor: "rgba(167,139,250,0.28)",
+                  shadowColor: "#8B5CF6",
+                  shadowOpacity: 0.35,
+                  shadowRadius: 28,
                 }}
               >
                 <View className="gap-4">
                   <View className="gap-2">
                     <Text
                       style={{
-                        color: "#9AB8FF",
+                        color: "#A78BFA",
                         fontSize: 11,
                         fontWeight: "900",
                         letterSpacing: 1.8,
@@ -512,7 +542,7 @@ export default function VideosScreen() {
                     <Text style={{ color: "#FFFFFF", fontSize: 26, fontWeight: "900" }}>
                       {openedVideo.title}
                     </Text>
-                    <Text style={{ color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                    <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                       {(openedVideo.viewsCount ?? 0)} visualizacoes • {openedVideo.votesCount} votos
                     </Text>
                   </View>
@@ -528,7 +558,7 @@ export default function VideosScreen() {
                       }}
                     >
                       {openedVideo.description ? (
-                        <Text style={{ color: "#F3F7FF", fontSize: 14, lineHeight: 22 }}>
+                        <Text style={{ color: "#E5E7EB", fontSize: 14, lineHeight: 22 }}>
                           {openedVideo.description}
                         </Text>
                       ) : null}
@@ -540,14 +570,14 @@ export default function VideosScreen() {
                               borderRadius: 999,
                               paddingHorizontal: 10,
                               paddingVertical: 6,
-                              backgroundColor: "rgba(90,124,255,0.12)",
+                              backgroundColor: "rgba(34,211,238,0.12)",
                               borderWidth: 1,
-                              borderColor: "rgba(90,124,255,0.22)",
+                              borderColor: "rgba(34,211,238,0.30)",
                             }}
                           >
                             <Text
                               style={{
-                                color: "#BFD0FF",
+                                color: "#67E8F9",
                                 fontSize: 11,
                                 fontWeight: "800",
                                 letterSpacing: 1.1,
@@ -567,12 +597,12 @@ export default function VideosScreen() {
                               paddingVertical: 6,
                               backgroundColor: "rgba(87,255,124,0.10)",
                               borderWidth: 1,
-                              borderColor: "rgba(87,255,124,0.22)",
+                              borderColor: "rgba(87,255,124,0.28)",
                             }}
                           >
                             <Text
                               style={{
-                                color: "#CFFFD9",
+                                color: "#C6F8D6",
                                 fontSize: 11,
                                 fontWeight: "800",
                                 letterSpacing: 1.1,
@@ -593,10 +623,10 @@ export default function VideosScreen() {
                       backgroundColor: "rgba(255,255,255,0.04)",
                     }}
                   >
-                    <Text style={{ color: "#F3F7FF", fontSize: 15, fontWeight: "800" }}>
+                    <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800" }}>
                       Situacao do seu acesso
                     </Text>
-                    <Text style={{ marginTop: 6, color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                    <Text style={{ marginTop: 6, color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                       {buildVideoCardNote({
                         video: openedVideo,
                         normalizedViewerPhone,
@@ -652,18 +682,63 @@ export default function VideosScreen() {
           }
         />
 
+        <View className="flex-row flex-wrap gap-3">
+          {panelStats.map((stat) => {
+            const palette = statAccentPalette[stat.accent];
+            return (
+              <View
+                key={stat.label}
+                className="min-w-[140px] flex-1 rounded-[18px] border px-4 py-3"
+                style={{
+                  borderColor: palette.border,
+                  backgroundColor: palette.bg,
+                  shadowColor: palette.shadow,
+                  shadowOpacity: 0.25,
+                  shadowRadius: 18,
+                }}
+              >
+                <Text
+                  style={{
+                    color: palette.text,
+                    fontSize: 10,
+                    fontWeight: "900",
+                    letterSpacing: 1.8,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {stat.label}
+                </Text>
+                <Text
+                  style={{
+                    marginTop: 4,
+                    color: "#E5E7EB",
+                    fontSize: 26,
+                    fontWeight: "900",
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  {stat.value}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
         {isModerator ? (
           <View
             className="flex-row flex-wrap items-center justify-between gap-3 rounded-[22px] border px-4 py-4"
             style={{
-              borderColor: "rgba(87,255,124,0.22)",
-              backgroundColor: "rgba(17,32,24,0.72)",
+              borderColor: "rgba(167,139,250,0.28)",
+              backgroundColor: "rgba(17,12,38,0.72)",
+              shadowColor: "#8B5CF6",
+              shadowOpacity: 0.18,
+              shadowRadius: 18,
             }}
           >
             <View className="flex-1 gap-1">
               <Text
                 style={{
-                  color: "#CFFFD9",
+                  color: "#C4B5FD",
                   fontSize: 11,
                   fontWeight: "900",
                   letterSpacing: 1.8,
@@ -672,10 +747,10 @@ export default function VideosScreen() {
               >
                 Gerenciamento
               </Text>
-              <Text style={{ color: "#F3F7FF", fontSize: 18, fontWeight: "800" }}>
+              <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "800" }}>
                 Adicionar videos e jogadores
               </Text>
-            <Text style={{ color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+            <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
               Use este atalho para publicar videos e cadastrar os WhatsApps que podem visualizar e votar.
             </Text>
             {showComposer ? (
@@ -699,13 +774,13 @@ export default function VideosScreen() {
           <View
             className="self-start rounded-full border px-3 py-2"
             style={{
-              borderColor: videoPanelAccessMode === "viewer" ? "rgba(233,179,52,0.34)" : "rgba(87,255,124,0.34)",
-              backgroundColor: videoPanelAccessMode === "viewer" ? "rgba(80,54,10,0.62)" : "rgba(11,44,24,0.66)",
+              borderColor: videoPanelAccessMode === "viewer" ? "rgba(255,215,106,0.34)" : "rgba(167,139,250,0.40)",
+              backgroundColor: videoPanelAccessMode === "viewer" ? "rgba(54,38,8,0.62)" : "rgba(28,18,52,0.66)",
             }}
           >
             <Text
               style={{
-                color: videoPanelAccessMode === "viewer" ? "#FFD76A" : "#CFFFD9",
+                color: videoPanelAccessMode === "viewer" ? "#FFD76A" : "#C4B5FD",
                 fontSize: 11,
                 fontWeight: "900",
                 letterSpacing: 1.8,
@@ -719,10 +794,10 @@ export default function VideosScreen() {
 
         <View className="flex-row flex-wrap items-center justify-between gap-3">
           <View className="max-w-[820px] gap-2">
-            <Text style={{ color: "#F3F7FF", fontSize: isSmallPhone ? 24 : 30, fontWeight: "900" }}>
+            <Text style={{ color: "#E5E7EB", fontSize: isSmallPhone ? 24 : 30, fontWeight: "900" }}>
               Biblioteca do painel
             </Text>
-            <Text style={{ color: "#AEBBDA", fontSize: 15, lineHeight: 24 }}>
+            <Text style={{ color: "#94A3B8", fontSize: 15, lineHeight: 24 }}>
               Os videos agora ficam organizados dentro do menu de acesso, com publicacao e lista no mesmo bloco.
             </Text>
           </View>
@@ -791,7 +866,7 @@ export default function VideosScreen() {
                           borderWidth: 1,
                           borderColor: "rgba(255,255,255,0.10)",
                           backgroundColor: "rgba(8,11,18,0.78)",
-                          color: "#F4F7FF",
+                          color: "#E5E7EB",
                           fontSize: 15,
                           fontWeight: "700",
                           paddingHorizontal: 16,
@@ -802,12 +877,12 @@ export default function VideosScreen() {
                     </View>
 
                     <View className="gap-2 rounded-[18px] border px-4 py-4" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.04)" }}>
-                      <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>
+                      <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "800" }}>
                         Lista atual
                       </Text>
 
                       {globalVideoVoterPhones.length === 0 ? (
-                        <Text style={{ color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                        <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                           Nenhum WhatsApp cadastrado ainda.
                         </Text>
                       ) : (
@@ -833,7 +908,7 @@ export default function VideosScreen() {
                                       borderWidth: 1,
                                       borderColor: "rgba(255,255,255,0.10)",
                                       backgroundColor: "rgba(8,11,18,0.78)",
-                                      color: "#F4F7FF",
+                                      color: "#E5E7EB",
                                       fontSize: 15,
                                       fontWeight: "700",
                                       paddingHorizontal: 14,
@@ -856,7 +931,7 @@ export default function VideosScreen() {
                                 </View>
                               ) : (
                                 <View className="flex-row items-center justify-between gap-3">
-                                  <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "700" }}>
+                                  <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "700" }}>
                                     {formatVideoVoterPhone(phone)}
                                   </Text>
                                   <View className="flex-row gap-3">
@@ -866,7 +941,7 @@ export default function VideosScreen() {
                                       </Text>
                                     </Pressable>
                                     <Pressable onPress={() => removerVotanteGlobal(phone)} className="active:opacity-80">
-                                      <Text style={{ color: "#FFD29E", fontSize: 12, fontWeight: "800", textTransform: "uppercase" }}>
+                                      <Text style={{ color: "#A78BFA", fontSize: 12, fontWeight: "800", textTransform: "uppercase" }}>
                                         Remover
                                       </Text>
                                     </Pressable>
@@ -899,12 +974,12 @@ export default function VideosScreen() {
               content={
                 <View className="gap-4">
                   <View className="rounded-[18px] border px-4 py-4" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.04)" }}>
-                    <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>
+                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "800" }}>
                       {globalVotingClosed
                         ? "Votacao fechada para todos os jogadores."
                         : "Votacao liberada para os WhatsApps autorizados."}
                     </Text>
-                    <Text style={{ marginTop: 6, color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                    <Text style={{ marginTop: 6, color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                       {winningVideo
                         ? `${winningVideo.title} esta marcado como vencedor atual com ${winningVideo.votesCount} votos.`
                         : "Ainda nao existe um vencedor definido neste painel."}
@@ -946,7 +1021,7 @@ export default function VideosScreen() {
                         borderWidth: 1,
                         borderColor: "rgba(255,255,255,0.10)",
                         backgroundColor: "rgba(8,11,18,0.78)",
-                        color: "#F4F7FF",
+                        color: "#E5E7EB",
                         fontSize: 15,
                         fontWeight: "700",
                         paddingHorizontal: 16,
@@ -957,10 +1032,10 @@ export default function VideosScreen() {
                   </View>
 
                   <View className="rounded-[18px] border px-4 py-4" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.04)" }}>
-                    <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>
+                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "800" }}>
                       {activeViewerPhone ? `WhatsApp ativo: ${formatVideoVoterPhone(activeViewerPhone)}` : "Nenhum WhatsApp validado ainda"}
                     </Text>
-                    <Text style={{ marginTop: 6, color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                    <Text style={{ marginTop: 6, color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                       {buildViewerStatus({
                         phone: normalizedViewerPhone,
                         authorized: viewerAuthorized,
@@ -981,7 +1056,7 @@ export default function VideosScreen() {
                       <View className="gap-2">
                         <Text
                           style={{
-                            color: "#9AB8FF",
+                            color: "#A78BFA",
                             fontSize: 12,
                             fontWeight: "800",
                             letterSpacing: 1.8,
@@ -990,10 +1065,10 @@ export default function VideosScreen() {
                         >
                           Publicacao
                         </Text>
-                        <Text style={{ color: "#F4F7FF", fontSize: 18, fontWeight: "800" }}>
+                        <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "800" }}>
                           Adicionar videos neste menu
                         </Text>
-                        <Text style={{ color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                        <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                           Publique os videos daqui e a lista aparece logo abaixo dentro do mesmo painel.
                         </Text>
                       </View>
@@ -1015,7 +1090,7 @@ export default function VideosScreen() {
                           }}
                         >
                           <View className="gap-2">
-                            <Text style={{ color: "#FFD29E", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                            <Text style={{ color: "#A78BFA", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
                               Titulo do video
                             </Text>
                             <TextInput
@@ -1028,7 +1103,7 @@ export default function VideosScreen() {
                                 borderWidth: 1,
                                 borderColor: "rgba(255,255,255,0.10)",
                                 backgroundColor: "rgba(8,11,18,0.78)",
-                                color: "#F4F7FF",
+                                color: "#E5E7EB",
                                 fontSize: 15,
                                 fontWeight: "700",
                                 paddingHorizontal: 16,
@@ -1038,7 +1113,7 @@ export default function VideosScreen() {
                           </View>
 
                           <View className="gap-2">
-                            <Text style={{ color: "#FFD29E", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                            <Text style={{ color: "#A78BFA", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
                               Descricao abaixo do video
                             </Text>
                             <TextInput
@@ -1055,7 +1130,7 @@ export default function VideosScreen() {
                                 borderWidth: 1,
                                 borderColor: "rgba(255,255,255,0.10)",
                                 backgroundColor: "rgba(8,11,18,0.78)",
-                                color: "#F4F7FF",
+                                color: "#E5E7EB",
                                 fontSize: 15,
                                 fontWeight: "600",
                                 paddingHorizontal: 16,
@@ -1066,7 +1141,7 @@ export default function VideosScreen() {
 
                           <View className="flex-row flex-wrap gap-3">
                             <View className="min-w-[220px] flex-1 gap-2">
-                              <Text style={{ color: "#FFD29E", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                              <Text style={{ color: "#A78BFA", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
                                 Time ou campeonato
                               </Text>
                               <TextInput
@@ -1079,7 +1154,7 @@ export default function VideosScreen() {
                                   borderWidth: 1,
                                   borderColor: "rgba(255,255,255,0.10)",
                                   backgroundColor: "rgba(8,11,18,0.78)",
-                                  color: "#F4F7FF",
+                                  color: "#E5E7EB",
                                   fontSize: 15,
                                   fontWeight: "700",
                                   paddingHorizontal: 16,
@@ -1089,7 +1164,7 @@ export default function VideosScreen() {
                             </View>
 
                             <View className="min-w-[220px] flex-1 gap-2">
-                              <Text style={{ color: "#FFD29E", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                              <Text style={{ color: "#A78BFA", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
                                 WhatsApp do jogador
                               </Text>
                               <TextInput
@@ -1103,7 +1178,7 @@ export default function VideosScreen() {
                                   borderWidth: 1,
                                   borderColor: "rgba(255,255,255,0.10)",
                                   backgroundColor: "rgba(8,11,18,0.78)",
-                                  color: "#F4F7FF",
+                                  color: "#E5E7EB",
                                   fontSize: 15,
                                   fontWeight: "700",
                                   paddingHorizontal: 16,
@@ -1114,7 +1189,7 @@ export default function VideosScreen() {
                           </View>
 
                           <View className="gap-2">
-                            <Text style={{ color: "#FFD29E", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                            <Text style={{ color: "#A78BFA", fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
                               Link publico do video
                             </Text>
                             <TextInput
@@ -1130,7 +1205,7 @@ export default function VideosScreen() {
                                 borderWidth: 1,
                                 borderColor: "rgba(255,255,255,0.10)",
                                 backgroundColor: "rgba(8,11,18,0.78)",
-                                color: "#F4F7FF",
+                                color: "#E5E7EB",
                                 fontSize: 15,
                                 fontWeight: "700",
                                 paddingHorizontal: 16,
@@ -1159,15 +1234,15 @@ export default function VideosScreen() {
                             style={{
                               borderColor:
                                 normalizedUploadVideoUrl || selectedUploadVideo
-                                  ? "rgba(255,180,96,0.28)"
+                                  ? "rgba(167,139,250,0.38)"
                                   : "rgba(255,255,255,0.08)",
                               backgroundColor:
                                 normalizedUploadVideoUrl || selectedUploadVideo
-                                  ? "rgba(255,120,32,0.10)"
+                                  ? "rgba(139,92,246,0.12)"
                                   : "rgba(255,255,255,0.04)",
                             }}
                           >
-                            <Text style={{ color: "#FFF0DB", fontSize: 13, lineHeight: 20, fontWeight: "700" }}>
+                            <Text style={{ color: "#E9D5FF", fontSize: 13, lineHeight: 20, fontWeight: "700" }}>
                               {normalizedUploadVideoUrl
                                 ? "Fonte atual: URL publica pronta para compartilhamento."
                                 : selectedUploadVideo
@@ -1184,7 +1259,7 @@ export default function VideosScreen() {
                     <View className="gap-1">
                       <Text
                         style={{
-                          color: "#9AB8FF",
+                          color: "#A78BFA",
                           fontSize: 12,
                           fontWeight: "800",
                           letterSpacing: 1.8,
@@ -1193,23 +1268,59 @@ export default function VideosScreen() {
                       >
                         Lista de videos
                       </Text>
-                      <Text style={{ color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                      <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
                         Os videos publicados aparecem dentro deste menu para assistir, votar e, para quem administra o painel, compartilhar ou definir o vencedor.
                       </Text>
                     </View>
 
                     {globalVideos.length === 0 ? (
                       <View
-                        className="rounded-[18px] border px-4 py-4"
+                        className="items-center gap-3 rounded-[22px] border px-5 py-8"
                         style={{
-                          borderColor: "rgba(255,255,255,0.08)",
-                          backgroundColor: "rgba(255,255,255,0.04)",
+                          borderColor: "rgba(167,139,250,0.28)",
+                          backgroundColor: "rgba(17,12,38,0.62)",
+                          shadowColor: "#8B5CF6",
+                          shadowOpacity: 0.28,
+                          shadowRadius: 28,
                         }}
                       >
-                        <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>
-                          Nenhum video publicado ainda
+                        <View
+                          style={{
+                            width: 58,
+                            height: 58,
+                            borderRadius: 999,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: "rgba(139,92,246,0.22)",
+                            borderWidth: 1,
+                            borderColor: "rgba(196,181,253,0.56)",
+                            shadowColor: "#8B5CF6",
+                            shadowOpacity: 0.8,
+                            shadowRadius: 22,
+                          }}
+                        >
+                          <Text style={{ fontSize: 26 }}>🎬</Text>
+                        </View>
+                        <Text
+                          style={{
+                            color: "#E5E7EB",
+                            fontSize: 16,
+                            fontWeight: "900",
+                            letterSpacing: 0.3,
+                            textAlign: "center",
+                          }}
+                        >
+                          Nenhum vídeo publicado ainda
                         </Text>
-                        <Text style={{ marginTop: 6, color: "#AEBBDA", fontSize: 14, lineHeight: 22 }}>
+                        <Text
+                          style={{
+                            color: "#94A3B8",
+                            fontSize: 13,
+                            lineHeight: 20,
+                            textAlign: "center",
+                            maxWidth: 360,
+                          }}
+                        >
                           {isModerator
                             ? "Use o editor acima para publicar o primeiro video desta galeria."
                             : "Aguarde a publicacao de videos pelo moderador para assistir e votar."}
