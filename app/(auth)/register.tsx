@@ -52,6 +52,7 @@ export default function RegisterScreen() {
       );
       router.replace("/login");
     } catch (error) {
+      console.error("[register] registerWithEmail failed:", error);
       Alert.alert("Falha no cadastro", error instanceof Error ? error.message : "Nao foi possivel cadastrar.");
     }
   }

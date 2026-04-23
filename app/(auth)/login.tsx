@@ -42,8 +42,9 @@ export default function LoginScreen() {
     try {
       const user = await signInWithEmail(values);
       setUser(user);
-      router.replace("/tournaments");
+      // Navigation handled by useEffect reacting to status === "authenticated"
     } catch (error) {
+      console.error("[login] signInWithEmail failed:", error);
       Alert.alert("Falha no login", error instanceof Error ? error.message : "Nao foi possivel entrar.");
     }
   }
@@ -56,6 +57,7 @@ export default function LoginScreen() {
         "O fluxo OAuth foi iniciado. Ao retornar para o app, o loading vai validar a sessao.",
       );
     } catch (error) {
+      console.error("[login] signInWithGoogle failed:", error);
       Alert.alert(
         "Google indisponivel",
         error instanceof Error ? error.message : "Nao foi possivel iniciar o login com Google.",

@@ -13,8 +13,11 @@ import {
   type GestureResponderEvent,
   type ViewStyle,
 } from "react-native";
+import { Screen } from "@/components/ui/Screen";
+import { ScreenState } from "@/components/ui/ScreenState";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { styles } from "./styles";
 
 const tabBarStars = [
@@ -500,6 +503,8 @@ export default function TabsLayout() {
   const pathname = usePathname();
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
+  const authStatus = useAuthStore((state) => state.status);
+  const authHydrated = useAuthStore((state) => state.hydrated);
   const isPhone = width < 768;
   const isSmallPhone = width < 420;
   const activeTournamentAccessMode = resolveTournamentAccessMode(
@@ -508,6 +513,14 @@ export default function TabsLayout() {
   );
   const lockToActiveTournament =
     Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
+  const hasSharedAccess = activeTournamentAccessMode === "editor" || activeTournamentAccessMode === "viewer";
+  const requiresLogin = authHydrated && authStatus === "guest" && !hasSharedAccess;
+
+  useEffect(() => {
+    if (requiresLogin) {
+      router.replace("/login");
+    }
+  }, [requiresLogin]);
 
   useEffect(() => {
     if (!lockToActiveTournament || !currentTournamentId) {
@@ -520,6 +533,40 @@ export default function TabsLayout() {
 
     router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
   }, [currentTournamentId, lockToActiveTournament, pathname]);
+
+  if (!authHydrated || authStatus === "loading") {
+    return (
+      <View style={styles.layoutRoot}>
+        <TabsSceneBackground />
+        <Screen className="flex-1 px-6" backgroundVariant="none">
+          <View className="flex-1 items-center justify-center py-12">
+            <ScreenState
+              title="Carregando sessão"
+              description="Validando seu acesso ao Arena."
+              tone="light"
+            />
+          </View>
+        </Screen>
+      </View>
+    );
+  }
+
+  if (requiresLogin) {
+    return (
+      <View style={styles.layoutRoot}>
+        <TabsSceneBackground />
+        <Screen className="flex-1 px-6" backgroundVariant="none">
+          <View className="flex-1 items-center justify-center py-12">
+            <ScreenState
+              title="Redirecionando para o login"
+              description="Faça login para continuar no Arena."
+              tone="light"
+            />
+          </View>
+        </Screen>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.layoutRoot}>

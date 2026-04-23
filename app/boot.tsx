@@ -280,8 +280,17 @@ export default function BootScreen() {
     <Screen className="flex-1" backgroundVariant="none">
       <Pressable className="flex-1" onPress={() => {
         setBootCompleted(true);
-        const dest = (redirect as string | undefined) || "/tournaments";
-        router.replace(dest as never);
+        const dest = redirect as string | undefined;
+
+        if (dest) {
+          router.replace(dest as never);
+          return;
+        }
+
+        const { status, user } = useAuthStore.getState();
+        const isAuthenticated = status === "authenticated" && user !== null;
+
+        router.replace(isAuthenticated ? "/tournaments" : "/login");
       }}>
         <View className="flex-1 bg-black">
           <View className="absolute inset-0 bg-[#010302]" />
