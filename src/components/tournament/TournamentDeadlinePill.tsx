@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useGlobalSearchParams, usePathname } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { DeadlineCalendarPicker } from "@/components/tournament/DeadlineCalendarPicker";
@@ -30,11 +31,45 @@ export function TournamentDeadlinePill() {
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const atualizarCampeonato = useTournamentStore((state) => state.atualizarCampeonato);
 
+  // Resolve o campeonato a partir da URL primeiro (fonte da verdade
+  // imediata quando o usuario navega entre campeonatos), com fallback
+  // para o currentTournamentId do app-store. Isso evita o pill mostrar
+  // o deadline do campeonato anterior por alguns frames durante a
+  // transicao de telas — cada campeonato passa a ter sua propria gestao
+  // de tempo, sem leak entre telas.
+  const pathname = usePathname();
+  const params = useGlobalSearchParams<{ id?: string | string[] }>();
+  const activeTournamentId = useMemo(() => {
+    const fromParams = Array.isArray(params.id) ? params.id[0] : params.id;
+    if (fromParams) return fromParams;
+
+    // Caso a rota seja /tournament/[id] sem params (id inline na URL).
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments[0] === "tournament" && segments[1] && !segments[1].startsWith("[")) {
+      const knownStaticRoutes = new Set([
+        "access",
+        "create",
+        "matches",
+        "participants",
+        "preview",
+        "share",
+        "standings",
+        "statistics",
+        "videos",
+      ]);
+      if (!knownStaticRoutes.has(segments[1])) {
+        return segments[1];
+      }
+    }
+
+    return currentTournamentId ?? undefined;
+  }, [pathname, params.id, currentTournamentId]);
+
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false);
 
-  const campeonato = campeonatos.find((c) => c.id === currentTournamentId) ?? null;
-  const accessMode = resolveTournamentAccessMode(tournamentAccess, currentTournamentId ?? undefined);
+  const campeonato = campeonatos.find((c) => c.id === activeTournamentId) ?? null;
+  const accessMode = resolveTournamentAccessMode(tournamentAccess, activeTournamentId);
   const canEdit = canEditTournament(accessMode);
 
   const deadline = campeonato?.prazoFinalEm ? new Date(campeonato.prazoFinalEm) : null;
