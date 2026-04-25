@@ -64,6 +64,7 @@ export const SELECOES_POR_CONFEDERACAO = {
     irn: { nome: "Irã", times: ["Irã"] },
     qat: { nome: "Catar", times: ["Catar"] },
     chn: { nome: "China", times: ["China"] },
+    tpe: { nome: "Taipé Chinês", times: ["Taipé Chinês"] },
     uae: { nome: "Emirados Árabes Unidos", times: ["Emirados Árabes Unidos"] },
   },
 } as const;

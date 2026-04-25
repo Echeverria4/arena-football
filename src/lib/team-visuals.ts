@@ -84,6 +84,8 @@ const SELECTION_FLAG_URLS: Record<string, string> = {
   ira: "https://flagcdn.com/w160/ir.png",
   catar: "https://flagcdn.com/w160/qa.png",
   china: "https://flagcdn.com/w160/cn.png",
+  "taipe-chines":
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Chinese_Taipei.svg/320px-Flag_of_Chinese_Taipei.svg.png",
   "emirados-arabes-unidos": "https://flagcdn.com/w160/ae.png",
 };
 

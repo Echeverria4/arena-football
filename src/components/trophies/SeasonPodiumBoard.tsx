@@ -25,6 +25,10 @@ type PodiumEntry = {
   wins: number;
   goalDifference: number;
   played: number;
+  /** Quando ha empate na pontuacao com outro time, mostramos o segundo
+   *  escudo no lado direito do mesmo card. */
+  tiedTeamName?: string | null;
+  tiedPlayerName?: string | null;
 };
 
 type Props = {
@@ -104,8 +108,11 @@ function PodiumStep({
     inputRange: [0, 1],
     outputRange: [0, 1],
   });
-  const orderedHeight = entry.position === 1 ? (compact ? 188 : 220) : entry.position === 2 ? (compact ? 156 : 184) : compact ? 138 : 166;
+  const orderedHeight = entry.position === 1 ? (compact ? 152 : 180) : entry.position === 2 ? (compact ? 128 : 152) : compact ? 116 : 138;
   const safeTeamName = normalizeTeamDisplayName(entry.teamName);
+  const tiedCrest = entry.tiedTeamName
+    ? resolveTeamVisualByName(normalizeTeamDisplayName(entry.tiedTeamName))
+    : null;
 
   return (
     <Pressable
@@ -174,51 +181,73 @@ function PodiumStep({
               ],
             }}
           >
-            <View className="items-center gap-3">
+            <View className="items-center gap-2">
               <Text
                 style={{
                   color: palette.accent,
-                  fontSize: compact ? 48 : 68,
+                  fontSize: compact ? 34 : 50,
                   fontWeight: "900",
-                  lineHeight: compact ? 50 : 72,
+                  lineHeight: compact ? 38 : 54,
                   textShadowColor: "rgba(255,120,12,0.26)",
-                  textShadowOffset: { width: 0, height: 6 },
-                  textShadowRadius: 16,
+                  textShadowOffset: { width: 0, height: 4 },
+                  textShadowRadius: 12,
                 }}
               >
                 {entry.position}
               </Text>
 
-              <View
-                style={{
-                  width: compact ? 68 : 80,
-                  height: compact ? 68 : 80,
-                  borderRadius: 18,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  borderWidth: 1,
-                  borderColor: palette.border,
-                  overflow: "hidden",
-                }}
-              >
-                {crest ? (
-                  <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
-                ) : (
-                  <Ionicons name={palette.icon} size={compact ? 26 : 32} color={palette.accent} />
-                )}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: tiedCrest ? 6 : 0 }}>
+                <View
+                  style={{
+                    width: compact ? 44 : 54,
+                    height: compact ? 44 : 54,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    borderWidth: 1,
+                    borderColor: palette.border,
+                    overflow: "hidden",
+                  }}
+                >
+                  {crest ? (
+                    <Image source={{ uri: crest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
+                  ) : (
+                    <Ionicons name={palette.icon} size={compact ? 20 : 26} color={palette.accent} />
+                  )}
+                </View>
+
+                {tiedCrest ? (
+                  <View
+                    style={{
+                      width: compact ? 44 : 54,
+                      height: compact ? 44 : 54,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderWidth: 1,
+                      borderColor: palette.border,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Image source={{ uri: tiedCrest }} style={{ width: "90%", height: "90%" }} resizeMode="contain" />
+                  </View>
+                ) : null}
               </View>
 
               <Text
                 numberOfLines={2}
                 style={{
                   color: palette.text,
-                  fontSize: compact ? 14 : 16,
+                  fontSize: compact ? 11 : 13,
                   fontWeight: "900",
                   textAlign: "center",
                 }}
               >
-                {entry.playerName}
+                {entry.tiedPlayerName
+                  ? `${entry.playerName} • ${entry.tiedPlayerName}`
+                  : entry.playerName}
               </Text>
             </View>
           </Animated.View>
@@ -240,9 +269,9 @@ function PodiumStep({
             <View className="items-center gap-3">
               <View
                 style={{
-                  width: compact ? 58 : 70,
-                  height: compact ? 58 : 70,
-                  borderRadius: 18,
+                  width: compact ? 40 : 50,
+                  height: compact ? 40 : 50,
+                  borderRadius: 12,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: "rgba(255,255,255,0.06)",
@@ -257,7 +286,7 @@ function PodiumStep({
                   <Text
                     style={{
                       color: palette.text,
-                      fontSize: 18,
+                      fontSize: 14,
                       fontWeight: "900",
                       letterSpacing: 1.2,
                     }}
@@ -330,11 +359,40 @@ export function SeasonPodiumBoard({ title, subtitle, entries, titleLeaders }: Pr
       );
     });
 
-    return [
-      seeded.find((item) => item.position === 2)!,
-      seeded.find((item) => item.position === 1)!,
-      seeded.find((item) => item.position === 3)!,
-    ];
+    // Empate: quando duas linhas vizinhas tem mesma pontuacao + saldo +
+    // vitorias, mostramos as duas dentro do mesmo card (a segunda some
+    // do podio, ja que o titular leva o segundo escudo). Ajuda a
+    // visualizar empates em campeonatos pequenos.
+    const isTied = (a: PodiumEntry, b: PodiumEntry) =>
+      a.id !== b.id &&
+      !a.id.startsWith("placeholder") &&
+      !b.id.startsWith("placeholder") &&
+      a.points === b.points &&
+      a.wins === b.wins &&
+      a.goalDifference === b.goalDifference;
+
+    const first = seeded.find((i) => i.position === 1)!;
+    const second = seeded.find((i) => i.position === 2)!;
+    const third = seeded.find((i) => i.position === 3)!;
+
+    let displayFirst = first;
+    let displaySecond: PodiumEntry | null = second;
+    let displayThird: PodiumEntry | null = third;
+
+    if (isTied(first, second)) {
+      displayFirst = { ...first, tiedTeamName: second.teamName, tiedPlayerName: second.playerName };
+      displaySecond = isTied(second, third)
+        ? { ...third, position: 2, tiedTeamName: null, tiedPlayerName: null }
+        : null;
+      displayThird = null;
+    } else if (isTied(second, third)) {
+      displaySecond = { ...second, tiedTeamName: third.teamName, tiedPlayerName: third.playerName };
+      displayThird = null;
+    }
+
+    return [displaySecond, displayFirst, displayThird].filter(
+      (item): item is PodiumEntry => item !== null,
+    );
   }, [entries]);
 
   return (

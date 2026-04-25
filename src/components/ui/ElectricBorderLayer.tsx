@@ -57,16 +57,19 @@ export function injectElectricFilter() {
   svg.style.cssText =
     "position:fixed;width:0;height:0;overflow:hidden;pointer-events:none;z-index:-9999";
   svg.setAttribute("aria-hidden", "true");
+  // Animations use durs that never share a common multiple so the
+  // displacement noise nunca alinha em zero ao mesmo tempo (era a causa
+  // do "freeze" momentaneo no mobile). Linear continuo, sem pausa.
   svg.innerHTML = `<defs>
     <filter id="arena-electric" colorInterpolationFilters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
       <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n1" seed="1"/>
-      <feOffset in="n1" result="on1"><animate attributeName="dy" values="700;0;-700;0;700" keyTimes="0;0.25;0.5;0.75;1" dur="12s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n2" seed="1"/>
-      <feOffset in="n2" result="on2"><animate attributeName="dy" values="-700;0;700;0;-700" keyTimes="0;0.25;0.5;0.75;1" dur="12s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n3" seed="2"/>
-      <feOffset in="n3" result="on3"><animate attributeName="dx" values="490;0;-490;0;490" keyTimes="0;0.25;0.5;0.75;1" dur="9s" repeatCount="indefinite" calcMode="linear"/></feOffset>
-      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n4" seed="2"/>
-      <feOffset in="n4" result="on4"><animate attributeName="dx" values="-490;0;490;0;-490" keyTimes="0;0.25;0.5;0.75;1" dur="9s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+      <feOffset in="n1" result="on1"><animate attributeName="dy" values="700;-700;700" keyTimes="0;0.5;1" dur="11s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n2" seed="3"/>
+      <feOffset in="n2" result="on2"><animate attributeName="dy" values="-700;700;-700" keyTimes="0;0.5;1" dur="13s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n3" seed="5"/>
+      <feOffset in="n3" result="on3"><animate attributeName="dx" values="490;-490;490" keyTimes="0;0.5;1" dur="7s" repeatCount="indefinite" calcMode="linear"/></feOffset>
+      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="10" result="n4" seed="7"/>
+      <feOffset in="n4" result="on4"><animate attributeName="dx" values="-490;490;-490" keyTimes="0;0.5;1" dur="9s" repeatCount="indefinite" calcMode="linear"/></feOffset>
       <feComposite in="on1" in2="on2" result="p1"/>
       <feComposite in="on3" in2="on4" result="p2"/>
       <feBlend in="p1" in2="p2" mode="color-dodge" result="noise"/>
@@ -75,6 +78,38 @@ export function injectElectricFilter() {
   </defs>`;
 
   document.body.appendChild(svg);
+
+  // Continuous flowing border: a SECOND layer in CSS that loops a moving
+  // gradient around the card edge. Garante que mesmo se o filtro SVG der
+  // throttled em mobile/background, o usuario ainda ve a borda em
+  // movimento. Aplicado via classe .arena-flow-border (consumida pelo
+  // componente abaixo).
+  if (!document.getElementById("arena-flow-border-style")) {
+    const style = document.createElement("style");
+    style.id = "arena-flow-border-style";
+    style.textContent = `
+@keyframes arena-flow-border {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.arena-flow-border {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--arena-flow-color, rgba(255,200,90,0.85)) 25%,
+    rgba(255,255,255,0.95) 50%,
+    var(--arena-flow-color, rgba(255,200,90,0.85)) 75%,
+    transparent 100%);
+  background-size: 200% 200%;
+  animation: arena-flow-border 3s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 2px;
+}
+`;
+    document.head.appendChild(style);
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -113,6 +148,21 @@ export function ElectricBorderLayer({
 
   return (
     <>
+      {/* 0. Continuous flowing highlight (web only) — never pauses, even
+             when the SVG turbulence filter is throttled by the mobile
+             browser. Renders behind the displaced border so they combine. */}
+      {Platform.OS === "web" ? (
+        <View
+          pointerEvents="none"
+          {...{ className: "arena-flow-border" }}
+          style={{
+            ...base,
+            borderRadius: r,
+            ...({ "--arena-flow-color": c.light } as object),
+          }}
+        />
+      ) : null}
+
       {/* 1. Main electric border — displaced on web, solid on native */}
       <View
         pointerEvents="none"
