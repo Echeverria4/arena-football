@@ -11,7 +11,8 @@ import { signOut } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function ProfileScreen() {
-  const [user, clearSession] = useAuthStore((state) => [state.user, state.clearSession]);
+  const user = useAuthStore((state) => state.user);
+  const clearSession = useAuthStore((state) => state.clearSession);
   const { cardWidth, contentMaxWidth } = usePanelGrid();
 
   async function handleSignOut() {

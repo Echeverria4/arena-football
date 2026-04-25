@@ -11,7 +11,9 @@ import {
   parseTournamentSharePayload,
   type TournamentShareAccess,
 } from "@/lib/tournament-sharing";
+import { claimTournamentShare } from "@/services/tournament-collab";
 import { useAppStore } from "@/stores/app-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 import { useArenaDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
@@ -120,6 +122,20 @@ export function SharedTournamentEntryScreen({
         );
         setTournamentAccess(resolvedShare.campeonato.id, resolvedShare.access);
         setCurrentTournamentId(resolvedShare.campeonato.id);
+
+        // Se o usuario esta autenticado e entrou por um share_key, chamamos o
+        // RPC claim_tournament_share para que a RLS libere o acesso direto as
+        // tabelas relacionais (tournaments/matches/...) e habilite realtime.
+        // Caso nao esteja autenticado, segue apenas com o snapshot local.
+        const authUser = useAuthStore.getState().user;
+        if (safeShareKey && authUser?.id) {
+          try {
+            await claimTournamentShare(safeShareKey);
+          } catch (claimError) {
+            console.warn("[SharedTournamentEntry] claim_tournament_share falhou:", claimError);
+            // Nao bloqueia o fluxo — usuario ainda tem o snapshot local para navegar.
+          }
+        }
 
         if (!cancelled) {
           setTimeout(() => {

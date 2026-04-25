@@ -94,6 +94,8 @@ export type Participante = {
   whatsapp?: string;
   timeImagem?: string;
   timeTipoIcone?: "bandeira" | "escudo";
+  /** UUID da linha correspondente em public.tournament_participants — preenchido no primeiro push para Supabase. */
+  supabaseId?: string;
 };
 
 export type Jogo = {
@@ -104,6 +106,8 @@ export type Jogo = {
   placarMandante: number | null;
   placarVisitante: number | null;
   status: "pendente" | "finalizado";
+  /** UUID da linha correspondente em public.matches — preenchido no primeiro push para Supabase. */
+  supabaseId?: string;
 };
 
 export type ClassificacaoItem = {
@@ -122,6 +126,8 @@ export type ClassificacaoItem = {
 
 export type Campeonato = {
   id: string;
+  /** UUID da linha correspondente em public.tournaments — preenchido no primeiro push para Supabase. */
+  supabaseId?: string;
   nome: string;
   status: "ativo" | "finalizado";
   criadoEm: string;

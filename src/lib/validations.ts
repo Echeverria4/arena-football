@@ -8,7 +8,6 @@ export const loginSchema = z.object({
 export const registerSchema = z
   .object({
     name: z.string().min(3, "Informe seu nome."),
-    whatsappName: z.string().min(3, "Informe o nome usado no WhatsApp."),
     whatsappNumber: z
       .string()
       .min(10, "Informe um WhatsApp valido.")
@@ -16,9 +15,6 @@ export const registerSchema = z
     email: z.string().email("Informe um e-mail valido."),
     password: z.string().min(6, "A senha precisa ter ao menos 6 caracteres."),
     confirmPassword: z.string().min(6, "Confirme sua senha."),
-    gamertag: z.string().optional(),
-    favoriteTeam: z.string().optional(),
-    role: z.enum(["player", "organizer"]),
   })
   .refine((values) => values.password === values.confirmPassword, {
     path: ["confirmPassword"],

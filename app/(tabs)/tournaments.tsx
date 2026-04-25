@@ -1,7 +1,8 @@
 import { router } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Text, View, useWindowDimensions } from "react-native";
 
+import { LoginPromptModal } from "@/components/auth/LoginPromptModal";
 import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { ChoiceChip } from "@/components/ui/ChoiceChip";
 import { LiveBorderCard } from "@/components/ui/LiveBorderCard";
@@ -14,6 +15,7 @@ import { usePanelGrid } from "@/components/ui/usePanelGrid";
 import { sortCampeonatosBySeason } from "@/lib/season-tournaments";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 
 export default function TournamentsScreen() {
@@ -24,6 +26,8 @@ export default function TournamentsScreen() {
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
   const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
+  const user = useAuthStore((state) => state.user);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const { contentMaxWidth } = usePanelGrid();
   const orderedCampeonatos = sortCampeonatosBySeason(campeonatos);
   const activeCampeonatos = orderedCampeonatos.filter((campeonato) => campeonato.status === "ativo");
@@ -58,11 +62,28 @@ export default function TournamentsScreen() {
   }
 
   function goToNewTournament() {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
     router.push("/tournament/create");
   }
 
   return (
-    <Screen scroll className={isSmallPhone ? "px-4" : "px-6"}>
+    <Screen
+      scroll
+      className={isSmallPhone ? "px-4" : "px-6"}
+      overlay={
+        <LoginPromptModal
+          visible={showLoginPrompt}
+          onClose={() => setShowLoginPrompt(false)}
+          eyebrow="Criar campeonato"
+          title="Entrar para criar"
+          description="Voce esta navegando como convidado. Para criar um campeonato precisa de uma conta — leva menos de 1 minuto e o login fica salvo para as proximas vezes."
+          redirectPath="/tournament/create"
+        />
+      }
+    >
       <View
         className="w-full self-center"
         style={{

@@ -18,7 +18,7 @@ import { ScreenState } from "@/components/ui/ScreenState";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
-import { styles } from "./styles";
+import { styles } from "./_styles";
 
 const tabBarStars = [
   { left: "5%",  top: "20%", size: 1.6, opacity: 0.30 },
@@ -513,7 +513,9 @@ export default function TabsLayout() {
   );
   const lockToActiveTournament =
     Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
-  const hasSharedAccess = activeTournamentAccessMode === "editor" || activeTournamentAccessMode === "viewer";
+  // Viewers e editores que entraram via link compartilhado nao precisam estar logados para ver o torneio.
+  const hasSharedAccess =
+    activeTournamentAccessMode === "editor" || activeTournamentAccessMode === "viewer";
   const requiresLogin = authHydrated && authStatus === "guest" && !hasSharedAccess;
 
   useEffect(() => {
@@ -669,12 +671,6 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="profile"
           options={{ href: null }}
-        />
-        <Tabs.Screen
-          name="styles"
-          options={{
-            href: null,
-          }}
         />
       </Tabs>
     </View>

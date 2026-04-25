@@ -1,4 +1,5 @@
 import * as Linking from "expo-linking";
+import { Platform } from "react-native";
 import type { User } from "@supabase/supabase-js";
 
 import type { LoginFormValues, RegisterFormValues } from "@/lib/validations";
@@ -71,18 +72,21 @@ async function getProfileByAuthUserId(authUserId: string) {
 
 function buildProfilePayload(authUser: User, profile?: RegisterFormValues) {
   const metadata = authUser.user_metadata ?? {};
+  const resolvedName =
+    profile?.name ?? metadata.name ?? authUser.email?.split("@")[0] ?? "Jogador Arena";
 
   return {
     auth_user_id: authUser.id,
-    name: profile?.name ?? metadata.name ?? authUser.email?.split("@")[0] ?? "Jogador Arena",
-    whatsapp_name:
-      profile?.whatsappName ?? metadata.whatsapp_name ?? metadata.name ?? "Jogador Arena",
+    name: resolvedName,
+    // No cadastro atual o "nome do WhatsApp" nao e mais coletado — usamos o nome do usuario como display.
+    whatsapp_name: metadata.whatsapp_name ?? resolvedName,
     whatsapp_number: profile?.whatsappNumber ?? metadata.whatsapp_number ?? "+5500000000000",
     email: authUser.email ?? profile?.email ?? "",
-    gamertag: profile?.gamertag || metadata.gamertag || null,
-    favorite_team: profile?.favoriteTeam || metadata.favorite_team || null,
+    gamertag: metadata.gamertag || null,
+    favorite_team: metadata.favorite_team || null,
     avatar_url: metadata.avatar_url ?? null,
-    role: profile?.role ?? metadata.role ?? "player",
+    // Todos cadastros novos entram como "organizer" para poderem criar e moderar proprios campeonatos.
+    role: metadata.role ?? "organizer",
   };
 }
 
@@ -158,34 +162,44 @@ export async function registerWithEmail(values: RegisterFormValues): Promise<Aut
       user: buildMockUser({
         email: values.email,
         name: values.name,
-        whatsappName: values.whatsappName,
+        whatsappName: values.name,
         whatsappNumber: values.whatsappNumber,
-        gamertag: values.gamertag,
-        favoriteTeam: values.favoriteTeam,
-        role: values.role,
+        role: "organizer",
       }),
       needsEmailConfirmation: false,
     };
   }
 
+  console.log("[auth.registerWithEmail] calling supabase.auth.signUp for", values.email);
   const { data, error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,
     options: {
       data: {
         name: values.name,
-        whatsapp_name: values.whatsappName,
+        whatsapp_name: values.name,
         whatsapp_number: values.whatsappNumber,
-        gamertag: values.gamertag || null,
-        favorite_team: values.favoriteTeam || null,
-        role: values.role,
+        role: "organizer",
       },
     },
   });
 
   if (error) {
+    console.error("[auth.registerWithEmail] signUp returned error:", {
+      message: error.message,
+      name: error.name,
+      status: (error as { status?: number }).status,
+      code: (error as { code?: string }).code,
+      fullError: error,
+    });
     throw error;
   }
+
+  console.log("[auth.registerWithEmail] signUp OK:", {
+    userId: data.user?.id,
+    hasSession: Boolean(data.session),
+    emailConfirmedAt: data.user?.email_confirmed_at,
+  });
 
   if (!data.user) {
     throw new Error("Nao foi possivel criar o usuario.");
@@ -199,11 +213,19 @@ export async function registerWithEmail(values: RegisterFormValues): Promise<Aut
     };
   }
 
-  const profile = await upsertProfile(data.user, values);
-  return {
-    user: profile,
-    needsEmailConfirmation: false,
-  };
+  try {
+    const profile = await upsertProfile(data.user, values);
+    return {
+      user: profile,
+      needsEmailConfirmation: false,
+    };
+  } catch (profileError) {
+    console.error("[auth.registerWithEmail] upsertProfile failed:", {
+      message: profileError instanceof Error ? profileError.message : String(profileError),
+      fullError: profileError,
+    });
+    throw profileError;
+  }
 }
 
 export async function signInWithGoogle() {
@@ -211,12 +233,19 @@ export async function signInWithGoogle() {
     throw new Error("Configure o Supabase antes de ativar o login com Google.");
   }
 
-  const redirectTo = Linking.createURL("/tournaments");
+  const isWeb = Platform.OS === "web";
+  const redirectTo =
+    isWeb && typeof window !== "undefined"
+      ? `${window.location.origin}/tournaments`
+      : Linking.createURL("/tournaments");
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo,
-      skipBrowserRedirect: true,
+      // Web: deixe o Supabase redirecionar via window.location (default).
+      // Native: pedimos o URL e abrimos manualmente com Linking.
+      skipBrowserRedirect: !isWeb,
     },
   });
 
@@ -224,7 +253,7 @@ export async function signInWithGoogle() {
     throw error;
   }
 
-  if (data?.url) {
+  if (!isWeb && data?.url) {
     await Linking.openURL(data.url);
   }
 

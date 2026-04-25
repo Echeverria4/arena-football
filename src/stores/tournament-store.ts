@@ -86,6 +86,7 @@ export const useTournamentStore = create<TournamentState>()(
         set({ campeonatos: [], selectedCampeonato: null }),
       atualizarCampeonato: (id, patch) => {
         let shouldExpireShares = false;
+        let supabaseIdToExpire: string | undefined;
 
         set((state) => ({
           campeonatos: state.campeonatos.map((campeonato) => {
@@ -100,6 +101,7 @@ export const useTournamentStore = create<TournamentState>()(
               updatedCampeonato.status === "finalizado"
             ) {
               shouldExpireShares = true;
+              supabaseIdToExpire = updatedCampeonato.supabaseId;
             }
 
             return updatedCampeonato;
@@ -111,7 +113,8 @@ export const useTournamentStore = create<TournamentState>()(
         }));
 
         if (shouldExpireShares) {
-          void expireTournamentSharesByTournamentId(id);
+          const idsToExpire = [id, supabaseIdToExpire].filter((v): v is string => Boolean(v));
+          void expireTournamentSharesByTournamentId(idsToExpire);
         }
       },
       salvarPlacarJogo: (campeonatoId, jogoId, placarMandante, placarVisitante) => {

@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router } from "expo-router";
-import { Controller, useForm } from "react-hook-form";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useMemo, useState } from "react";
+import { Controller, type FieldErrors, useForm } from "react-hook-form";
+import { Alert, Text, TextInput, View } from "react-native";
 
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Screen } from "@/components/ui/Screen";
-import { ScrollRow } from "@/components/ui/ScrollRow";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { registerWithEmail } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
@@ -13,36 +13,41 @@ import { type RegisterFormValues, registerSchema } from "@/lib/validations";
 
 export default function RegisterScreen() {
   const setUser = useAuthStore((state) => state.setUser);
+  const params = useLocalSearchParams<{ redirect?: string | string[] }>();
+  const redirectTo = useMemo(() => {
+    const raw = Array.isArray(params.redirect) ? params.redirect[0] : params.redirect;
+    return raw && raw.startsWith("/") ? raw : "/tournaments";
+  }, [params.redirect]);
   const {
     control,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       name: "",
-      whatsappName: "",
       whatsappNumber: "",
       email: "",
       password: "",
       confirmPassword: "",
-      gamertag: "",
-      favoriteTeam: "",
-      role: "organizer",
     },
   });
 
-  const currentRole = watch("role");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   async function onSubmit(values: RegisterFormValues) {
+    console.log("[register] onSubmit firing for", values.email);
+    setSubmitError(null);
     try {
       const result = await registerWithEmail(values);
+      console.log("[register] registerWithEmail result:", {
+        userId: result.user?.id,
+        needsEmailConfirmation: result.needsEmailConfirmation,
+      });
 
       if (result.user) {
         setUser(result.user);
-        router.replace("/tournaments");
+        router.replace(redirectTo as never);
         return;
       }
 
@@ -50,12 +55,28 @@ export default function RegisterScreen() {
         "Cadastro criado",
         `Conta criada para ${result.email}. Confirme o e-mail antes de entrar.`,
       );
-      router.replace("/login");
+      router.replace({ pathname: "/login", params: { redirect: redirectTo } });
     } catch (error) {
       console.error("[register] registerWithEmail failed:", error);
-      Alert.alert("Falha no cadastro", error instanceof Error ? error.message : "Nao foi possivel cadastrar.");
+      const message = error instanceof Error ? error.message : "Nao foi possivel cadastrar.";
+      setSubmitError(message);
+      Alert.alert("Falha no cadastro", message);
     }
   }
+
+  function onInvalid(validationErrors: FieldErrors<RegisterFormValues>) {
+    console.warn("[register] validation blocked submit:", validationErrors);
+    const firstField = Object.keys(validationErrors)[0];
+    const firstMessage =
+      firstField && validationErrors[firstField as keyof RegisterFormValues]?.message;
+    setSubmitError(
+      firstMessage
+        ? `Corrija o campo "${firstField}": ${firstMessage}`
+        : "Ha campos invalidos no formulario. Cheque as mensagens em vermelho abaixo.",
+    );
+  }
+
+  const hasFieldErrors = Object.keys(errors).length > 0;
 
   return (
     <Screen scroll className="px-6">
@@ -63,32 +84,34 @@ export default function RegisterScreen() {
         <SectionHeader
           eyebrow="Cadastro"
           title="Crie sua conta Arena"
-          subtitle="Onboarding base para nome, WhatsApp, gamertag, time favorito e perfil inicial."
+          subtitle="Onboarding rapido: nome, WhatsApp, e-mail e senha. Seu WhatsApp e quem vincula voce aos campeonatos."
         />
 
         <View className="gap-4 rounded-[28px] border border-arena-line bg-arena-card p-5">
-          <View className="gap-2">
-            <Text className="text-base font-semibold text-arena-text">Perfil inicial</Text>
-            <ScrollRow>
-              {(["organizer", "player"] as const).map((role) => (
-                <Pressable
-                  key={role}
-                  className={`rounded-full border px-4 py-3 ${
-                    currentRole === role ? "border-arena-neon/65 bg-arena-neon/18" : "border-arena-line bg-arena-card"
-                  }`}
-                  onPress={() => setValue("role", role)}
-                >
-                  <Text
-                    className={`text-sm font-semibold uppercase tracking-[2px] ${
-                      currentRole === role ? "text-arena-text" : "text-arena-text"
-                    }`}
-                  >
-                    {role === "organizer" ? "Organizador" : "Jogador"}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollRow>
-          </View>
+          {submitError || hasFieldErrors ? (
+            <View
+              className="rounded-2xl border px-4 py-3"
+              style={{
+                borderColor: "rgba(224,107,128,0.45)",
+                backgroundColor: "rgba(224,107,128,0.12)",
+              }}
+            >
+              <Text
+                style={{
+                  color: "#FCA5B4",
+                  fontSize: 12,
+                  fontWeight: "900",
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                Nao foi possivel cadastrar
+              </Text>
+              <Text style={{ marginTop: 6, color: "#FDE1E6", fontSize: 14, lineHeight: 20 }}>
+                {submitError ?? "Cheque os campos destacados em vermelho abaixo."}
+              </Text>
+            </View>
+          ) : null}
 
           <View className="gap-2">
             <Text className="text-base font-semibold text-arena-text">Nome completo</Text>
@@ -110,27 +133,6 @@ export default function RegisterScreen() {
           </View>
 
           <View className="gap-2">
-            <Text className="text-base font-semibold text-arena-text">Nome no WhatsApp</Text>
-            <Controller
-              control={control}
-              name="whatsappName"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  className="rounded-2xl border border-arena-line bg-arena-surface px-4 py-4 text-base text-arena-text"
-                  placeholder="Nome exibido na conversa"
-                  placeholderTextColor="#F3F5F7"
-                  autoCapitalize="words"
-                  value={value}
-                  onChangeText={onChange}
-                />
-              )}
-            />
-            {errors.whatsappName ? (
-              <Text className="text-base text-arena-danger">{errors.whatsappName.message}</Text>
-            ) : null}
-          </View>
-
-          <View className="gap-2">
             <Text className="text-base font-semibold text-arena-text">WhatsApp</Text>
             <Controller
               control={control}
@@ -149,42 +151,6 @@ export default function RegisterScreen() {
             {errors.whatsappNumber ? (
               <Text className="text-base text-arena-danger">{errors.whatsappNumber.message}</Text>
             ) : null}
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-base font-semibold text-arena-text">Gamertag</Text>
-            <Controller
-              control={control}
-              name="gamertag"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  className="rounded-2xl border border-arena-line bg-arena-surface px-4 py-4 text-base text-arena-text"
-                  placeholder="Seu ID no jogo"
-                  placeholderTextColor="#F3F5F7"
-                  autoCapitalize="none"
-                  value={value}
-                  onChangeText={onChange}
-                />
-              )}
-            />
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-base font-semibold text-arena-text">Time favorito</Text>
-            <Controller
-              control={control}
-              name="favoriteTeam"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  className="rounded-2xl border border-arena-line bg-arena-surface px-4 py-4 text-base text-arena-text"
-                  placeholder="Ex.: Barcelona"
-                  placeholderTextColor="#F3F5F7"
-                  autoCapitalize="words"
-                  value={value}
-                  onChangeText={onChange}
-                />
-              )}
-            />
           </View>
 
           <View className="gap-2">
@@ -249,7 +215,7 @@ export default function RegisterScreen() {
 
           <PrimaryButton
             label={isSubmitting ? "Criando conta..." : "Criar conta"}
-            onPress={handleSubmit(onSubmit)}
+            onPress={handleSubmit(onSubmit, onInvalid)}
           />
           <PrimaryButton label="Ja tenho conta" variant="secondary" onPress={() => router.back()} />
         </View>

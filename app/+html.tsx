@@ -10,6 +10,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
           content="width=device-width, initial-scale=0.80, maximum-scale=0.75, minimum-scale=0.75, user-scalable=no"
         />
         <ScrollViewStyleReset />
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
         <style
           dangerouslySetInnerHTML={{
             __html: `

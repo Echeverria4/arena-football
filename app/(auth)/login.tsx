@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
-import { useEffect } from "react";
-import { Alert, Switch, Text, TextInput, View } from "react-native";
+import { useEffect, useMemo } from "react";
+import { Alert, Platform, Switch, Text, TextInput, View } from "react-native";
 
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -12,19 +13,22 @@ import { signInWithEmail, signInWithGoogle } from "@/services/auth";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function LoginScreen() {
-  const [stayConnected, setStayConnected, setUser, status] = useAuthStore((state) => [
-    state.stayConnected,
-    state.setStayConnected,
-    state.setUser,
-    state.status,
-  ]);
+  const stayConnected = useAuthStore((state) => state.stayConnected);
+  const setStayConnected = useAuthStore((state) => state.setStayConnected);
+  const setUser = useAuthStore((state) => state.setUser);
+  const status = useAuthStore((state) => state.status);
+  const params = useLocalSearchParams<{ redirect?: string | string[] }>();
+  const redirectTo = useMemo(() => {
+    const raw = Array.isArray(params.redirect) ? params.redirect[0] : params.redirect;
+    return raw && raw.startsWith("/") ? raw : "/tournaments";
+  }, [params.redirect]);
 
   // Already authenticated (e.g. persistent session) — skip login
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/tournaments");
+      router.replace(redirectTo as never);
     }
-  }, [status]);
+  }, [status, redirectTo]);
 
   const {
     control,
@@ -52,10 +56,14 @@ export default function LoginScreen() {
   async function handleGoogleLogin() {
     try {
       await signInWithGoogle();
-      Alert.alert(
-        "Redirecionando",
-        "O fluxo OAuth foi iniciado. Ao retornar para o app, o loading vai validar a sessao.",
-      );
+      // Web: o browser redireciona sozinho — nenhum feedback adicional precisa.
+      // Native: o browser abriu, avisamos o usuario para concluir e voltar.
+      if (Platform.OS !== "web") {
+        Alert.alert(
+          "Abra o navegador",
+          "Conclua o login com Google no navegador e volte para o app.",
+        );
+      }
     } catch (error) {
       console.error("[login] signInWithGoogle failed:", error);
       Alert.alert(
@@ -127,11 +135,31 @@ export default function LoginScreen() {
           </View>
 
           <PrimaryButton label={isSubmitting ? "Entrando..." : "Entrar"} onPress={handleSubmit(onSubmit)} />
-          <PrimaryButton label="Entrar com Google" variant="secondary" onPress={handleGoogleLogin} />
+
+          {Platform.OS === "web" && process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ? (
+            <View className="items-center py-1">
+              <GoogleSignInButton
+                onError={(error) => {
+                  console.error("[login] Google sign-in failed:", error);
+                  Alert.alert(
+                    "Google indisponivel",
+                    error.message || "Nao foi possivel entrar com Google.",
+                  );
+                }}
+                onSuccess={() => {
+                  router.replace(redirectTo as never);
+                }}
+              />
+            </View>
+          ) : (
+            <PrimaryButton label="Entrar com Google" variant="secondary" onPress={handleGoogleLogin} />
+          )}
           <PrimaryButton
             label="Criar cadastro"
             variant="secondary"
-            onPress={() => router.push("/register")}
+            onPress={() =>
+              router.push({ pathname: "/register", params: { redirect: redirectTo } })
+            }
           />
         </View>
       </View>

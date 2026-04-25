@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   Alert,
@@ -11,6 +12,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+import { LoginPromptModal } from "@/components/auth/LoginPromptModal";
 import { VideoGalleryCard } from "@/components/videos/VideoGalleryCard";
 import { VideoPlayerSurface } from "@/components/videos/VideoPlayerSurface";
 import { Card3D } from "@/components/ui/Card3D";
@@ -45,13 +47,18 @@ function buildViewerStatus(params: {
   authorized: boolean;
   votedVideoId: string | null;
   votingClosed: boolean;
+  isLoggedIn: boolean;
 }) {
   if (params.votingClosed) {
     return "A votacao foi encerrada. O painel segue aberto apenas para visualizacao.";
   }
 
+  if (!params.isLoggedIn) {
+    return "Faca login para votar. A visualizacao continua liberada sem conta.";
+  }
+
   if (!params.phone) {
-    return "Digite seu WhatsApp para verificar se este numero tem direito a voto.";
+    return "Nao encontramos um WhatsApp no seu perfil. Atualize para votar.";
   }
 
   if (!params.authorized) {
@@ -100,6 +107,7 @@ function buildVideoCardNote(params: {
   viewerVotedVideoId: string | null;
   votingClosed: boolean;
   winningVideoId: string | null;
+  isLoggedIn: boolean;
 }) {
   const messages: string[] = [];
 
@@ -114,6 +122,7 @@ function buildVideoCardNote(params: {
         authorized: params.viewerAuthorized,
         votedVideoId: params.viewerVotedVideoId,
         votingClosed: params.votingClosed,
+        isLoggedIn: params.isLoggedIn,
       }),
     );
   }
@@ -164,9 +173,8 @@ export default function VideosScreen() {
   const [registryPhoneInput, setRegistryPhoneInput] = useState("");
   const [editingPhone, setEditingPhone] = useState<string | null>(null);
   const [editingPhoneValue, setEditingPhoneValue] = useState("");
-  const [viewerPhoneInput, setViewerPhoneInput] = useState("");
-  const [activeViewerPhone, setActiveViewerPhone] = useState("");
   const [openedVideoId, setOpenedVideoId] = useState<string | null>(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const globalVideos = useMemo(
     () =>
@@ -189,9 +197,11 @@ export default function VideosScreen() {
     [globalVideos, globalWinningVideoId],
   );
 
-  const normalizedViewerPhone = normalizeVideoVoterPhone(activeViewerPhone);
+  const normalizedViewerPhone = user?.whatsappNumber
+    ? normalizeVideoVoterPhone(user.whatsappNumber)
+    : "";
   const viewerAuthorized = Boolean(
-    normalizedViewerPhone && globalVideoVoterPhones.includes(normalizedViewerPhone),
+    user && normalizedViewerPhone && globalVideoVoterPhones.includes(normalizedViewerPhone),
   );
   const viewerVotedVideoId = viewerAuthorized
     ? globalVideoVotesByPhone[normalizedViewerPhone] ?? null
@@ -333,17 +343,6 @@ export default function VideosScreen() {
     setEditingPhoneValue("");
   }
 
-  function handleAccessCheck() {
-    const normalizedPhone = normalizeVideoVoterPhone(viewerPhoneInput);
-
-    if (!normalizedPhone) {
-      Alert.alert("WhatsApp invalido", "Digite um numero de WhatsApp valido para continuar.");
-      return;
-    }
-
-    setActiveViewerPhone(normalizedPhone);
-  }
-
   function handleOpenVideo(videoId: string) {
     registrarVisualizacaoVideo(videoId);
     setOpenedVideoId(videoId);
@@ -352,6 +351,11 @@ export default function VideosScreen() {
   function handleVote(videoId: string) {
     if (globalVotingClosed) {
       Alert.alert("Votacao encerrada", "A votacao ja foi fechada e o painel esta somente para visualizacao.");
+      return;
+    }
+
+    if (!user) {
+      setShowLoginPrompt(true);
       return;
     }
 
@@ -499,6 +503,15 @@ export default function VideosScreen() {
       ambientDiamond
       className="px-6"
       overlay={
+        <>
+        <LoginPromptModal
+          visible={showLoginPrompt}
+          onClose={() => setShowLoginPrompt(false)}
+          eyebrow="Voto vinculado ao WhatsApp"
+          title="Entrar para votar"
+          description="Para votar neste campeonato voce precisa de uma conta vinculada ao seu WhatsApp. Ao se cadastrar, o login fica salvo automaticamente e voce volta para o painel."
+          redirectPath="/videos"
+        />
         <Modal transparent visible={Boolean(openedVideo)} animationType="fade" onRequestClose={() => setOpenedVideoId(null)}>
           <Pressable
             onPress={() => setOpenedVideoId(null)}
@@ -634,6 +647,7 @@ export default function VideosScreen() {
                         viewerVotedVideoId,
                         votingClosed: globalVotingClosed,
                         winningVideoId: globalWinningVideoId,
+                        isLoggedIn: Boolean(user),
                       })}
                     </Text>
                   </View>
@@ -648,9 +662,9 @@ export default function VideosScreen() {
                       />
                     ) : null}
 
-                    {viewerAuthorized && !viewerHasVoted && !globalVotingClosed ? (
+                    {!globalVotingClosed && !(user && viewerHasVoted) && (!user || viewerAuthorized) ? (
                       <PrimaryButton
-                        label="Votar neste video"
+                        label={!user ? "Entrar para votar" : "Votar neste video"}
                         onPress={() => handleVote(openedVideo.id)}
                         className={isPhone ? "w-full" : "flex-1"}
                       />
@@ -669,6 +683,7 @@ export default function VideosScreen() {
             ) : null}
           </Pressable>
         </Modal>
+        </>
       }
     >
       <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
@@ -1001,48 +1016,84 @@ export default function VideosScreen() {
           <RevealOnScroll delay={120} style={{ width: "100%" }}>
             <Card3D
               accent="obsidian"
-              eyebrow={isModerator ? "Acesso e videos" : "Acesso"}
-              badge={globalVotingClosed ? "Somente visualizacao" : viewerAuthorized ? (viewerHasVoted ? "Voto concluido" : "Voto liberado") : "Visualizacao"}
-              title={isModerator ? "Entrar com WhatsApp e cadastrar videos" : "Entrar com WhatsApp"}
-              subtitle={isModerator ? "O moderador publica videos neste mesmo painel. O jogador informa o WhatsApp para descobrir se pode votar ou apenas assistir." : "O jogador informa o WhatsApp para descobrir se pode votar ou apenas assistir."}
+              eyebrow={isModerator ? "Conta e videos" : "Conta"}
+              badge={
+                globalVotingClosed
+                  ? "Somente visualizacao"
+                  : !user
+                    ? "Visualizacao"
+                    : viewerAuthorized
+                      ? viewerHasVoted
+                        ? "Voto concluido"
+                        : "Voto liberado"
+                      : "Sem permissao de voto"
+              }
+              title={isModerator ? "Seu acesso e a publicacao de videos" : "Seu acesso ao painel"}
+              subtitle={
+                isModerator
+                  ? "O moderador publica videos e gerencia a lista. O voto exige conta vinculada ao WhatsApp autorizado."
+                  : "Qualquer pessoa pode assistir. Para votar, vincule seu WhatsApp entrando com a conta."
+              }
               hideHeroPanel
               content={
                 <View className="gap-4">
-                  <View className="flex-row gap-3">
-                    <TextInput
-                      value={viewerPhoneInput}
-                      onChangeText={setViewerPhoneInput}
-                      placeholder="Digite seu WhatsApp"
-                      placeholderTextColor="#8D97AD"
-                      keyboardType="phone-pad"
-                      style={{
-                        flex: 1,
-                        borderRadius: 18,
-                        borderWidth: 1,
-                        borderColor: "rgba(255,255,255,0.10)",
-                        backgroundColor: "rgba(8,11,18,0.78)",
-                        color: "#E5E7EB",
-                        fontSize: 15,
-                        fontWeight: "700",
-                        paddingHorizontal: 16,
-                        paddingVertical: 14,
-                      }}
-                    />
-                    <PrimaryButton label="Verificar" onPress={handleAccessCheck} />
-                  </View>
-
-                  <View className="rounded-[18px] border px-4 py-4" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.04)" }}>
-                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "800" }}>
-                      {activeViewerPhone ? `WhatsApp ativo: ${formatVideoVoterPhone(activeViewerPhone)}` : "Nenhum WhatsApp validado ainda"}
-                    </Text>
-                    <Text style={{ marginTop: 6, color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
-                      {buildViewerStatus({
-                        phone: normalizedViewerPhone,
-                        authorized: viewerAuthorized,
-                        votedVideoId: viewerVotedVideoId,
-                        votingClosed: globalVotingClosed,
-                      })}
-                    </Text>
+                  <View
+                    className="rounded-[18px] border px-4 py-4"
+                    style={{
+                      borderColor: user ? "rgba(167,139,250,0.32)" : "rgba(255,255,255,0.10)",
+                      backgroundColor: user ? "rgba(139,92,246,0.10)" : "rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    {user ? (
+                      <>
+                        <Text style={{ color: "#C4B5FD", fontSize: 11, fontWeight: "900", letterSpacing: 1.8, textTransform: "uppercase" }}>
+                          Logado como
+                        </Text>
+                        <Text style={{ marginTop: 6, color: "#E5E7EB", fontSize: 16, fontWeight: "800" }}>
+                          {user.name}
+                        </Text>
+                        <Text style={{ marginTop: 2, color: "#94A3B8", fontSize: 13, fontWeight: "700" }}>
+                          {normalizedViewerPhone
+                            ? formatVideoVoterPhone(normalizedViewerPhone)
+                            : "WhatsApp nao cadastrado no perfil"}
+                        </Text>
+                        <Text style={{ marginTop: 10, color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
+                          {buildViewerStatus({
+                            phone: normalizedViewerPhone,
+                            authorized: viewerAuthorized,
+                            votedVideoId: viewerVotedVideoId,
+                            votingClosed: globalVotingClosed,
+                            isLoggedIn: true,
+                          })}
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={{ color: "#C4B5FD", fontSize: 11, fontWeight: "900", letterSpacing: 1.8, textTransform: "uppercase" }}>
+                          Modo visualizacao
+                        </Text>
+                        <Text style={{ marginTop: 6, color: "#E5E7EB", fontSize: 16, fontWeight: "800" }}>
+                          Entrar para votar
+                        </Text>
+                        <Text style={{ marginTop: 6, color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
+                          Voce pode assistir todos os videos sem conta. Para votar e vincular o seu WhatsApp ao campeonato, faca login ou crie uma conta.
+                        </Text>
+                        <View className="mt-4 flex-row flex-wrap gap-3">
+                          <PrimaryButton
+                            label="Criar conta"
+                            variant="light"
+                            onPress={() => router.push("/register")}
+                            size="sm"
+                          />
+                          <PrimaryButton
+                            label="Ja tenho conta"
+                            variant="secondary"
+                            onPress={() => router.push("/login")}
+                            size="sm"
+                          />
+                        </View>
+                      </>
+                    )}
                   </View>
 
                   {isModerator ? (
@@ -1330,8 +1381,10 @@ export default function VideosScreen() {
                       <View className="gap-4">
                         {globalVideos.map((video, index) => {
                           const selectedByViewer = viewerVotedVideoId === video.id;
-                          const canVoteCurrentVideo =
-                            viewerAuthorized && !viewerHasVoted && !globalVotingClosed;
+                          // Show the vote button also for unlogged users — clicking triggers the login prompt.
+                          const showVoteButton =
+                            !globalVotingClosed && (!user || viewerAuthorized);
+                          const voteButtonLocked = Boolean(user && viewerHasVoted);
                           const canDefineWinner =
                             isModerator &&
                             globalVotingClosed &&
@@ -1348,14 +1401,15 @@ export default function VideosScreen() {
                                   viewerVotedVideoId,
                                   votingClosed: globalVotingClosed,
                                   winningVideoId: globalWinningVideoId,
+                                  isLoggedIn: Boolean(user),
                                 })}
-                                voteLabel={selectedByViewer ? "Seu voto" : "Votar neste video"}
-                                voteLocked={!canVoteCurrentVideo}
+                                voteLabel={selectedByViewer ? "Seu voto" : !user ? "Entrar para votar" : "Votar neste video"}
+                                voteLocked={voteButtonLocked}
                                 shareLabel="Compartilhar"
                                 adminLabel="Definir vencedor"
                                 onOpen={() => handleOpenVideo(video.id)}
                                 onShare={isModerator ? () => handleShareVideo(video) : undefined}
-                                onVote={canVoteCurrentVideo ? () => handleVote(video.id) : undefined}
+                                onVote={showVoteButton ? () => handleVote(video.id) : undefined}
                                 onAdminAction={canDefineWinner ? () => handleSetWinner(video.id) : undefined}
                               />
                             </RevealOnScroll>
