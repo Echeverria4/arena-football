@@ -174,12 +174,24 @@ export const useTournamentStore = create<TournamentState>()(
         // Write-back: keep the relational `matches` row in sync so other
         // collaborators receive this score via realtime.
         if (supabaseMatchId) {
+          console.log(
+            "[salvarPlacarJogo] pushing match score: " +
+              JSON.stringify({ supabaseMatchId, placarMandante, placarVisitante, matchFinalizado }),
+          );
           void pushMatchScore({
             supabaseMatchId,
             homeGoals: placarMandante,
             awayGoals: placarVisitante,
             status: matchFinalizado ? "finished" : "pending",
           });
+        } else {
+          console.warn(
+            "[salvarPlacarJogo] match has no supabaseId — write-back skipped. campeonatoId=" +
+              campeonatoId +
+              " jogoId=" +
+              jogoId +
+              ". Esse placar NAO sera replicado para outros visualizadores.",
+          );
         }
       },
       aplicarPlacarRemoto: (
