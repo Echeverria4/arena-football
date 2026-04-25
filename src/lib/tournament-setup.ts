@@ -56,6 +56,14 @@ function buildParticipantsFromClassification(classificacao: ClassificacaoItem[])
   }));
 }
 
+function shuffleInPlace<T>(items: T[]): T[] {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j]!, items[i]!];
+  }
+  return items;
+}
+
 function splitIntoGroups(playerCount: number, numGrupos?: number): GroupBucket[] {
   const safePlayerCount = Math.max(2, playerCount);
   const desiredGroupCount = numGrupos
@@ -68,9 +76,29 @@ function splitIntoGroups(playerCount: number, numGrupos?: number): GroupBucket[]
     participants: [] as Participante[],
   }));
 
-  for (let index = 0; index < safePlayerCount; index += 1) {
-    const bucketIndex = index % groupCount;
-    buckets[bucketIndex]?.participants.push(createParticipant(index, buckets[bucketIndex]?.name));
+  // Cabeças de chave: os N primeiros jogadores ocupam um grupo cada, na ordem.
+  for (let index = 0; index < Math.min(groupCount, safePlayerCount); index += 1) {
+    buckets[index]!.participants.push(createParticipant(index, buckets[index]!.name));
+  }
+
+  // Demais jogadores: distribuição aleatória, mantendo grupos equilibrados.
+  const remainingIndexes: number[] = [];
+  for (let index = groupCount; index < safePlayerCount; index += 1) {
+    remainingIndexes.push(index);
+  }
+
+  // Embaralha a ordem dos grupos a cada "rodada" de distribuição para evitar viés.
+  let cursor = 0;
+  let groupOrder = shuffleInPlace(Array.from({ length: groupCount }, (_, i) => i));
+
+  for (const playerIndex of shuffleInPlace(remainingIndexes)) {
+    if (cursor >= groupCount) {
+      cursor = 0;
+      groupOrder = shuffleInPlace(Array.from({ length: groupCount }, (_, i) => i));
+    }
+    const bucketIndex = groupOrder[cursor]!;
+    cursor += 1;
+    buckets[bucketIndex]!.participants.push(createParticipant(playerIndex, buckets[bucketIndex]!.name));
   }
 
   return buckets.filter((bucket) => bucket.participants.length > 0);
@@ -295,7 +323,14 @@ export function buildInitialCampeonato({
 }: BuildInitialCampeonatoArgs) {
   const participants =
     format === "groups" || format === "groups_knockout"
-      ? splitIntoGroups(playerCount, numGrupos).flatMap((group) => group.participants)
+      ? splitIntoGroups(playerCount, numGrupos)
+          .flatMap((group) => group.participants)
+          // Reordena pelo número do participante (participant-01, 02…) para que
+          // o índice do array case com o índice do form de cadastro. Assim os
+          // 4 (ou N) primeiros jogadores cadastrados são as cabeças de chave
+          // de cada grupo, e os demais ficam com a distribuição aleatória que
+          // foi atribuída em splitIntoGroups.
+          .sort((a, b) => a.id.localeCompare(b.id))
       : buildLeagueParticipants(playerCount);
 
   const groupStageRounds =

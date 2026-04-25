@@ -672,6 +672,10 @@ export default function TabsLayout() {
           name="profile"
           options={{ href: null }}
         />
+        <Tabs.Screen
+          name="_styles"
+          options={{ href: null }}
+        />
       </Tabs>
     </View>
   );

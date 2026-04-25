@@ -1012,11 +1012,11 @@ export default function TournamentCreateScreen() {
             Jogadores ({draftParticipants.length})
           </Text>
 
-          {draftParticipants.slice(0, 8).map((p, i) => (
+          {draftParticipants.map((p, i) => (
             <View
               key={i}
               className="flex-row items-center gap-3 border-b border-arena-line py-2"
-              style={{ borderBottomWidth: i < Math.min(7, draftParticipants.length - 1) ? 1 : 0 }}
+              style={{ borderBottomWidth: i < draftParticipants.length - 1 ? 1 : 0 }}
             >
               <Text
                 className="text-xs font-black text-arena-muted"
@@ -1035,12 +1035,6 @@ export default function TournamentCreateScreen() {
               </Text>
             </View>
           ))}
-
-          {draftParticipants.length > 8 ? (
-            <Text className="text-sm text-arena-muted">
-              + {draftParticipants.length - 8} jogadores adicionais
-            </Text>
-          ) : null}
         </View>
 
         <View className="flex-row gap-3 pb-4">

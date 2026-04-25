@@ -359,40 +359,11 @@ export function SeasonPodiumBoard({ title, subtitle, entries, titleLeaders }: Pr
       );
     });
 
-    // Empate: quando duas linhas vizinhas tem mesma pontuacao + saldo +
-    // vitorias, mostramos as duas dentro do mesmo card (a segunda some
-    // do podio, ja que o titular leva o segundo escudo). Ajuda a
-    // visualizar empates em campeonatos pequenos.
-    const isTied = (a: PodiumEntry, b: PodiumEntry) =>
-      a.id !== b.id &&
-      !a.id.startsWith("placeholder") &&
-      !b.id.startsWith("placeholder") &&
-      a.points === b.points &&
-      a.wins === b.wins &&
-      a.goalDifference === b.goalDifference;
-
     const first = seeded.find((i) => i.position === 1)!;
     const second = seeded.find((i) => i.position === 2)!;
     const third = seeded.find((i) => i.position === 3)!;
 
-    let displayFirst = first;
-    let displaySecond: PodiumEntry | null = second;
-    let displayThird: PodiumEntry | null = third;
-
-    if (isTied(first, second)) {
-      displayFirst = { ...first, tiedTeamName: second.teamName, tiedPlayerName: second.playerName };
-      displaySecond = isTied(second, third)
-        ? { ...third, position: 2, tiedTeamName: null, tiedPlayerName: null }
-        : null;
-      displayThird = null;
-    } else if (isTied(second, third)) {
-      displaySecond = { ...second, tiedTeamName: third.teamName, tiedPlayerName: third.playerName };
-      displayThird = null;
-    }
-
-    return [displaySecond, displayFirst, displayThird].filter(
-      (item): item is PodiumEntry => item !== null,
-    );
+    return [second, first, third];
   }, [entries]);
 
   return (
