@@ -58,13 +58,45 @@ export interface PushCampeonatoResult {
   campeonato: Campeonato;
 }
 
+// Cache de pushes em voo. Multiplas chamadas concorrentes para o mesmo
+// campeonato compartilham a mesma Promise — evita disputar o lock do
+// supabase.auth.getUser() (que falha com "Lock broken by another request
+// with the 'steal' option") quando o usuario abre a tela de Links e o
+// auto-push dispara junto, ou quando os links de editor + viewer sao
+// gerados em paralelo via Promise.all.
+const inFlightPushes = new Map<string, Promise<PushCampeonatoResult>>();
+
+export async function pushCampeonatoToSupabase(
+  campeonato: Campeonato,
+  creatorId: string,
+): Promise<PushCampeonatoResult> {
+  const cacheKey = String(campeonato?.id ?? "");
+  if (cacheKey) {
+    const inFlight = inFlightPushes.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
+
+  const promise = pushCampeonatoToSupabaseImpl(campeonato, creatorId);
+  if (cacheKey) {
+    inFlightPushes.set(cacheKey, promise);
+    promise.finally(() => {
+      if (inFlightPushes.get(cacheKey) === promise) {
+        inFlightPushes.delete(cacheKey);
+      }
+    });
+  }
+  return promise;
+}
+
 /**
  * Upserts a local Campeonato (plus participants/matches/standings) into
  * Supabase. Assigns `supabaseId` to the Campeonato and nested entities where
  * missing. Returns the updated Campeonato — the caller should persist it back
  * into the local store so the generated UUIDs are kept for next pushes.
  */
-export async function pushCampeonatoToSupabase(
+async function pushCampeonatoToSupabaseImpl(
   campeonato: Campeonato,
   creatorId: string,
 ): Promise<PushCampeonatoResult> {

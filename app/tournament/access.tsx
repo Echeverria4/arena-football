@@ -206,18 +206,20 @@ export default function TournamentAccessScreen() {
       setLoading(true);
 
       try {
-        const [editor, viewer] = await Promise.all([
-          buildTournamentShareLink({
-            access: "editor",
-            campeonato: bundle.campeonato,
-            videos: bundle.videos,
-          }),
-          buildTournamentShareLink({
-            access: "viewer",
-            campeonato: bundle.campeonato,
-            videos: bundle.videos,
-          }),
-        ]);
+        // Sequencial (nao Promise.all): cada chamada faz supabase.auth.getUser()
+        // que disputa um lock global da gotrue. Em paralelo o lock e quebrado e
+        // o segundo push falha com "Lock broken by another request with the
+        // 'steal' option", caindo no fallback snapshot-only (link sem realtime).
+        const editor = await buildTournamentShareLink({
+          access: "editor",
+          campeonato: bundle.campeonato,
+          videos: bundle.videos,
+        });
+        const viewer = await buildTournamentShareLink({
+          access: "viewer",
+          campeonato: bundle.campeonato,
+          videos: bundle.videos,
+        });
 
         if (cancelled) {
           return;
