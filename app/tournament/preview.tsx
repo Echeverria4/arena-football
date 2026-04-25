@@ -272,7 +272,12 @@ export default function TournamentPreviewScreen() {
   const seasonLabel = campeonato.temporada ?? "Temporada";
   const statusCfg = STATUS_CONFIG[campeonato.status] ?? STATUS_CONFIG.aguardando;
   const formatLabel = FORMAT_LABELS[tournament.format] ?? tournament.format;
-  const titleLeaders = getPlayerTitleLeaderboard(campeonatos).slice(0, 5);
+  const titleLeaders = getPlayerTitleLeaderboard(campeonatos, {
+    currentParticipants: campeonato.participantes.map((p) => ({
+      whatsapp: p.whatsapp,
+      nome: p.nome,
+    })),
+  }).slice(0, 5);
 
   // Build team list for carousel
   const teamList = participants.map((p) => ({

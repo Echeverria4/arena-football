@@ -92,17 +92,64 @@ export function getFinishedChampionshipHistory(
     .map((campeonato) => buildHistoryEntry(campeonato, videos));
 }
 
-export function getPlayerTitleLeaderboard(campeonatos: Campeonato[]) {
+// Campeonatos finalizados antes desta data sao tratados como testes e nao
+// contam para o ranking de titulos. Mantemos um corte explicito para que
+// dados historicos de testes nao poluam o painel.
+const TITLE_LEADERBOARD_RESET_AT = Date.parse("2026-04-25T00:00:00Z");
+
+function onlyDigits(value: string | undefined | null) {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+export function getPlayerTitleLeaderboard(
+  campeonatos: Campeonato[],
+  options?: {
+    currentParticipants?: { whatsapp?: string | null; nome?: string | null }[];
+  },
+) {
   const history = getFinishedChampionshipHistory(campeonatos);
+
+  const currentPhones = new Set<string>();
+  const currentNames = new Set<string>();
+  if (options?.currentParticipants) {
+    for (const p of options.currentParticipants) {
+      const phone = onlyDigits(p.whatsapp);
+      if (phone) currentPhones.add(phone);
+      const name = (p.nome ?? "").trim().toLowerCase();
+      if (name) currentNames.add(name);
+    }
+  }
+
   const map = new Map<string, TitleLeaderboardEntry>();
 
   history.forEach((entry) => {
-    const key = entry.championPlayerName.trim().toLowerCase();
+    // Filtro 1: corte historico — ignora torneios criados antes do reset.
+    const createdAt = Date.parse(entry.campeonato.criadoEm ?? "");
+    if (Number.isNaN(createdAt) || createdAt < TITLE_LEADERBOARD_RESET_AT) {
+      return;
+    }
+
+    // Filtro 2: o campeao precisa ter telefone (descarta jogadores de teste
+    // sem identificacao real).
+    const phone = onlyDigits(entry.championPhone);
+    if (!phone) return;
+
+    // Filtro 3: o campeao precisa estar vinculado ao campeonato atual.
+    // O vinculo e feito por telefone + nome (telefone tem prioridade).
+    if (options?.currentParticipants) {
+      const nameKey = entry.championPlayerName.trim().toLowerCase();
+      const matchesByPhone = currentPhones.has(phone);
+      const matchesByName = nameKey ? currentNames.has(nameKey) : false;
+      if (!matchesByPhone && !matchesByName) return;
+    }
+
+    // Chave: telefone (digitos). Sem telefone ja foi descartado acima.
+    const key = phone;
     const current = map.get(key);
 
     if (!current) {
       map.set(key, {
-        id: `player-${key.replace(/\s+/g, "-")}`,
+        id: `player-${key}`,
         label: entry.championPlayerName,
         subtitle: entry.championTeamName,
         phone: entry.championPhone,
