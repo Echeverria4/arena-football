@@ -79,33 +79,45 @@ export function injectElectricFilter() {
 
   document.body.appendChild(svg);
 
-  // Continuous flowing border: a SECOND layer in CSS that loops a moving
-  // gradient around the card edge. Garante que mesmo se o filtro SVG der
-  // throttled em mobile/background, o usuario ainda ve a borda em
-  // movimento. Aplicado via classe .arena-flow-border (consumida pelo
-  // componente abaixo).
+  // Continuous flowing border: usa um conic-gradient rotacionando sua
+  // angulacao via @property. Matematicamente continuo (360deg = 0deg),
+  // sem qualquer ponto morto na transicao do loop. O mask isola apenas
+  // o anel da borda (padding box).
   if (!document.getElementById("arena-flow-border-style")) {
     const style = document.createElement("style");
     style.id = "arena-flow-border-style";
     style.textContent = `
-@keyframes arena-flow-border {
-  0%   { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+@property --arena-conic-from {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes arena-conic-spin {
+  to { --arena-conic-from: 360deg; }
 }
 .arena-flow-border {
-  background: linear-gradient(90deg,
-    transparent 0%,
-    var(--arena-flow-color, rgba(255,200,90,0.85)) 25%,
-    rgba(255,255,255,0.95) 50%,
-    var(--arena-flow-color, rgba(255,200,90,0.85)) 75%,
-    transparent 100%);
-  background-size: 200% 200%;
-  animation: arena-flow-border 3s linear infinite;
+  background: conic-gradient(
+    from var(--arena-conic-from),
+    transparent 0deg,
+    var(--arena-flow-color, rgba(255,200,90,0.85)) 50deg,
+    rgba(255,255,255,0.98) 80deg,
+    var(--arena-flow-color, rgba(255,200,90,0.85)) 110deg,
+    transparent 160deg,
+    transparent 360deg
+  );
+  animation: arena-conic-spin 2.4s linear infinite;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
-  mask-composite: exclude;
+          mask-composite: exclude;
   padding: 2px;
+  will-change: --arena-conic-from;
+}
+/* Fallback para browsers sem @property (Firefox antigo): roda o
+   elemento inteiro. Como o background eh circular pelo conic, ainda
+   parece continuo — so menos suave. */
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+  .arena-flow-border { animation: none; }
 }
 `;
     document.head.appendChild(style);
