@@ -3,7 +3,10 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { HOUR_MS, syncExpiredCampeonatoRounds } from "@/lib/tournament-deadlines";
 import { expireTournamentSharesByTournamentId } from "@/lib/tournament-sharing";
-import { saveCampeonatoMatchScore } from "@/lib/tournament-results";
+import {
+  recomputeCampeonatoClassificacao,
+  saveCampeonatoMatchScore,
+} from "@/lib/tournament-results";
 import { pushMatchScore } from "@/services/tournament-realtime";
 import {
   type KnockoutFirstRoundResult,
@@ -237,9 +240,19 @@ export const useTournamentStore = create<TournamentState>()(
               return campeonato;
             }
 
-            return hydrateCampeonatoStructure({
+            // Recomputa classificacao APOS aplicar o placar remoto.
+            // hydrateCampeonatoStructure so recalcula quando classificacao
+            // esta vazia, entao precisamos forcar a recomputacao aqui — caso
+            // contrario a tabela de classificacao fica defasada apesar do
+            // placar nas rodadas estar atualizado.
+            const campeonatoComPlacar = {
               ...campeonato,
               rodadas: novasRodadas,
+            };
+
+            return hydrateCampeonatoStructure({
+              ...campeonatoComPlacar,
+              classificacao: recomputeCampeonatoClassificacao(campeonatoComPlacar),
             });
           };
 
