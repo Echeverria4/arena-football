@@ -29,6 +29,12 @@ export type StandingRow = {
   previousPosition?: number;
 };
 
+export type AdvancementMode =
+  | "first_only"
+  | "top_two"
+  | "first_direct_second_playoff"
+  | "first_direct_second_vs_third_playoff";
+
 type Props = {
   title?: string;
   phaseLabel?: string;
@@ -36,15 +42,46 @@ type Props = {
   selectedId?: string;
   showTitle?: boolean;
   onSelect?: (item: StandingRow) => void;
+  /**
+   * Group advancement rule defined when the tournament was created. When
+   * provided, the rank zone bar colors only the positions that actually
+   * advance (gold = direct qualifier, blue = playoff/repescagem). When
+   * undefined the zone bar stays transparent (league/groups without
+   * knockout don't have advancement zones).
+   */
+  advancementMode?: AdvancementMode | null;
 };
 
 // ── Zone ─────────────────────────────────────────────────────────────────────
 
-function getZoneColor(position: number, total: number): string {
-  if (position === 1) return "#F4C542";
-  if (position <= 4) return "#1FBF75";
-  if (position >= total - 2) return "#E24C4C";
-  return "#CBD5E1";
+const ZONE_DIRECT = "#F4C542"; // ouro — classificado direto
+const ZONE_PLAYOFF = "#3B82F6"; // azul — repescagem / playoff
+const ZONE_DIRECT_ALT = "#1FBF75"; // verde — classificado direto secundario (top_two)
+
+function getZoneColor(
+  position: number,
+  advancementMode: AdvancementMode | null | undefined,
+): string {
+  if (!advancementMode) return "transparent";
+
+  switch (advancementMode) {
+    case "first_only":
+      return position === 1 ? ZONE_DIRECT : "transparent";
+    case "top_two":
+      if (position === 1) return ZONE_DIRECT;
+      if (position === 2) return ZONE_DIRECT_ALT;
+      return "transparent";
+    case "first_direct_second_playoff":
+      if (position === 1) return ZONE_DIRECT;
+      if (position === 2) return ZONE_PLAYOFF;
+      return "transparent";
+    case "first_direct_second_vs_third_playoff":
+      if (position === 1) return ZONE_DIRECT;
+      if (position === 2 || position === 3) return ZONE_PLAYOFF;
+      return "transparent";
+    default:
+      return "transparent";
+  }
 }
 
 // ── Movement ─────────────────────────────────────────────────────────────────
@@ -82,14 +119,14 @@ const FIXED_W = 188; // rank(32) + badge(36) + name(120)
 
 function FixedColumn({
   data,
-  total,
   selectedId,
   onSelect,
+  advancementMode,
 }: {
   data: StandingRow[];
-  total: number;
   selectedId?: string;
   onSelect?: (item: StandingRow) => void;
+  advancementMode?: AdvancementMode | null;
 }) {
   return (
     <View style={{ width: FIXED_W }}>
@@ -101,7 +138,7 @@ function FixedColumn({
       </View>
 
       {data.map((item, index) => {
-        const zoneColor = getZoneColor(item.position, total);
+        const zoneColor = getZoneColor(item.position, advancementMode);
         const move = getMovement(item);
         const isSelected = item.id === selectedId;
         const isAlt = index % 2 !== 0;
@@ -179,11 +216,9 @@ const STAT_COLS = [
 
 function StatColumns({
   data,
-  total,
   selectedId,
 }: {
   data: StandingRow[];
-  total: number;
   selectedId?: string;
 }) {
   const totalStatW = STAT_COLS.length * STAT_W + FORM_COL_W;
@@ -271,6 +306,7 @@ export default function StandingsTableExact({
   selectedId,
   showTitle = true,
   onSelect,
+  advancementMode,
 }: Props) {
   return (
     <View style={s.root}>
@@ -287,10 +323,15 @@ export default function StandingsTableExact({
       {/* Table shell */}
       <View style={s.shell}>
         <View style={{ flexDirection: "row" }}>
-          <FixedColumn data={data} total={data.length} selectedId={selectedId} onSelect={onSelect} />
+          <FixedColumn
+            data={data}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            advancementMode={advancementMode}
+          />
           <View style={s.divider} />
           <View style={{ flex: 1, overflow: "hidden" }}>
-            <StatColumns data={data} total={data.length} selectedId={selectedId} />
+            <StatColumns data={data} selectedId={selectedId} />
           </View>
         </View>
       </View>

@@ -16,6 +16,7 @@ import { ScreenState } from "@/components/ui/ScreenState";
 import { ScrollRow } from "@/components/ui/ScrollRow";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
+import { useTournamentAutoPush } from "@/hooks/useTournamentAutoPush";
 import { deleteLocalVideoAssets } from "@/lib/local-video-assets";
 import {
   canEditTournament,
@@ -134,6 +135,15 @@ export default function TournamentDetailsScreen() {
       setCurrentTournamentId(bundle.campeonato.id);
     }
   }, [bundle.campeonato.id, currentTournamentId, setCurrentTournamentId]);
+
+  // Self-heal: if owner opens a tournament that was created before the
+  // relational push worked (no supabaseId), push it now so realtime kicks in.
+  // Realtime subscription itself is mounted once no _layout para cobrir
+  // todas as telas do escopo /tournament/* (preview, matches, etc).
+  useTournamentAutoPush({
+    campeonato: bundle.campeonato,
+    isOwner: accessMode === "owner",
+  });
 
   useEffect(() => {
     if (!lockToActiveTournament || !currentTournamentId || bundle.campeonato.id === currentTournamentId) {

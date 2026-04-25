@@ -236,13 +236,19 @@ export default function TournamentCreateScreen() {
       const tournamentId = `campeonato-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const createdAt = new Date().toISOString();
 
+      // For groups_knockout the user only picks one match mode (modoConfrontoMataMata)
+      // and it applies to both the group phase and the knockout — so we mirror it
+      // into matchMode here.
+      const effectiveMatchMode =
+        step1Values.format === "groups_knockout" ? modoConfrontoMataMata : modoConfronto;
+
       const campeonato = buildInitialCampeonato({
         id: tournamentId,
         name: step1Values.name,
         createdAt,
         seasonLabel: nextSeasonLabel,
         format: step1Values.format,
-        matchMode: modoConfronto,
+        matchMode: effectiveMatchMode,
         rules: step1Values.rules,
         classificationCriteria: step1Values.classificationCriteria,
         allowVideos: step1Values.allowVideos,
@@ -362,9 +368,15 @@ export default function TournamentCreateScreen() {
               </ScrollRow>
             </View>
 
-            {/* Match mode — only for pure knockout (groups_knockout uses modoConfrontoMataMata below) */}
-            {currentFormat === "knockout" && <View className="gap-2">
-              <Text className="text-sm font-semibold text-arena-text">Tipo de partida</Text>
+            {/* Match mode — for groups_knockout the existing selector below
+                (modoConfrontoMataMata) drives both phases, so we hide this one
+                to avoid showing two "Casa e fora" toggles. */}
+            {currentFormat !== "groups_knockout" && <View className="gap-2">
+              <Text className="text-sm font-semibold text-arena-text">
+                {currentFormat === "groups"
+                  ? "Tipo de partida (fase de grupos)"
+                  : "Tipo de partida"}
+              </Text>
               <View className="flex-row gap-3">
                 {([
                   { value: "single_game", label: "Jogo único" },

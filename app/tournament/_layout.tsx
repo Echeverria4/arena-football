@@ -2,9 +2,12 @@ import { router, Stack, useGlobalSearchParams, usePathname } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 
+import { SyncStatusPill } from "@/components/tournament/SyncStatusPill";
 import { TournamentDeadlinePill } from "@/components/tournament/TournamentDeadlinePill";
+import { useTournamentRealtimeSync } from "@/hooks/useTournamentRealtimeSync";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
+import { useTournamentStore } from "@/stores/tournament-store";
 
 function resolveTournamentRouteKey(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
@@ -91,6 +94,22 @@ export default function TournamentLayout() {
     router.replace(buildLockedTournamentTarget(routeKey, currentTournamentId));
   }, [currentTournamentId, routeKey, shouldRedirect]);
 
+  // Centraliza o realtime aqui: qualquer tela do escopo /tournament/* (preview,
+  // matches, standings, statistics, videos, [id]) faz subscribe ao canal
+  // assim que o campeonato resolve um supabaseId. Antes ficava so em
+  // /tournament/[id]; agora editores/visualizadores que entram pelo /s/{key}
+  // (que redireciona para /tournament/preview) tambem recebem updates.
+  const activeCampeonatoId = currentTournamentId ?? routeTournamentId ?? undefined;
+  const supabaseTournamentId = useTournamentStore((state) =>
+    activeCampeonatoId
+      ? state.campeonatos.find((c) => c.id === activeCampeonatoId)?.supabaseId
+      : undefined,
+  );
+  const { status: syncStatus, lastSyncedAt, lastError } = useTournamentRealtimeSync({
+    campeonatoId: activeCampeonatoId,
+    supabaseTournamentId,
+  });
+
   return (
     <View style={{ flex: 1 }}>
       <Stack
@@ -99,6 +118,21 @@ export default function TournamentLayout() {
           contentStyle: { backgroundColor: "#050A11", flex: 1, width: "100%", maxWidth: "100vw" as never, minHeight: 0, overflow: "hidden" as never },
         }}
       />
+      <View
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          zIndex: 50,
+        }}
+        pointerEvents="box-none"
+      >
+        <SyncStatusPill
+          status={syncStatus}
+          lastSyncedAt={lastSyncedAt}
+          lastError={lastError}
+        />
+      </View>
       <TournamentDeadlinePill />
     </View>
   );

@@ -659,9 +659,9 @@ function AddVideoModal({
 
             {/* Player 1 chips */}
             {[
-              { label: "Jogador 1 *", field: "teamName" as const },
-              { label: "Jogador 2 *", field: "teamName2" as const },
-            ].map(({ label, field }) => (
+              { label: "Jogador 1 *", field: "teamName" as const, otherField: "teamName2" as const },
+              { label: "Jogador 2 *", field: "teamName2" as const, otherField: "teamName" as const },
+            ].map(({ label, field, otherField }) => (
               <View key={field} style={{ gap: 8 }}>
                 <Text style={{ color: "#AEBBDA", fontSize: 12, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
                   {label}
@@ -669,7 +669,9 @@ function AddVideoModal({
 
                 {teams.length > 0 ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    {teams.map((team) => {
+                    {teams
+                      .filter((team) => team !== form[otherField])
+                      .map((team) => {
                       const selected = form[field] === team;
                       return (
                         <Pressable

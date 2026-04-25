@@ -4,7 +4,6 @@ import { Alert, Text, View } from "react-native";
 
 import { FloatingWhatsAppLauncher } from "@/components/match/FloatingWhatsAppLauncher";
 import { RankingBarCard } from "@/components/tournament/RankingBarCard";
-import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { WorldCupEditionCard } from "@/components/tournament/WorldCupEditionCard";
 import { FeatureCard } from "@/components/ui/FeatureCard";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
@@ -194,22 +193,6 @@ export default function HomeScreen() {
               icon="flame-outline"
               footerNote={bundle.tournament.name}
               onPress={() => router.push(`/tournament/${bundle.campeonato.id}`)}
-            />
-          </RevealOnScroll>
-
-          <RevealOnScroll delay={90} style={{ width: cardWidth }}>
-            <TournamentCard
-              tournament={bundle.campeonato}
-              primaryAction={{
-                label: "Entrar no campeonato",
-                onPress: () => router.push(`/tournament/${bundle.campeonato.id}`),
-              }}
-              secondaryAction={{
-                label: "Abrir rodadas",
-                onPress: () =>
-                  router.push({ pathname: "/tournament/matches", params: { id: bundle.campeonato.id } }),
-                variant: "secondary",
-              }}
             />
           </RevealOnScroll>
         </View>

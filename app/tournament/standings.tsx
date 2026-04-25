@@ -329,6 +329,11 @@ export default function TournamentStandingsScreen() {
                 selectedId={selectedId}
                 showTitle={groupIndex === 0}
                 onSelect={(item) => setSelectedId(item.id)}
+                advancementMode={
+                  bundle.campeonato.formato === "groups_knockout"
+                    ? bundle.campeonato.gruposClassificacaoModo ?? null
+                    : null
+                }
               />
             </RevealOnScroll>
           ))

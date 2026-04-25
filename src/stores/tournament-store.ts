@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { HOUR_MS, syncExpiredCampeonatoRounds } from "@/lib/tournament-deadlines";
 import { expireTournamentSharesByTournamentId } from "@/lib/tournament-sharing";
 import { saveCampeonatoMatchScore } from "@/lib/tournament-results";
+import { pushMatchScore } from "@/services/tournament-realtime";
 import {
   type KnockoutFirstRoundResult,
   generateKnockoutFirstRound,
@@ -30,6 +31,13 @@ interface TournamentState {
     jogoId: string,
     placarMandante: number,
     placarVisitante: number,
+  ) => void;
+  aplicarPlacarRemoto: (
+    supabaseTournamentId: string,
+    supabaseMatchId: string,
+    placarMandante: number | null,
+    placarVisitante: number | null,
+    finalizado: boolean,
   ) => void;
   ajustarTempoExtraRodada: (campeonatoId: string, rodada: number, deltaMs: number) => void;
   sincronizarPrazosRodadas: (now?: string) => void;
@@ -119,6 +127,8 @@ export const useTournamentStore = create<TournamentState>()(
       },
       salvarPlacarJogo: (campeonatoId, jogoId, placarMandante, placarVisitante) => {
         let shouldExpireShares = false;
+        let supabaseMatchId: string | undefined;
+        let matchFinalizado = false;
 
         set((state) => {
           const updateCampeonato = (campeonato: Campeonato) =>
@@ -130,6 +140,14 @@ export const useTournamentStore = create<TournamentState>()(
               const updatedCampeonato = hydrateCampeonatoStructure(
                 saveCampeonatoMatchScore(campeonato, jogoId, placarMandante, placarVisitante),
               );
+
+              const updatedJogo = updatedCampeonato.rodadas
+                .flat()
+                .find((j) => j.id === jogoId);
+              if (updatedJogo?.supabaseId) {
+                supabaseMatchId = updatedJogo.supabaseId;
+                matchFinalizado = updatedJogo.status === "finalizado";
+              }
 
               if (
                 campeonato.status !== "finalizado" &&
@@ -152,7 +170,74 @@ export const useTournamentStore = create<TournamentState>()(
         if (shouldExpireShares) {
           void expireTournamentSharesByTournamentId(campeonatoId);
         }
+
+        // Write-back: keep the relational `matches` row in sync so other
+        // collaborators receive this score via realtime.
+        if (supabaseMatchId) {
+          void pushMatchScore({
+            supabaseMatchId,
+            homeGoals: placarMandante,
+            awayGoals: placarVisitante,
+            status: matchFinalizado ? "finished" : "pending",
+          });
+        }
       },
+      aplicarPlacarRemoto: (
+        supabaseTournamentId,
+        supabaseMatchId,
+        placarMandante,
+        placarVisitante,
+        finalizado,
+      ) =>
+        set((state) => {
+          const updateCampeonato = (campeonato: Campeonato) => {
+            if (campeonato.supabaseId !== supabaseTournamentId) {
+              return campeonato;
+            }
+
+            let touched = false;
+            const novasRodadas = campeonato.rodadas.map((rodada) =>
+              rodada.map((jogo) => {
+                if (jogo.supabaseId !== supabaseMatchId) {
+                  return jogo;
+                }
+
+                const sameScore =
+                  jogo.placarMandante === placarMandante &&
+                  jogo.placarVisitante === placarVisitante &&
+                  jogo.status === (finalizado ? "finalizado" : "pendente");
+
+                if (sameScore) {
+                  return jogo;
+                }
+
+                touched = true;
+                return {
+                  ...jogo,
+                  placarMandante,
+                  placarVisitante,
+                  status: finalizado ? "finalizado" : "pendente",
+                } satisfies Campeonato["rodadas"][number][number];
+              }),
+            );
+
+            if (!touched) {
+              return campeonato;
+            }
+
+            return hydrateCampeonatoStructure({
+              ...campeonato,
+              rodadas: novasRodadas,
+            });
+          };
+
+          return {
+            campeonatos: state.campeonatos.map(updateCampeonato),
+            selectedCampeonato: state.selectedCampeonato
+              ? updateCampeonato(state.selectedCampeonato)
+              : state.selectedCampeonato,
+          };
+        }),
       ajustarTempoExtraRodada: (campeonatoId, rodada, deltaMs) =>
         set((state) => {
           const updateCampeonato = (campeonato: Campeonato) => {

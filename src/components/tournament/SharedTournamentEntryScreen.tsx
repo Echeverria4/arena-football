@@ -25,7 +25,7 @@ type SharedTournamentEntryScreenProps = {
   shareKey?: string | string[];
 };
 
-const SHARE_FETCH_TIMEOUT_MS = 8000;
+const SHARE_FETCH_TIMEOUT_MS = 4000;
 
 function normalizeAccessMode(
   rawAccess?: string | string[] | null,
@@ -115,6 +115,14 @@ export function SharedTournamentEntryScreen({
           throw new Error(safeShareKey ? "share_not_found" : "share_invalid");
         }
 
+        // Sempre importa o snapshot mais recente. O moderador atualiza o
+        // payload em tournament_shares cada vez que regenera o link, entao
+        // este snapshot e a fonte de verdade no momento da entrada. Os
+        // hooks de realtime/poll no /tournament/* sincronizam updates
+        // posteriores. Editores nao perdem edicoes porque salvarPlacarJogo
+        // ja faz write-back para Supabase, e a re-importacao nao sobrescreve
+        // o que foi confirmado no banco — o reconcile pos-mount aplica a
+        // versao mais nova de cada placar.
         importarCampeonatoCompartilhado(resolvedShare.campeonato);
         importarVideosCompartilhados(
           resolvedShare.campeonato.id,
@@ -123,27 +131,34 @@ export function SharedTournamentEntryScreen({
         setTournamentAccess(resolvedShare.campeonato.id, resolvedShare.access);
         setCurrentTournamentId(resolvedShare.campeonato.id);
 
-        // Se o usuario esta autenticado e entrou por um share_key, chamamos o
-        // RPC claim_tournament_share para que a RLS libere o acesso direto as
-        // tabelas relacionais (tournaments/matches/...) e habilite realtime.
-        // Caso nao esteja autenticado, segue apenas com o snapshot local.
-        const authUser = useAuthStore.getState().user;
-        if (safeShareKey && authUser?.id) {
-          try {
-            await claimTournamentShare(safeShareKey);
-          } catch (claimError) {
-            console.warn("[SharedTournamentEntry] claim_tournament_share falhou:", claimError);
-            // Nao bloqueia o fluxo — usuario ainda tem o snapshot local para navegar.
-          }
-        }
-
+        // Redireciona imediatamente para o painel/preview do campeonato — e
+        // a tela com lider, ranking e proximos jogos, mais bacana para
+        // editores e visualizadores que entram via link compartilhado. O
+        // snapshot ja esta no store, entao nao precisa bloquear esperando rede.
         if (!cancelled) {
           setTimeout(() => {
             router.replace({
-              pathname: "/tournament/[id]",
+              pathname: "/tournament/preview",
               params: { id: resolvedShare.campeonato.id },
             });
           }, 0);
+        }
+
+        // Em background (depois do redirect) tentamos o claim RPC para liberar
+        // RLS direto nas tabelas relacionais e habilitar realtime. Se falhar
+        // ou demorar nao tem impacto: o usuario ja esta navegando no snapshot.
+        const authUser = useAuthStore.getState().user;
+        if (safeShareKey && authUser?.id) {
+          void (async () => {
+            try {
+              await claimTournamentShare(safeShareKey);
+            } catch (claimError) {
+              console.warn(
+                "[SharedTournamentEntry] claim_tournament_share falhou:",
+                claimError,
+              );
+            }
+          })();
         }
       } catch (error) {
         if (cancelled) {

@@ -212,52 +212,6 @@ export function HistoricCupCard({ item, onPress, compact = false }: HistoricCupC
             backgroundColor: "#343434",
           }}
         >
-        <View
-          style={{
-            minHeight: compact ? 30 : 38,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#F0F0F0",
-            paddingHorizontal: compact ? 6 : 10,
-            paddingVertical: compact ? 5 : 7,
-            borderLeftWidth: 4,
-            borderLeftColor: accent,
-            position: "relative",
-          }}
-        >
-          {item.hostFlagUrl ? (
-            <View
-              style={{
-                position: "absolute",
-                left: 10,
-                top: 0,
-                bottom: 0,
-                justifyContent: "center",
-              }}
-            >
-              <FlagTile
-                imageUrl={item.hostFlagUrl}
-                fallbackLabel={item.hostCountry ?? item.editionLabel}
-                variant="host"
-              />
-            </View>
-          ) : null}
-
-          <Text
-            numberOfLines={1}
-            style={{
-              color: "#111111",
-              fontSize: compact ? 10 : 12,
-              fontWeight: "700",
-              textAlign: "center",
-              paddingHorizontal: item.hostFlagUrl ? (compact ? 40 : 56) : 0,
-            }}
-          >
-            {item.editionLabel}
-          </Text>
-        </View>
-
           <View style={{ paddingHorizontal: compact ? 8 : 14, paddingTop: compact ? 8 : 14, paddingBottom: compact ? 10 : 16 }}>
             <Text
               style={{

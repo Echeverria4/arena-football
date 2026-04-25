@@ -137,43 +137,50 @@ export function parseTournamentSharePayload(
   return parseSerializedTournamentSharePayload(decodeURIComponent(serialized));
 }
 
-async function findExistingTournamentShare(args: {
+type ExistingShareRow = {
+  id: string;
+  share_key: string;
+  expires_at: string | null;
+};
+
+async function fetchExistingTournamentShares(args: {
   tournamentId: string;
   access: TournamentShareAccess;
-}) {
+}): Promise<ExistingShareRow[]> {
   if (!isSupabaseConfigured) {
-    return null;
+    return [];
   }
 
-  // Don't use .maybeSingle() — if multiple rows exist (legacy/race), it errors
-  // and we'd try to insert a duplicate. Fetch the most recent rows and pick
-  // the first non-expired one in JS.
   const { data, error } = await supabase
     .from("tournament_shares")
-    .select("share_key, expires_at")
+    .select("id, share_key, expires_at")
     .eq("tournament_id", args.tournamentId)
     .eq("access", args.access)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(10);
 
   if (error) {
     console.warn(
-      "[tournament-sharing] findExistingTournamentShare error:",
+      "[tournament-sharing] fetchExistingTournamentShares error:",
       JSON.stringify(error),
     );
-    return null;
+    return [];
   }
 
-  if (!Array.isArray(data) || data.length === 0) {
-    return null;
+  if (!Array.isArray(data)) {
+    return [];
   }
 
+  return data as ExistingShareRow[];
+}
+
+function pickActiveShare(rows: ExistingShareRow[]): ExistingShareRow | null {
   const now = Date.now();
-  const active = data.find(
-    (row) => !row.expires_at || Date.parse(String(row.expires_at)) > now,
+  return (
+    rows.find(
+      (row) => !row.expires_at || Date.parse(String(row.expires_at)) > now,
+    ) ?? null
   );
-
-  return active?.share_key ? String(active.share_key) : null;
 }
 
 /**
@@ -269,16 +276,66 @@ async function persistTournamentShare(args: {
     );
   }
 
-  const existingShareKey = await findExistingTournamentShare({
+  const existingRows = await fetchExistingTournamentShares({
     tournamentId: tournamentIdForShare,
     access: args.access,
   });
 
-  if (existingShareKey) {
-    return existingShareKey;
-  }
+  const activeRow = pickActiveShare(existingRows);
 
   const payload = createTournamentSharePayload(campeonatoForPayload, args.videos);
+
+  // If there's already an active share, refresh its payload (so the link
+  // returns up-to-date snapshot data) and return its key.
+  if (activeRow) {
+    const refresh = await supabase
+      .from("tournament_shares")
+      .update({ payload, tournament_name: campeonatoNome })
+      .eq("id", activeRow.id);
+
+    if (refresh.error) {
+      console.warn(
+        "[tournament-sharing] refresh active share failed: " +
+          JSON.stringify(refresh.error),
+      );
+    }
+
+    return activeRow.share_key;
+  }
+
+  // No active share but maybe an expired one — revive it with a fresh key
+  // and clear expires_at instead of inserting (the partial unique index on
+  // active rows would still allow this insert, but reusing avoids cluttering
+  // the table with stale rows).
+  const expiredRow = existingRows[0];
+  if (expiredRow) {
+    const newShareKey = createShareKey();
+    const revive = await supabase
+      .from("tournament_shares")
+      .update({
+        share_key: newShareKey,
+        expires_at: null,
+        payload,
+        tournament_name: campeonatoNome,
+      })
+      .eq("id", expiredRow.id)
+      .select("share_key")
+      .single();
+
+    if (!revive.error && revive.data?.share_key) {
+      console.log(
+        "[tournament-sharing] share_key revivido com sucesso:",
+        revive.data.share_key,
+      );
+      return String(revive.data.share_key);
+    }
+
+    console.warn(
+      "[tournament-sharing] revive expired share failed: " +
+        JSON.stringify(revive.error),
+    );
+    // Fall through to insert path below.
+  }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const shareKey = createShareKey();
@@ -300,30 +357,41 @@ async function persistTournamentShare(args: {
       return shareKey;
     }
 
-    console.error(
-      "[tournament-sharing] insert em tournament_shares falhou: " +
-        JSON.stringify({
-          attempt,
-          shareKey,
-          tournamentIdForShare,
-          access: args.access,
-          errorCode: (error as any)?.code,
-          errorMessage: (error as any)?.message,
-          errorDetails: (error as any)?.details,
-          errorHint: (error as any)?.hint,
-        }),
-    );
+    const errorCode = (error as any)?.code;
 
-    if ((error as any)?.code === "23505") {
-      const retryExistingShareKey = await findExistingTournamentShare({
+    // 23505 = expected race when multiple share calls fire in parallel; the
+    // partial unique index does its job and the retry below picks up the
+    // already-inserted row. Log at debug level only.
+    if (errorCode === "23505") {
+      console.debug(
+        "[tournament-sharing] insert race (23505) — usando share existente: " +
+          JSON.stringify({ attempt, tournamentIdForShare, access: args.access }),
+      );
+    } else {
+      console.error(
+        "[tournament-sharing] insert em tournament_shares falhou: " +
+          JSON.stringify({
+            attempt,
+            shareKey,
+            tournamentIdForShare,
+            access: args.access,
+            errorCode,
+            errorMessage: (error as any)?.message,
+            errorDetails: (error as any)?.details,
+            errorHint: (error as any)?.hint,
+          }),
+      );
+    }
+
+    if (errorCode === "23505") {
+      const retryRows = await fetchExistingTournamentShares({
         tournamentId: tournamentIdForShare,
         access: args.access,
       });
-
-      if (retryExistingShareKey) {
-        return retryExistingShareKey;
+      const retryActive = pickActiveShare(retryRows);
+      if (retryActive) {
+        return retryActive.share_key;
       }
-
       continue;
     }
 
