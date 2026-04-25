@@ -244,7 +244,13 @@ export default function TournamentAccessScreen() {
     return () => {
       cancelled = true;
     };
-  }, [bundle, editorLink, viewerLink]);
+    // Dependencies precisam ser PRIMITIVOS estaveis. `bundle` e recriado a
+    // cada render por getTournamentBundle, e usar a referencia do objeto
+    // disparava o efeito a cada render — o que causava chamadas em loop a
+    // buildTournamentShareLink, travando o lock auth do Supabase e
+    // cascateando "Lock broken" errors.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bundle?.campeonato.id, bundle?.campeonato.status]);
 
   useEffect(() => {
     if (lockToActiveTournament && currentTournamentId && currentTournamentId !== id) {
