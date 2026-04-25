@@ -1,7 +1,20 @@
 import { Image, type ImageSourcePropType } from "react-native";
 
-function localBadge(asset: number) {
-  return Image.resolveAssetSource(asset).uri;
+function localBadge(asset: unknown): string {
+  if (!asset) return "";
+  if (typeof asset === "string") return asset;
+  if (typeof asset === "object" && asset !== null && "uri" in asset) {
+    const uri = (asset as { uri?: unknown }).uri;
+    if (typeof uri === "string") return uri;
+  }
+  if (typeof Image.resolveAssetSource === "function") {
+    try {
+      return Image.resolveAssetSource(asset as number)?.uri ?? "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }
 
 export type TeamVisualKind = "bandeira" | "escudo";
