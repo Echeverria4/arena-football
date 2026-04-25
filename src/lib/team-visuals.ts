@@ -1,4 +1,8 @@
-import type { ImageSourcePropType } from "react-native";
+import { Image, type ImageSourcePropType } from "react-native";
+
+function localBadge(asset: number) {
+  return Image.resolveAssetSource(asset).uri;
+}
 
 export type TeamVisualKind = "bandeira" | "escudo";
 
@@ -50,6 +54,7 @@ const SELECTION_FLAG_URLS: Record<string, string> = {
   eslovenia: "https://flagcdn.com/w160/si.png",
   espanha: "https://flagcdn.com/w160/es.png",
   franca: "https://flagcdn.com/w160/fr.png",
+  "pais-de-gales": localBadge(require("../../assets/badges/pais-de-gales.png")),
   grecia: "https://flagcdn.com/w160/gr.png",
   hungria: "https://flagcdn.com/w160/hu.png",
   inglaterra: "https://flagcdn.com/w160/gb-eng.png",
@@ -84,8 +89,7 @@ const SELECTION_FLAG_URLS: Record<string, string> = {
   ira: "https://flagcdn.com/w160/ir.png",
   catar: "https://flagcdn.com/w160/qa.png",
   china: "https://flagcdn.com/w160/cn.png",
-  "taipe-chines":
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Flag_of_Chinese_Taipei.svg/320px-Flag_of_Chinese_Taipei.svg.png",
+  "taipe-chines": localBadge(require("../../assets/badges/taipe-chines.png")),
   "emirados-arabes-unidos": "https://flagcdn.com/w160/ae.png",
 };
 

@@ -22,6 +22,7 @@ export const SELECOES_POR_CONFEDERACAO = {
     svn: { nome: "Eslovênia", times: ["Eslovênia"] },
     esp: { nome: "Espanha", times: ["Espanha"] },
     fra: { nome: "França", times: ["França"] },
+    gal: { nome: "País de Gales", times: ["País de Gales"] },
     gre: { nome: "Grécia", times: ["Grécia"] },
     hun: { nome: "Hungria", times: ["Hungria"] },
     eng: { nome: "Inglaterra", times: ["Inglaterra"] },
