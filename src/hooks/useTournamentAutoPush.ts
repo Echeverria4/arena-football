@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 
+import { refreshTournamentSharesPayload } from "@/lib/tournament-sharing";
 import { isSupabaseConfigured } from "@/services/supabase";
 import { pushCampeonatoToSupabase } from "@/services/tournament-collab";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTournamentStore } from "@/stores/tournament-store";
+import { useVideoStore } from "@/stores/video-store";
 import type { Campeonato } from "@/types/tournament";
 
 /**
@@ -44,11 +46,33 @@ export function useTournamentAutoPush(args: {
     // Match scores are already write-back'd individually via salvarPlacarJogo,
     // so the signature ignores placares to avoid re-pushing the whole tree
     // on every score save.
+    // Inclui campos editaveis dos participantes (nome, time, whatsapp...) e
+    // configuracoes do campeonato (regras, formato, flags) para que
+    // visualizadores recebam essas mudancas via re-push + refresh do
+    // payload em tournament_shares.
     const signature = JSON.stringify({
       hasSupabaseId: Boolean(campeonato.supabaseId),
       status: campeonato.status,
+      nome: campeonato.nome,
+      formato: campeonato.formato,
+      modoConfronto: campeonato.modoConfronto,
+      modoConfrontoMataMata: campeonato.modoConfrontoMataMata ?? null,
+      numGrupos: campeonato.numGrupos ?? null,
+      gruposClassificacaoModo: campeonato.gruposClassificacaoModo ?? null,
+      regras: campeonato.regras ?? null,
+      allowVideos: campeonato.allowVideos ?? null,
+      allowGoalAward: campeonato.allowGoalAward ?? null,
+      criteriosClassificacao: campeonato.criteriosClassificacao ?? null,
       participantCount: campeonato.participantes.length,
-      participantIds: campeonato.participantes.map((p) => p.id),
+      participants: campeonato.participantes.map((p) => ({
+        id: p.id,
+        nome: p.nome,
+        time: p.time,
+        whatsapp: p.whatsapp ?? null,
+        timeImagem: p.timeImagem ?? null,
+        timeTipoIcone: p.timeTipoIcone ?? null,
+        grupo: p.grupo ?? null,
+      })),
       roundCount: campeonato.rodadas.length,
       matchIds: campeonato.rodadas.flatMap((r) => r.map((m) => m.id)),
       classificadosDiretosIds: campeonato.classificadosDiretosIds ?? null,
@@ -83,6 +107,17 @@ export function useTournamentAutoPush(args: {
               " → " +
               result.tournamentId,
           );
+
+          // Atualiza o snapshot em tournament_shares para que visualizadores/
+          // editores conectados recebam a edicao via poll do payload.
+          const tournamentVideos = useVideoStore
+            .getState()
+            .videos.filter((video) => video.tournamentId === campeonato.id);
+          await refreshTournamentSharesPayload({
+            tournamentId: result.tournamentId,
+            campeonato: result.campeonato,
+            videos: tournamentVideos,
+          });
         } catch (error) {
           console.warn(
             "[useTournamentAutoPush] push failed: " +

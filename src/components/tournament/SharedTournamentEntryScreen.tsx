@@ -77,6 +77,7 @@ export function SharedTournamentEntryScreen({
   );
   const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
   const setTournamentAccess = useAppStore((state) => state.setTournamentAccess);
+  const setTournamentShareKey = useAppStore((state) => state.setTournamentShareKey);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const importStartedRef = useRef(false);
 
@@ -130,6 +131,9 @@ export function SharedTournamentEntryScreen({
         );
         setTournamentAccess(resolvedShare.campeonato.id, resolvedShare.access);
         setCurrentTournamentId(resolvedShare.campeonato.id);
+        if (safeShareKey) {
+          setTournamentShareKey(resolvedShare.campeonato.id, safeShareKey);
+        }
 
         // Redireciona imediatamente para o painel/preview do campeonato — e
         // a tela com lider, ranking e proximos jogos, mais bacana para
@@ -193,6 +197,7 @@ export function SharedTournamentEntryScreen({
     payload,
     setCurrentTournamentId,
     setTournamentAccess,
+    setTournamentShareKey,
     shareKey,
   ]);
 

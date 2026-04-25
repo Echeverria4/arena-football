@@ -461,6 +461,45 @@ export async function buildTournamentShareLink(args: {
   return buildInlineTournamentShareLink(args);
 }
 
+/**
+ * Atualiza o payload de todos os tournament_shares ativos deste campeonato
+ * com o snapshot mais recente. Visualizadores e editores que entrarem via
+ * link agora recebem o estado atualizado, e os que ja estao conectados
+ * detectam a mudanca pelo poll/realtime de snapshot.
+ */
+export async function refreshTournamentSharesPayload(args: {
+  tournamentId: string;
+  campeonato: any;
+  videos: any[];
+}) {
+  if (!isSupabaseConfigured) return;
+
+  const tournamentId = String(args.tournamentId ?? "").trim();
+  if (!tournamentId) return;
+
+  const payload = createTournamentSharePayload(args.campeonato, args.videos);
+  const tournamentName = String(args.campeonato?.nome ?? "Campeonato");
+
+  const { error } = await supabase
+    .from("tournament_shares")
+    .update({ payload, tournament_name: tournamentName })
+    .eq("tournament_id", tournamentId)
+    .is("expires_at", null);
+
+  if (error) {
+    console.warn(
+      "[tournament-sharing] refreshTournamentSharesPayload failed: " +
+        JSON.stringify(error),
+    );
+  }
+}
+
+export async function fetchTournamentShareSnapshotByKey(
+  shareKey?: string | string[] | null,
+) {
+  return fetchTournamentShareByKey(shareKey);
+}
+
 export async function expireTournamentSharesByTournamentId(
   tournamentId?: string | string[] | null,
   expiresAt?: string,

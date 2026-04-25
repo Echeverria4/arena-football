@@ -11,11 +11,13 @@ interface AppState {
   currentTournamentId?: string;
   hydrated: boolean;
   tournamentAccess: Record<string, TournamentAccessMode>;
+  tournamentShareKeys: Record<string, string>;
   videoPanelAccessMode: VideoPanelAccessMode;
   setHydrated: (value: boolean) => void;
   setBootCompleted: (value: boolean) => void;
   setCurrentTournamentId: (value?: string) => void;
   setTournamentAccess: (tournamentId: string, mode: TournamentAccessMode) => void;
+  setTournamentShareKey: (tournamentId: string, shareKey: string) => void;
   setVideoPanelAccessMode: (mode: VideoPanelAccessMode) => void;
   clearTournamentAccess: (tournamentId: string) => void;
   clearVideoPanelAccess: () => void;
@@ -29,6 +31,7 @@ export const useAppStore = create<AppState>()(
       currentTournamentId: undefined,
       hydrated: false,
       tournamentAccess: {},
+      tournamentShareKeys: {},
       videoPanelAccessMode: "owner",
       setHydrated: (value) => set({ hydrated: value }),
       setBootCompleted: (value) => set({ bootCompleted: value }),
@@ -38,6 +41,13 @@ export const useAppStore = create<AppState>()(
           tournamentAccess: {
             ...state.tournamentAccess,
             [tournamentId]: mode,
+          },
+        })),
+      setTournamentShareKey: (tournamentId, shareKey) =>
+        set((state) => ({
+          tournamentShareKeys: {
+            ...state.tournamentShareKeys,
+            [tournamentId]: shareKey,
           },
         })),
       setVideoPanelAccessMode: (mode) => set({ videoPanelAccessMode: mode }),
@@ -59,6 +69,10 @@ export const useAppStore = create<AppState>()(
           const nextAccess = Object.fromEntries(
             Object.entries(state.tournamentAccess).filter(([, mode]) => mode === "owner"),
           ) as Record<string, TournamentAccessMode>;
+          const ownerIds = new Set(Object.keys(nextAccess));
+          const nextShareKeys = Object.fromEntries(
+            Object.entries(state.tournamentShareKeys).filter(([id]) => ownerIds.has(id)),
+          ) as Record<string, string>;
           const currentAccessMode = state.currentTournamentId
             ? state.tournamentAccess[state.currentTournamentId]
             : undefined;
@@ -69,6 +83,7 @@ export const useAppStore = create<AppState>()(
                 ? undefined
                 : state.currentTournamentId,
             tournamentAccess: nextAccess,
+            tournamentShareKeys: nextShareKeys,
           };
         }),
     }),
@@ -79,6 +94,7 @@ export const useAppStore = create<AppState>()(
         bootCompleted: state.bootCompleted,
         currentTournamentId: state.currentTournamentId,
         tournamentAccess: state.tournamentAccess,
+        tournamentShareKeys: state.tournamentShareKeys,
         videoPanelAccessMode: state.videoPanelAccessMode,
       }),
       onRehydrateStorage: () => (state) => {

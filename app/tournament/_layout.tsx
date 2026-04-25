@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { SyncStatusPill } from "@/components/tournament/SyncStatusPill";
 import { TournamentDeadlinePill } from "@/components/tournament/TournamentDeadlinePill";
 import { useTournamentRealtimeSync } from "@/hooks/useTournamentRealtimeSync";
+import { useTournamentSnapshotSync } from "@/hooks/useTournamentSnapshotSync";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
 import { useTournamentStore } from "@/stores/tournament-store";
@@ -109,6 +110,12 @@ export default function TournamentLayout() {
     campeonatoId: activeCampeonatoId,
     supabaseTournamentId,
   });
+
+  // Snapshot poll: para visualizadores/editores recebem mudancas
+  // estruturais (nome de jogador, regras, formato, novas rodadas) que o
+  // realtime de matches nao cobre. So roda quando shareKey + access role
+  // estao definidos — ou seja, somente para quem entrou via link.
+  useTournamentSnapshotSync({ campeonatoId: activeCampeonatoId });
 
   return (
     <View style={{ flex: 1 }}>
