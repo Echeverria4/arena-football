@@ -540,36 +540,85 @@ export function LeagueProgressChart({
                 })}
 
                 {activeRoundCount > 0
-                  ? series.map((entry) => {
-                      const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
-                      const finalValue = visiblePoints[visiblePoints.length - 1] ?? 0;
-                      const finalPoint = getPointCoordinates(
-                        Math.max(visiblePoints.length - 1, 0),
-                        finalValue,
-                        visiblePointCount,
-                        yAxisMax,
-                        plotWidth,
-                        plotHeight,
+                  ? (() => {
+                      // Para evitar que badges de times empatados em pontos
+                      // se sobreponham (mesma coordenada Y e X final), agrupamos
+                      // por valor final e distribuimos horizontalmente — o time
+                      // melhor classificado (primeiro do series ja ordenado por
+                      // criterios) fica mais a direita; os demais escalonam para
+                      // a esquerda em linhas (wraps verticais quando o cluster
+                      // ficaria muito largo).
+                      const ringSize = MARKER_SIZE + 4;
+                      const horizontalGap = 6;
+                      const verticalGap = 4;
+                      const horizontalStep = ringSize + horizontalGap;
+                      const verticalStep = ringSize + verticalGap;
+                      const maxPerRow = Math.max(
+                        1,
+                        Math.floor((plotWidth - 8) / horizontalStep),
                       );
 
-                      return (
+                      const rawMarkers = series.map((entry) => {
+                        const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
+                        const finalValue = visiblePoints[visiblePoints.length - 1] ?? 0;
+                        const finalPoint = getPointCoordinates(
+                          Math.max(visiblePoints.length - 1, 0),
+                          finalValue,
+                          visiblePointCount,
+                          yAxisMax,
+                          plotWidth,
+                          plotHeight,
+                        );
+                        return { entry, finalValue, finalPoint };
+                      });
+
+                      const clusters = new Map<number, typeof rawMarkers>();
+                      rawMarkers.forEach((marker) => {
+                        const list = clusters.get(marker.finalValue) ?? [];
+                        list.push(marker);
+                        clusters.set(marker.finalValue, list);
+                      });
+
+                      const placed: Array<{
+                        entry: SeriesEntry;
+                        x: number;
+                        y: number;
+                      }> = [];
+
+                      clusters.forEach((cluster) => {
+                        cluster.forEach((marker, indexInCluster) => {
+                          const row = Math.floor(indexInCluster / maxPerRow);
+                          const col = indexInCluster % maxPerRow;
+                          // O time melhor ranqueado (col=0) fica na posicao
+                          // original (mais a direita). Os demais escalonam
+                          // para a esquerda na mesma linha.
+                          const x = marker.finalPoint.x - col * horizontalStep;
+                          // Quando ha varias linhas (cluster maior que cabe na
+                          // horizontal), as linhas seguintes sobem para nao
+                          // colidir com o eixo X.
+                          const y = marker.finalPoint.y - row * verticalStep;
+                          placed.push({ entry: marker.entry, x, y });
+                        });
+                      });
+
+                      return placed.map(({ entry, x, y }) => (
                         <View
                           key={`${entry.participantId}-marker`}
                           style={{
                             position: "absolute",
-                            left: finalPoint.x - (MARKER_SIZE + 4) / 2,
-                            top: finalPoint.y - (MARKER_SIZE + 4) / 2,
+                            left: x - ringSize / 2,
+                            top: y - ringSize / 2,
                           }}
                         >
                           <SeriesBadge
                             badgeUrl={entry.badgeUrl}
                             color={entry.color}
                             initials={entry.initials}
-                            size={MARKER_SIZE + 4}
+                            size={ringSize}
                           />
                         </View>
-                      );
-                    })
+                      ));
+                    })()
                   : null}
 
                 <View
