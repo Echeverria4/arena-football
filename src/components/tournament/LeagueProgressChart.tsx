@@ -347,6 +347,13 @@ export function LeagueProgressChart({
   const [chartViewportWidth, setChartViewportWidth] = useState(420);
   const [legendVisible, setLegendVisible] = useState(true);
   const series = useMemo(() => buildSeries(campeonato), [campeonato]);
+  // Times sem nenhum ponto ficam escondidos do plot ate marcarem o primeiro
+  // ponto. Evita poluicao visual no inicio do campeonato (todos empilhados
+  // no zero) e mantem o foco nos times que ja entraram em acao.
+  const visibleSeries = useMemo(
+    () => series.filter((entry) => entry.currentPoints > 0),
+    [series],
+  );
   const latestFinishedRound = useMemo(
     () => getLatestFinishedRound(campeonato),
     [campeonato],
@@ -509,7 +516,7 @@ export function LeagueProgressChart({
                   );
                 })}
 
-                {series.map((entry) => {
+                {visibleSeries.map((entry) => {
                   const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
 
                   return visiblePoints.slice(1).map((pointValue, index) => {
@@ -558,7 +565,7 @@ export function LeagueProgressChart({
                         Math.floor((plotWidth - 8) / horizontalStep),
                       );
 
-                      const rawMarkers = series.map((entry) => {
+                      const rawMarkers = visibleSeries.map((entry) => {
                         const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
                         const finalValue = visiblePoints[visiblePoints.length - 1] ?? 0;
                         const finalPoint = getPointCoordinates(
