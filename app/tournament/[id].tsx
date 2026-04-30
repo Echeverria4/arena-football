@@ -59,21 +59,24 @@ export default function TournamentDetailsScreen() {
     bundle != null &&
     (formato === "groups_knockout" || formato === "knockout") &&
     bundle.campeonato.rodadas.length > numRodadasGrupos;
-  const showBracketPanel =
-    formato === "knockout" || (formato === "groups_knockout" && hasKnockoutRounds);
-  const showChartPanel =
-    formato === "league" ||
-    formato === "groups" ||
-    (formato === "groups_knockout" && !hasKnockoutRounds);
-  const isPersistedTournament = campeonatos.some((campeonato) => campeonato.id === bundle?.campeonato.id);
-  const isCurrentTournament =
-    currentTournamentId == null || currentTournamentId === bundle?.campeonato.id;
-  const canManageTournament = canEditTournament(accessMode);
   const groupStageAllDone =
     bundle != null &&
     formato === "groups_knockout" &&
     numRodadasGrupos > 0 &&
     bundle.campeonato.rodadas.slice(0, numRodadasGrupos).flat().every((m) => m.status === "finalizado");
+  // Bracket only when KO rounds exist AND group stage is fully done.
+  // This prevents showing the bracket when a group-stage match is reset after KO generation.
+  const showBracketPanel =
+    formato === "knockout" ||
+    (formato === "groups_knockout" && hasKnockoutRounds && groupStageAllDone);
+  const showChartPanel =
+    formato === "league" ||
+    formato === "groups" ||
+    (formato === "groups_knockout" && (!hasKnockoutRounds || !groupStageAllDone));
+  const isPersistedTournament = campeonatos.some((campeonato) => campeonato.id === bundle?.campeonato.id);
+  const isCurrentTournament =
+    currentTournamentId == null || currentTournamentId === bundle?.campeonato.id;
+  const canManageTournament = canEditTournament(accessMode);
   const canDeleteTournament =
     accessMode === "owner" &&
     isPersistedTournament &&

@@ -131,6 +131,15 @@ export function getParticipantTeam(participante?: Participante | null, classific
 
 export function getRoundDeadline(campeonato: Campeonato, round: number) {
   const normalized = normalizeCampeonato(campeonato);
+  const extraTimeMs = normalized.tempoExtraRodadasMs?.[String(round)] ?? 0;
+
+  // Per-round explicit date takes highest priority
+  const perRoundDate = normalized.prazoRodasDatas?.[String(round)];
+  if (perRoundDate) {
+    return extraTimeMs > 0
+      ? new Date(new Date(perRoundDate).getTime() + extraTimeMs).toISOString()
+      : perRoundDate;
+  }
 
   if (normalized.prazoFinalEm) {
     return normalized.prazoFinalEm;
@@ -146,7 +155,6 @@ export function getRoundDeadline(campeonato: Campeonato, round: number) {
 
   const roundDays = Math.max(1, normalized.prazoRodadaDias);
   const baseDate = toDate(normalized.inicioEm);
-  const extraTimeMs = normalized.tempoExtraRodadasMs?.[String(round)] ?? 0;
 
   return new Date(
     baseDate.getTime() + Math.max(0, round) * roundDays * DAY_MS + extraTimeMs,

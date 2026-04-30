@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -82,6 +83,7 @@ export default function TournamentMatchesScreen() {
   const ajustarTempoExtraRodada = useTournamentStore((state) => state.ajustarTempoExtraRodada);
   const salvarPlacarJogo = useTournamentStore((state) => state.salvarPlacarJogo);
   const definirRodasComPrazo = useTournamentStore((state) => state.definirRodasComPrazo);
+  const definirPrazoRodasDatas = useTournamentStore((state) => state.definirPrazoRodasDatas);
   const resetarJogo = useTournamentStore((state) => state.resetarJogo);
   const gerarFaseMataMataCampeonato = useTournamentStore((state) => state.gerarFaseMataMataCampeonato);
   const gerarProximaFaseMataMata = useTournamentStore((state) => state.gerarProximaFaseMataMata);
@@ -102,7 +104,7 @@ export default function TournamentMatchesScreen() {
   const [countdownExpanded, setCountdownExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<"rounds" | "bracket">("rounds");
   const [showRoundsModal, setShowRoundsModal] = useState(false);
-  const [pendingActiveRounds, setPendingActiveRounds] = useState<number[] | null>(null);
+  const [pendingRoundDates, setPendingRoundDates] = useState<Record<string, string>>({});
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const roundTabsRef = useRef<ScrollView>(null);
@@ -157,9 +159,9 @@ export default function TournamentMatchesScreen() {
   const isPureKnockout = bundle?.campeonato.formato === "knockout";
   const showBracketToggle =
     (isPureKnockout && (bundle?.campeonato.rodadas.length ?? 0) > 0) ||
-    (isGroupsKnockout && hasKnockoutRounds);
+    (isGroupsKnockout && hasKnockoutRounds && groupStageAllDone);
 
-  const showGerarProximaFaseBt = canManageMatch && hasKnockoutRounds && (() => {
+  const showGerarProximaFaseBt = canManageMatch && hasKnockoutRounds && groupStageAllDone && (() => {
     const knockoutRounds = bundle?.campeonato.rodadas.slice(numRodadasGrupos) ?? [];
     if (knockoutRounds.length === 0) return false;
     const modoMata = bundle?.campeonato.modoConfrontoMataMata ?? "single_game";
@@ -209,6 +211,33 @@ export default function TournamentMatchesScreen() {
   function formatDate(value?: string | null) {
     if (!value) return "Sem prazo";
     return new Date(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  }
+
+  function parseDateInput(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (!match) return null;
+    const day = parseInt(match[1]!, 10);
+    const month = parseInt(match[2]!, 10);
+    let year = parseInt(match[3]!, 10);
+    if (year < 100) year += 2000;
+    const date = new Date(year, month - 1, day, 23, 59, 59);
+    if (isNaN(date.getTime()) || date.getMonth() !== month - 1) return null;
+    return date.toISOString();
+  }
+
+  function formatDateForInput(isoString: string | null | undefined): string {
+    if (!isoString) return "";
+    try {
+      const d = new Date(isoString);
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return "";
+    }
   }
 
   function getShortPlayerName(value?: string | null) {
@@ -337,10 +366,6 @@ export default function TournamentMatchesScreen() {
   function handleSaveQuickScore() {
     if (!selectedMatchContext || !bundle) return;
     salvarPlacarJogo(bundle.campeonato.id, selectedMatchContext.matchId, quickHomeGoals, quickAwayGoals);
-    Alert.alert(
-      "Placar salvo",
-      `${selectedMatchContext.homeTeamName} ${quickHomeGoals} x ${quickAwayGoals} ${selectedMatchContext.awayTeamName}.`,
-    );
     closeQuickActions();
   }
 
@@ -634,7 +659,7 @@ export default function TournamentMatchesScreen() {
           </Pressable>
         </Modal>
 
-        {/* ── Round deadline selector modal ── */}
+        {/* ── Per-round deadline dates modal ── */}
         <Modal
           transparent
           visible={showRoundsModal}
@@ -658,113 +683,89 @@ export default function TournamentMatchesScreen() {
               }}
             >
               <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>
-                Configurar prazo
+                Configurar prazos
               </Text>
               <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>
-                Rodadas com prazo ativo
+                Prazo por rodada
               </Text>
               <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, lineHeight: 20 }}>
-                Selecione quais rodadas terão prazo. Deixe todas selecionadas para aplicar o prazo a todas as rodadas.
+                Defina a data limite para cada rodada. Rodadas sem data usam a configuração global. Várias rodadas podem ter a mesma data.
               </Text>
 
-              {/* "Todas as rodadas" toggle */}
-              <Pressable
-                onPress={() => setPendingActiveRounds([])}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  paddingHorizontal: 14,
-                  paddingVertical: 11,
-                  borderRadius: 12,
-                  borderWidth: 1.5,
-                  borderColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
-                    ? "rgba(59,130,246,0.55)"
-                    : "rgba(255,255,255,0.12)",
-                  backgroundColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
-                    ? "rgba(59,130,246,0.14)"
-                    : "transparent",
-                }}
+              <ScrollView
+                style={{ maxHeight: 280 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10 }}
+                keyboardShouldPersistTaps="handled"
               >
-                <View
+                {groupedMatches.map(([round]) => {
+                  const isKO = isGroupsKnockout && round > numRodadasGrupos;
+                  const label = isKO ? `MM${round - numRodadasGrupos}` : `R${round}`;
+                  const inputValue = pendingRoundDates[String(round)] ?? "";
+                  const isValid = inputValue === "" || parseDateInput(inputValue) !== null;
+                  return (
+                    <View key={round} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <View style={{ width: 46, height: 38, borderRadius: 10, backgroundColor: "rgba(154,184,255,0.10)", alignItems: "center", justifyContent: "center" }}>
+                        <Text style={{ color: "#9AB8FF", fontSize: 12, fontWeight: "900" }}>{label}</Text>
+                      </View>
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          color: "#F3F7FF",
+                          fontSize: 14,
+                          fontWeight: "700",
+                          backgroundColor: "rgba(255,255,255,0.06)",
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: inputValue
+                            ? (isValid ? "rgba(59,130,246,0.50)" : "rgba(220,60,60,0.50)")
+                            : "rgba(255,255,255,0.12)",
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                        }}
+                        placeholder="DD/MM/AAAA"
+                        placeholderTextColor="rgba(255,255,255,0.28)"
+                        value={inputValue}
+                        onChangeText={(text) =>
+                          setPendingRoundDates((prev) => ({ ...prev, [String(round)]: text }))
+                        }
+                        keyboardType="numeric"
+                        maxLength={10}
+                      />
+                      {inputValue !== "" && (
+                        <Pressable
+                          onPress={() =>
+                            setPendingRoundDates((prev) => {
+                              const next = { ...prev };
+                              delete next[String(round)];
+                              return next;
+                            })
+                          }
+                          style={{ padding: 4 }}
+                        >
+                          <Text style={{ color: "#DC4040", fontSize: 18, fontWeight: "900", lineHeight: 20 }}>×</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable
+                  onPress={() => setPendingRoundDates({})}
                   style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 5,
-                    borderWidth: 1.5,
-                    borderColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
-                      ? "#3B82F6"
-                      : "rgba(255,255,255,0.30)",
-                    backgroundColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
-                      ? "#3B82F6"
-                      : "transparent",
+                    paddingVertical: 13,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
                     alignItems: "center",
-                    justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: "rgba(220,60,60,0.30)",
+                    backgroundColor: "rgba(220,60,60,0.08)",
                   }}
                 >
-                  {(!pendingActiveRounds || pendingActiveRounds.length === 0) && (
-                    <Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>✓</Text>
-                  )}
-                </View>
-                <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>Todas as rodadas</Text>
-              </Pressable>
-
-              {/* Individual round pills */}
-              {bundle && (
-                <ScrollView
-                  style={{ maxHeight: 200 }}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
-                >
-                  {groupedMatches.map(([round]) => {
-                    const isKO = isGroupsKnockout && round > numRodadasGrupos;
-                    const label = isKO ? `MM${round - numRodadasGrupos}` : `R${round}`;
-                    const isSelected = pendingActiveRounds && pendingActiveRounds.length > 0
-                      ? pendingActiveRounds.includes(round)
-                      : false;
-                    return (
-                      <Pressable
-                        key={round}
-                        onPress={() => {
-                          if (!pendingActiveRounds || pendingActiveRounds.length === 0) {
-                            // switching from "all" mode → select only this round
-                            setPendingActiveRounds([round]);
-                          } else if (isSelected) {
-                            const next = pendingActiveRounds.filter((r) => r !== round);
-                            setPendingActiveRounds(next.length > 0 ? next : []);
-                          } else {
-                            setPendingActiveRounds([...pendingActiveRounds, round]);
-                          }
-                        }}
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 9,
-                          borderRadius: 999,
-                          borderWidth: 1.5,
-                          borderColor: isSelected
-                            ? "rgba(59,130,246,0.55)"
-                            : "rgba(255,255,255,0.14)",
-                          backgroundColor: isSelected
-                            ? "rgba(59,130,246,0.18)"
-                            : "rgba(255,255,255,0.04)",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: isSelected ? "#93C5FD" : "rgba(255,255,255,0.60)",
-                            fontSize: 13,
-                            fontWeight: "800",
-                          }}
-                        >
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              )}
-
-              <View style={{ flexDirection: "row", gap: 10 }}>
+                  <Text style={{ color: "#DC4040", fontSize: 13, fontWeight: "800" }}>Limpar</Text>
+                </Pressable>
                 <Pressable
                   onPress={() => setShowRoundsModal(false)}
                   style={{
@@ -781,7 +782,13 @@ export default function TournamentMatchesScreen() {
                 <Pressable
                   onPress={() => {
                     if (!bundle) return;
-                    definirRodasComPrazo(bundle.campeonato.id, pendingActiveRounds ?? []);
+                    const parsed: Record<string, string> = {};
+                    for (const [k, v] of Object.entries(pendingRoundDates)) {
+                      if (!v.trim()) continue;
+                      const iso = parseDateInput(v);
+                      if (iso) parsed[k] = iso;
+                    }
+                    definirPrazoRodasDatas(bundle.campeonato.id, parsed);
                     setShowRoundsModal(false);
                   }}
                   style={{
@@ -1047,10 +1054,15 @@ export default function TournamentMatchesScreen() {
               onDecreaseHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
               onIncreaseHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
             />
-            {canManageMatch && roundsStarted && (
+            {canManageMatch && (
               <Pressable
                 onPress={() => {
-                  setPendingActiveRounds(bundle.campeonato.prazoRodasAtivas ?? []);
+                  const currentDatas = bundle.campeonato.prazoRodasDatas ?? {};
+                  const displayDates: Record<string, string> = {};
+                  for (const [k, v] of Object.entries(currentDatas)) {
+                    displayDates[k] = formatDateForInput(v);
+                  }
+                  setPendingRoundDates(displayDates);
                   setShowRoundsModal(true);
                 }}
                 style={{
@@ -1068,9 +1080,12 @@ export default function TournamentMatchesScreen() {
                 }}
               >
                 <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
-                  {bundle.campeonato.prazoRodasAtivas && bundle.campeonato.prazoRodasAtivas.length > 0
-                    ? `Prazo em ${bundle.campeonato.prazoRodasAtivas.length} rodada${bundle.campeonato.prazoRodasAtivas.length > 1 ? "s" : ""}`
-                    : "Todas as rodadas"}
+                  {(() => {
+                    const count = Object.keys(bundle.campeonato.prazoRodasDatas ?? {}).length;
+                    return count > 0
+                      ? `${count} rodada${count > 1 ? "s" : ""} com prazo`
+                      : "Prazos por rodada";
+                  })()}
                 </Text>
                 <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "900" }}>✎ Configurar</Text>
               </Pressable>

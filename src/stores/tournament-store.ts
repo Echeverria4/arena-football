@@ -46,6 +46,7 @@ interface TournamentState {
   ajustarTempoExtraRodada: (campeonatoId: string, rodada: number, deltaMs: number) => void;
   sincronizarPrazosRodadas: (now?: string) => void;
   definirRodasComPrazo: (campeonatoId: string, rounds: number[]) => void;
+  definirPrazoRodasDatas: (campeonatoId: string, datas: Record<string, string>) => void;
   resetarJogo: (campeonatoId: string, jogoId: string) => void;
   gerarFaseMataMataCampeonato: (id: string) => void;
   gerarProximaFaseMataMata: (id: string) => void;
@@ -363,6 +364,22 @@ export const useTournamentStore = create<TournamentState>()(
               : state.selectedCampeonato,
           };
         }),
+      definirPrazoRodasDatas: (campeonatoId, datas) =>
+        set((state) => {
+          const update = (campeonato: Campeonato) => {
+            if (campeonato.id !== campeonatoId) return campeonato;
+            return hydrateCampeonatoStructure({
+              ...campeonato,
+              prazoRodasDatas: Object.keys(datas).length > 0 ? datas : undefined,
+            });
+          };
+          return {
+            campeonatos: state.campeonatos.map(update),
+            selectedCampeonato: state.selectedCampeonato
+              ? update(state.selectedCampeonato)
+              : state.selectedCampeonato,
+          };
+        }),
       resetarJogo: (campeonatoId, jogoId) => {
         let supabaseMatchId: string | undefined;
 
@@ -395,9 +412,17 @@ export const useTournamentStore = create<TournamentState>()(
         set((state) => {
           const patch = (campeonato: Campeonato) => {
             if (campeonato.id !== id) return campeonato;
-            // Guard: don't generate if KO rounds already exist (idempotent)
             const numRodGrupos = campeonato.numRodadasGrupos ?? 0;
-            if (numRodGrupos > 0 && campeonato.rodadas.length > numRodGrupos) return campeonato;
+            // Don't regenerate if KO rounds already exist
+            if (campeonato.rodadas.length > numRodGrupos) return campeonato;
+            // Don't generate until every group-stage match is finished
+            if (
+              numRodGrupos > 0 &&
+              !campeonato.rodadas
+                .slice(0, numRodGrupos)
+                .flat()
+                .every((j) => j.status === "finalizado")
+            ) return campeonato;
             const result: KnockoutFirstRoundResult = generateKnockoutFirstRound(campeonato);
             if (result.rounds.length === 0) return campeonato;
             return hydrateCampeonatoStructure({
