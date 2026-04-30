@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Image,
   ImageBackground,
   Modal,
@@ -104,6 +103,7 @@ export default function TournamentMatchesScreen() {
   const [viewMode, setViewMode] = useState<"rounds" | "bracket">("rounds");
   const [showRoundsModal, setShowRoundsModal] = useState(false);
   const [pendingActiveRounds, setPendingActiveRounds] = useState<number[] | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const roundTabsRef = useRef<ScrollView>(null);
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((c) => c.id === id)));
@@ -324,6 +324,7 @@ export default function TournamentMatchesScreen() {
   function closeQuickActions() {
     setSelectedMatchId(null);
     setTeamMatchesFor(null);
+    setShowResetConfirm(false);
   }
 
   function updateQuickScore(
@@ -532,26 +533,9 @@ export default function TournamentMatchesScreen() {
                             </View>
                           </View>
                           <PrimaryButton label="Salvar placar" onPress={handleSaveQuickScore} />
-                          {selectedMatch?.status === "finished" && (
+                          {selectedMatch?.status === "finished" && !showResetConfirm && (
                             <Pressable
-                              onPress={() => {
-                                Alert.alert(
-                                  "Resetar jogo",
-                                  "Isso vai apagar o placar e devolver o jogo para 'Pendente'. Confirmar?",
-                                  [
-                                    { text: "Cancelar", style: "cancel" },
-                                    {
-                                      text: "Resetar",
-                                      style: "destructive",
-                                      onPress: () => {
-                                        if (!bundle || !selectedMatchContext) return;
-                                        resetarJogo(bundle.campeonato.id, selectedMatchContext.matchId);
-                                        closeQuickActions();
-                                      },
-                                    },
-                                  ],
-                                );
-                              }}
+                              onPress={() => setShowResetConfirm(true)}
                               style={{
                                 flexDirection: "row",
                                 alignItems: "center",
@@ -566,6 +550,56 @@ export default function TournamentMatchesScreen() {
                             >
                               <Text style={{ color: "#DC4040", fontSize: 13, fontWeight: "800" }}>Resetar jogo</Text>
                             </Pressable>
+                          )}
+                          {showResetConfirm && (
+                            <View
+                              style={{
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: "rgba(220,60,60,0.35)",
+                                backgroundColor: "rgba(220,60,60,0.10)",
+                                padding: 14,
+                                gap: 10,
+                              }}
+                            >
+                              <Text style={{ color: "#F3F7FF", fontSize: 13, fontWeight: "800" }}>
+                                Resetar jogo?
+                              </Text>
+                              <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 12, lineHeight: 18 }}>
+                                O placar será apagado e o jogo voltará para Pendente.
+                              </Text>
+                              <View style={{ flexDirection: "row", gap: 8 }}>
+                                <Pressable
+                                  onPress={() => setShowResetConfirm(false)}
+                                  style={{
+                                    flex: 1,
+                                    paddingVertical: 10,
+                                    borderRadius: 12,
+                                    alignItems: "center",
+                                    borderWidth: 1,
+                                    borderColor: "rgba(154,184,255,0.20)",
+                                  }}
+                                >
+                                  <Text style={{ color: "#9AB8FF", fontSize: 13, fontWeight: "800" }}>Cancelar</Text>
+                                </Pressable>
+                                <Pressable
+                                  onPress={() => {
+                                    if (!bundle || !selectedMatchContext) return;
+                                    resetarJogo(bundle.campeonato.id, selectedMatchContext.matchId);
+                                    closeQuickActions();
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    paddingVertical: 10,
+                                    borderRadius: 12,
+                                    alignItems: "center",
+                                    backgroundColor: "#DC4040",
+                                  }}
+                                >
+                                  <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>Confirmar</Text>
+                                </Pressable>
+                              </View>
+                            </View>
                           )}
                         </>
                       ) : (
@@ -987,7 +1021,7 @@ export default function TournamentMatchesScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Countdown card - expanded on tap */}
-        {roundsStarted && countdownExpanded && (
+        {countdownExpanded && activeRoundCountdown && (
           <View
             style={{
               borderRadius: 16,
@@ -1001,9 +1035,11 @@ export default function TournamentMatchesScreen() {
             <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
               Prazo da rodada
             </Text>
-            <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, lineHeight: 22, marginBottom: 12 }}>
-              Cada rodada usa {formatRoundDeadlineDays(bundle.campeonato.prazoRodadaDias).toLowerCase()}. Quando zera, partidas pendentes são encerradas como 0 x 0.
-            </Text>
+            {roundsStarted && (
+              <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, lineHeight: 22, marginBottom: 12 }}>
+                Cada rodada usa {formatRoundDeadlineDays(bundle.campeonato.prazoRodadaDias).toLowerCase()}. Quando zera, partidas pendentes são encerradas como 0 x 0.
+              </Text>
+            )}
             <RoundDeadlineCountdownCard
               countdown={activeRoundCountdown}
               tone="dark"
@@ -1011,7 +1047,7 @@ export default function TournamentMatchesScreen() {
               onDecreaseHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
               onIncreaseHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
             />
-            {canManageMatch && (
+            {canManageMatch && roundsStarted && (
               <Pressable
                 onPress={() => {
                   setPendingActiveRounds(bundle.campeonato.prazoRodasAtivas ?? []);
