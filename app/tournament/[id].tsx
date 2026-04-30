@@ -141,6 +141,7 @@ export default function TournamentDetailsScreen() {
   }
 
   function performDeleteTournament() {
+    if (!bundle) return;
     const tournamentId = bundle.campeonato.id;
     const isFinished = bundle.campeonato.status === "finalizado";
     const storageKeys = bundle.videos
@@ -158,6 +159,7 @@ export default function TournamentDetailsScreen() {
   }
 
   function handleDeleteTournament() {
+    if (!bundle) return;
     if (!isCurrentTournament) {
       Alert.alert(
         "Ação bloqueada",
