@@ -426,17 +426,34 @@ export function generateKnockoutFirstRound(campeonato: Campeonato): KnockoutFirs
   }
 
   // ── Mode: os dois primeiros (World Cup) ─────────────────────────────────────
+  // Two-pass ordering: all "1st-place" matches first, then all "2nd-place"
+  // matches, so same-group teams end up in opposite bracket halves and can
+  // only meet in the Final (protected seeding).
   if (advancementMode === "top_two") {
-    const firstLeg: Jogo[] = [];
+    const firstsMatches: Jogo[] = [];
+    const secondsMatches: Jogo[] = [];
+
     for (let i = 0; i < groupNames.length; i += 2) {
       const nameA = groupNames[i]!;
       const nameB = groupNames[i + 1];
+      if (!nameB) continue;
       const rankA = groupRankings.get(nameA) ?? [];
-      const rankB = nameB ? (groupRankings.get(nameB) ?? []) : [];
-      if (rankA[0] && rankB[1]) firstLeg.push(createMatch(rankA[0], rankB[1], newRoundNum, ++matchOffset));
-      if (nameB && rankB[0] && rankA[1]) firstLeg.push(createMatch(rankB[0], rankA[1], newRoundNum, ++matchOffset));
+      const rankB = groupRankings.get(nameB) ?? [];
+      if (rankA[0] && rankB[1])
+        firstsMatches.push(createMatch(rankA[0], rankB[1], newRoundNum, ++matchOffset));
     }
-    return { rounds: buildLegs(firstLeg) };
+
+    for (let i = 0; i < groupNames.length; i += 2) {
+      const nameA = groupNames[i]!;
+      const nameB = groupNames[i + 1];
+      if (!nameB) continue;
+      const rankA = groupRankings.get(nameA) ?? [];
+      const rankB = groupRankings.get(nameB) ?? [];
+      if (rankB[0] && rankA[1])
+        secondsMatches.push(createMatch(rankB[0], rankA[1], newRoundNum, ++matchOffset));
+    }
+
+    return { rounds: buildLegs([...firstsMatches, ...secondsMatches]) };
   }
 
   // ── Mode: 1º direto, 2º para repescagem ────────────────────────────────────

@@ -5,6 +5,7 @@ import { HOUR_MS, syncExpiredCampeonatoRounds } from "@/lib/tournament-deadlines
 import { expireTournamentSharesByTournamentId } from "@/lib/tournament-sharing";
 import {
   recomputeCampeonatoClassificacao,
+  resetMatchInCampeonato,
   saveCampeonatoMatchScore,
 } from "@/lib/tournament-results";
 import { pushMatchScore } from "@/services/tournament-realtime";
@@ -44,6 +45,8 @@ interface TournamentState {
   ) => void;
   ajustarTempoExtraRodada: (campeonatoId: string, rodada: number, deltaMs: number) => void;
   sincronizarPrazosRodadas: (now?: string) => void;
+  definirRodasComPrazo: (campeonatoId: string, rounds: number[]) => void;
+  resetarJogo: (campeonatoId: string, jogoId: string) => void;
   gerarFaseMataMataCampeonato: (id: string) => void;
   gerarProximaFaseMataMata: (id: string) => void;
 }
@@ -342,6 +345,50 @@ export const useTournamentStore = create<TournamentState>()(
               expireTournamentSharesByTournamentId(campeonatoId),
             ),
           );
+        }
+      },
+      definirRodasComPrazo: (campeonatoId, rounds) =>
+        set((state) => {
+          const update = (campeonato: Campeonato) => {
+            if (campeonato.id !== campeonatoId) return campeonato;
+            return hydrateCampeonatoStructure({
+              ...campeonato,
+              prazoRodasAtivas: rounds.length > 0 ? rounds : undefined,
+            });
+          };
+          return {
+            campeonatos: state.campeonatos.map(update),
+            selectedCampeonato: state.selectedCampeonato
+              ? update(state.selectedCampeonato)
+              : state.selectedCampeonato,
+          };
+        }),
+      resetarJogo: (campeonatoId, jogoId) => {
+        let supabaseMatchId: string | undefined;
+
+        set((state) => {
+          const update = (campeonato: Campeonato) => {
+            if (campeonato.id !== campeonatoId) return campeonato;
+            const updated = resetMatchInCampeonato(campeonato, jogoId);
+            const jogo = updated.rodadas.flat().find((j) => j.id === jogoId);
+            if (jogo?.supabaseId) supabaseMatchId = jogo.supabaseId;
+            return hydrateCampeonatoStructure(updated);
+          };
+          return {
+            campeonatos: state.campeonatos.map(update),
+            selectedCampeonato: state.selectedCampeonato
+              ? update(state.selectedCampeonato)
+              : state.selectedCampeonato,
+          };
+        });
+
+        if (supabaseMatchId) {
+          void pushMatchScore({
+            supabaseMatchId,
+            homeGoals: null,
+            awayGoals: null,
+            status: "pending",
+          });
         }
       },
       gerarFaseMataMataCampeonato: (id) =>

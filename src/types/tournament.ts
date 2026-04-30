@@ -136,6 +136,7 @@ export type Campeonato = {
   temporada?: string;
   prazoRodadaDias?: number;
   prazoFinalEm?: string;
+  prazoRodasAtivas?: number[];
   tempoExtraRodadasMs?: Record<string, number>;
   formato?: TournamentFormat;
   modoConfronto?: TournamentMatchMode;

@@ -82,6 +82,8 @@ export default function TournamentMatchesScreen() {
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const ajustarTempoExtraRodada = useTournamentStore((state) => state.ajustarTempoExtraRodada);
   const salvarPlacarJogo = useTournamentStore((state) => state.salvarPlacarJogo);
+  const definirRodasComPrazo = useTournamentStore((state) => state.definirRodasComPrazo);
+  const resetarJogo = useTournamentStore((state) => state.resetarJogo);
   const gerarFaseMataMataCampeonato = useTournamentStore((state) => state.gerarFaseMataMataCampeonato);
   const gerarProximaFaseMataMata = useTournamentStore((state) => state.gerarProximaFaseMataMata);
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
@@ -100,6 +102,8 @@ export default function TournamentMatchesScreen() {
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [countdownExpanded, setCountdownExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<"rounds" | "bracket">("rounds");
+  const [showRoundsModal, setShowRoundsModal] = useState(false);
+  const [pendingActiveRounds, setPendingActiveRounds] = useState<number[] | null>(null);
 
   const roundTabsRef = useRef<ScrollView>(null);
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((c) => c.id === id)));
@@ -375,6 +379,7 @@ export default function TournamentMatchesScreen() {
       backgroundVariant="none"
       style={{ backgroundColor: "transparent" }}
       overlay={
+        <>
         <Modal transparent visible={Boolean(selectedMatchContext)} animationType="fade" onRequestClose={closeQuickActions}>
           <Pressable
             onPress={closeQuickActions}
@@ -527,6 +532,41 @@ export default function TournamentMatchesScreen() {
                             </View>
                           </View>
                           <PrimaryButton label="Salvar placar" onPress={handleSaveQuickScore} />
+                          {selectedMatch?.status === "finished" && (
+                            <Pressable
+                              onPress={() => {
+                                Alert.alert(
+                                  "Resetar jogo",
+                                  "Isso vai apagar o placar e devolver o jogo para 'Pendente'. Confirmar?",
+                                  [
+                                    { text: "Cancelar", style: "cancel" },
+                                    {
+                                      text: "Resetar",
+                                      style: "destructive",
+                                      onPress: () => {
+                                        if (!bundle || !selectedMatchContext) return;
+                                        resetarJogo(bundle.campeonato.id, selectedMatchContext.matchId);
+                                        closeQuickActions();
+                                      },
+                                    },
+                                  ],
+                                );
+                              }}
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 6,
+                                paddingVertical: 11,
+                                borderRadius: 14,
+                                borderWidth: 1,
+                                borderColor: "rgba(220,60,60,0.30)",
+                                backgroundColor: "rgba(220,60,60,0.08)",
+                              }}
+                            >
+                              <Text style={{ color: "#DC4040", fontSize: 13, fontWeight: "800" }}>Resetar jogo</Text>
+                            </Pressable>
+                          )}
                         </>
                       ) : (
                         <>
@@ -559,6 +599,172 @@ export default function TournamentMatchesScreen() {
             ) : null}
           </Pressable>
         </Modal>
+
+        {/* ── Round deadline selector modal ── */}
+        <Modal
+          transparent
+          visible={showRoundsModal}
+          animationType="fade"
+          onRequestClose={() => setShowRoundsModal(false)}
+        >
+          <Pressable
+            onPress={() => setShowRoundsModal(false)}
+            style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(4,8,18,0.60)" }}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                padding: 20,
+                backgroundColor: "rgba(8,15,28,0.97)",
+                borderWidth: 1,
+                borderColor: "rgba(154,184,255,0.14)",
+                gap: 16,
+              }}
+            >
+              <Text style={{ color: "#9AB8FF", fontSize: 11, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>
+                Configurar prazo
+              </Text>
+              <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>
+                Rodadas com prazo ativo
+              </Text>
+              <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, lineHeight: 20 }}>
+                Selecione quais rodadas terão prazo. Deixe todas selecionadas para aplicar o prazo a todas as rodadas.
+              </Text>
+
+              {/* "Todas as rodadas" toggle */}
+              <Pressable
+                onPress={() => setPendingActiveRounds([])}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingHorizontal: 14,
+                  paddingVertical: 11,
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
+                    ? "rgba(59,130,246,0.55)"
+                    : "rgba(255,255,255,0.12)",
+                  backgroundColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
+                    ? "rgba(59,130,246,0.14)"
+                    : "transparent",
+                }}
+              >
+                <View
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 5,
+                    borderWidth: 1.5,
+                    borderColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
+                      ? "#3B82F6"
+                      : "rgba(255,255,255,0.30)",
+                    backgroundColor: (!pendingActiveRounds || pendingActiveRounds.length === 0)
+                      ? "#3B82F6"
+                      : "transparent",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {(!pendingActiveRounds || pendingActiveRounds.length === 0) && (
+                    <Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>✓</Text>
+                  )}
+                </View>
+                <Text style={{ color: "#F3F7FF", fontSize: 14, fontWeight: "800" }}>Todas as rodadas</Text>
+              </Pressable>
+
+              {/* Individual round pills */}
+              {bundle && (
+                <ScrollView
+                  style={{ maxHeight: 200 }}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                >
+                  {groupedMatches.map(([round]) => {
+                    const isKO = isGroupsKnockout && round > numRodadasGrupos;
+                    const label = isKO ? `MM${round - numRodadasGrupos}` : `R${round}`;
+                    const isSelected = pendingActiveRounds && pendingActiveRounds.length > 0
+                      ? pendingActiveRounds.includes(round)
+                      : false;
+                    return (
+                      <Pressable
+                        key={round}
+                        onPress={() => {
+                          if (!pendingActiveRounds || pendingActiveRounds.length === 0) {
+                            // switching from "all" mode → select only this round
+                            setPendingActiveRounds([round]);
+                          } else if (isSelected) {
+                            const next = pendingActiveRounds.filter((r) => r !== round);
+                            setPendingActiveRounds(next.length > 0 ? next : []);
+                          } else {
+                            setPendingActiveRounds([...pendingActiveRounds, round]);
+                          }
+                        }}
+                        style={{
+                          paddingHorizontal: 16,
+                          paddingVertical: 9,
+                          borderRadius: 999,
+                          borderWidth: 1.5,
+                          borderColor: isSelected
+                            ? "rgba(59,130,246,0.55)"
+                            : "rgba(255,255,255,0.14)",
+                          backgroundColor: isSelected
+                            ? "rgba(59,130,246,0.18)"
+                            : "rgba(255,255,255,0.04)",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: isSelected ? "#93C5FD" : "rgba(255,255,255,0.60)",
+                            fontSize: 13,
+                            fontWeight: "800",
+                          }}
+                        >
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable
+                  onPress={() => setShowRoundsModal(false)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 13,
+                    borderRadius: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "rgba(154,184,255,0.18)",
+                  }}
+                >
+                  <Text style={{ color: "#9AB8FF", fontSize: 14, fontWeight: "800" }}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    if (!bundle) return;
+                    definirRodasComPrazo(bundle.campeonato.id, pendingActiveRounds ?? []);
+                    setShowRoundsModal(false);
+                  }}
+                  style={{
+                    flex: 2,
+                    paddingVertical: 13,
+                    borderRadius: 14,
+                    alignItems: "center",
+                    backgroundColor: "#2447A6",
+                  }}
+                >
+                  <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "900" }}>Salvar</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+        </>
       }
     >
       {/* ── Fixed header ── */}
@@ -805,6 +1011,34 @@ export default function TournamentMatchesScreen() {
               onDecreaseHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
               onIncreaseHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
             />
+            {canManageMatch && (
+              <Pressable
+                onPress={() => {
+                  setPendingActiveRounds(bundle.campeonato.prazoRodasAtivas ?? []);
+                  setShowRoundsModal(true);
+                }}
+                style={{
+                  marginTop: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  alignSelf: "flex-start",
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: "rgba(59,130,246,0.30)",
+                  backgroundColor: "rgba(59,130,246,0.08)",
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
+                  {bundle.campeonato.prazoRodasAtivas && bundle.campeonato.prazoRodasAtivas.length > 0
+                    ? `Prazo em ${bundle.campeonato.prazoRodasAtivas.length} rodada${bundle.campeonato.prazoRodasAtivas.length > 1 ? "s" : ""}`
+                    : "Todas as rodadas"}
+                </Text>
+                <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "900" }}>✎ Configurar</Text>
+              </Pressable>
+            )}
           </View>
         )}
 

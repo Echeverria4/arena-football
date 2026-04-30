@@ -136,6 +136,10 @@ export function getRoundDeadline(campeonato: Campeonato, round: number) {
     return normalized.prazoFinalEm;
   }
 
+  if (normalized.prazoRodasAtivas && normalized.prazoRodasAtivas.length > 0) {
+    if (!normalized.prazoRodasAtivas.includes(round)) return null;
+  }
+
   if (!normalized.inicioEm || !normalized.prazoRodadaDias) {
     return null;
   }

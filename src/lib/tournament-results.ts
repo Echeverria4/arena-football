@@ -181,3 +181,20 @@ export function saveCampeonatoMatchScore(
     }),
   };
 }
+
+export function resetMatchInCampeonato(campeonato: Campeonato, jogoId: string): Campeonato {
+  const rodadas = campeonato.rodadas.map((rodada) =>
+    rodada.map((jogo) =>
+      jogo.id === jogoId
+        ? ({ ...jogo, placarMandante: null, placarVisitante: null, status: "pendente" } satisfies Jogo)
+        : jogo,
+    ),
+  );
+  return {
+    ...campeonato,
+    status: "ativo",
+    fimEm: undefined,
+    rodadas,
+    classificacao: recomputeCampeonatoClassificacao({ ...campeonato, rodadas }),
+  };
+}
