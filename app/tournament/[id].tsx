@@ -48,6 +48,68 @@ export default function TournamentDetailsScreen() {
   const accessMode = useTournamentAccessMode(id);
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((campeonato) => campeonato.id === id)));
 
+  // Compute bundle before any conditional return so hooks below are always called
+  const bundle = hydrated && id && !tournamentMissing
+    ? getTournamentBundle(id, campeonatos, videos)
+    : null;
+
+  const formato = bundle?.campeonato.formato ?? null;
+  const numRodadasGrupos = bundle?.campeonato.numRodadasGrupos ?? 0;
+  const hasKnockoutRounds =
+    bundle != null &&
+    (formato === "groups_knockout" || formato === "knockout") &&
+    bundle.campeonato.rodadas.length > numRodadasGrupos;
+  const showBracketPanel =
+    formato === "knockout" || (formato === "groups_knockout" && hasKnockoutRounds);
+  const showChartPanel =
+    formato === "league" ||
+    formato === "groups" ||
+    (formato === "groups_knockout" && !hasKnockoutRounds);
+  const isPersistedTournament = campeonatos.some((campeonato) => campeonato.id === bundle?.campeonato.id);
+  const isCurrentTournament =
+    currentTournamentId == null || currentTournamentId === bundle?.campeonato.id;
+  const canManageTournament = canEditTournament(accessMode);
+  const groupStageAllDone =
+    bundle != null &&
+    formato === "groups_knockout" &&
+    numRodadasGrupos > 0 &&
+    bundle.campeonato.rodadas.slice(0, numRodadasGrupos).flat().every((m) => m.status === "finalizado");
+  const canDeleteTournament =
+    accessMode === "owner" &&
+    isPersistedTournament &&
+    isCurrentTournament;
+  const activeTournamentAccessMode = resolveTournamentAccessMode(
+    tournamentAccess,
+    currentTournamentId,
+  );
+  const lockToActiveTournament =
+    Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
+
+  // ── All hooks unconditionally before any return ───────────────────────────────
+  useTournamentAutoPush({
+    campeonato: bundle?.campeonato ?? null,
+    isOwner: accessMode === "owner",
+  });
+
+  useEffect(() => {
+    if (!bundle || bundle.campeonato.id === currentTournamentId) return;
+    setCurrentTournamentId(bundle.campeonato.id);
+  }, [bundle?.campeonato.id, currentTournamentId, setCurrentTournamentId]);
+
+  useEffect(() => {
+    if (bundle && groupStageAllDone && !hasKnockoutRounds && canManageTournament) {
+      gerarFaseMataMataCampeonato(bundle.campeonato.id);
+    }
+  }, [groupStageAllDone, hasKnockoutRounds, bundle?.campeonato.id]);
+
+  useEffect(() => {
+    if (!lockToActiveTournament || !currentTournamentId || !bundle || bundle.campeonato.id === currentTournamentId) {
+      return;
+    }
+    router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
+  }, [bundle?.campeonato.id, currentTournamentId, lockToActiveTournament]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   if (!hydrated) {
     return (
       <Screen scroll className="px-6">
@@ -61,7 +123,7 @@ export default function TournamentDetailsScreen() {
     );
   }
 
-  if (tournamentMissing) {
+  if (tournamentMissing || !bundle) {
     return (
       <Screen scroll className="px-6">
         <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
@@ -74,84 +136,6 @@ export default function TournamentDetailsScreen() {
       </Screen>
     );
   }
-
-  const bundle = (id ? getTournamentBundle(id, campeonatos, videos) : null)!;
-
-  if (!bundle) {
-    return (
-      <Screen scroll className="px-6">
-        <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
-          <BackButton fallbackHref="/tournaments" />
-          <ScreenState
-            title="Campeonato nao encontrado"
-            description="Esse campeonato nao existe mais na base ativa do app."
-          />
-        </View>
-      </Screen>
-    );
-  }
-
-  const formato = bundle.campeonato.formato;
-  const numRodadasGrupos = bundle.campeonato.numRodadasGrupos ?? 0;
-  const hasKnockoutRounds =
-    (formato === "groups_knockout" || formato === "knockout") &&
-    bundle.campeonato.rodadas.length > numRodadasGrupos;
-  const showBracketPanel =
-    formato === "knockout" || (formato === "groups_knockout" && hasKnockoutRounds);
-  const showChartPanel =
-    formato === "league" ||
-    formato === "groups" ||
-    (formato === "groups_knockout" && !hasKnockoutRounds);
-
-  const isPersistedTournament = campeonatos.some((campeonato) => campeonato.id === bundle.campeonato.id);
-  const isCurrentTournament =
-    currentTournamentId == null || currentTournamentId === bundle.campeonato.id;
-  const canManageTournament = canEditTournament(accessMode);
-
-  // Auto-generate first knockout round when group stage is fully done
-  const groupStageAllDone =
-    formato === "groups_knockout" &&
-    numRodadasGrupos > 0 &&
-    bundle.campeonato.rodadas.slice(0, numRodadasGrupos).flat().every((m) => m.status === "finalizado");
-
-  useEffect(() => {
-    if (groupStageAllDone && !hasKnockoutRounds && canManageTournament) {
-      gerarFaseMataMataCampeonato(bundle.campeonato.id);
-    }
-  }, [groupStageAllDone, hasKnockoutRounds]);
-  const canDeleteTournament =
-    accessMode === "owner" &&
-    isPersistedTournament &&
-    isCurrentTournament;
-  const activeTournamentAccessMode = resolveTournamentAccessMode(
-    tournamentAccess,
-    currentTournamentId,
-  );
-  const lockToActiveTournament =
-    Boolean(currentTournamentId) && isTournamentAccessLocked(activeTournamentAccessMode);
-
-  useEffect(() => {
-    if (bundle.campeonato.id !== currentTournamentId) {
-      setCurrentTournamentId(bundle.campeonato.id);
-    }
-  }, [bundle.campeonato.id, currentTournamentId, setCurrentTournamentId]);
-
-  // Self-heal: if owner opens a tournament that was created before the
-  // relational push worked (no supabaseId), push it now so realtime kicks in.
-  // Realtime subscription itself is mounted once no _layout para cobrir
-  // todas as telas do escopo /tournament/* (preview, matches, etc).
-  useTournamentAutoPush({
-    campeonato: bundle.campeonato,
-    isOwner: accessMode === "owner",
-  });
-
-  useEffect(() => {
-    if (!lockToActiveTournament || !currentTournamentId || bundle.campeonato.id === currentTournamentId) {
-      return;
-    }
-
-    router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
-  }, [bundle.campeonato.id, currentTournamentId, lockToActiveTournament]);
 
   function performDeleteTournament() {
     const tournamentId = bundle.campeonato.id;
