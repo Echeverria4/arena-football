@@ -59,8 +59,10 @@ const AXIS_LABEL_WIDTH = 34;
 const PADDING_TOP = 18;
 const PADDING_BOTTOM = 28;
 const PADDING_LEFT = AXIS_LABEL_WIDTH + 20;
-const PADDING_RIGHT = 28;
-const MARKER_SIZE = 32;
+const PADDING_RIGHT = 16;
+const BADGE_PANEL_WIDTH = 68;
+const BADGE_SIZE = 36;
+const DOT_SIZE = 9;
 const X_AXIS_LABEL_WIDTH = 24;
 const GRID_LINE_THICKNESS = 0.6;
 const SEGMENT_THICKNESS = 2.5;
@@ -70,7 +72,7 @@ function SeriesBadge({
   badgeUrl,
   color,
   initials,
-  size = MARKER_SIZE,
+  size = BADGE_SIZE,
 }: {
   badgeUrl?: string;
   color: string;
@@ -87,7 +89,7 @@ function SeriesBadge({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "#FFFFFF",
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: color,
       }}
     >
@@ -107,7 +109,7 @@ function SeriesBadge({
             backgroundColor: `${color}22`,
           }}
         >
-          <Text style={{ color, fontSize: 8, fontWeight: "900" }}>{initials}</Text>
+          <Text style={{ color, fontSize: 9, fontWeight: "900" }}>{initials}</Text>
         </View>
       )}
     </View>
@@ -118,7 +120,6 @@ function getSeriesColor(index: number) {
   if (index < SERIES_COLORS.length) {
     return SERIES_COLORS[index];
   }
-
   const hue = (index * 47) % 360;
   return `hsl(${hue}, 72%, 52%)`;
 }
@@ -139,22 +140,10 @@ function buildEmptyStandings(campeonato: Campeonato) {
 
 function sortStandings(list: MutableStanding[]) {
   return [...list].sort((current, next) => {
-    if (next.points !== current.points) {
-      return next.points - current.points;
-    }
-
-    if (next.goalDifference !== current.goalDifference) {
-      return next.goalDifference - current.goalDifference;
-    }
-
-    if (next.goalsFor !== current.goalsFor) {
-      return next.goalsFor - current.goalsFor;
-    }
-
-    if (next.wins !== current.wins) {
-      return next.wins - current.wins;
-    }
-
+    if (next.points !== current.points) return next.points - current.points;
+    if (next.goalDifference !== current.goalDifference) return next.goalDifference - current.goalDifference;
+    if (next.goalsFor !== current.goalsFor) return next.goalsFor - current.goalsFor;
+    if (next.wins !== current.wins) return next.wins - current.wins;
     return current.teamName.localeCompare(next.teamName);
   });
 }
@@ -175,16 +164,11 @@ function buildSeries(campeonato: Campeonato) {
         match.status !== "finalizado" ||
         match.placarMandante == null ||
         match.placarVisitante == null
-      ) {
-        return;
-      }
+      ) return;
 
       const home = standings.get(match.mandanteId);
       const away = standings.get(match.visitanteId);
-
-      if (!home || !away) {
-        return;
-      }
+      if (!home || !away) return;
 
       const homeGoals = match.placarMandante;
       const awayGoals = match.placarVisitante;
@@ -225,7 +209,6 @@ function buildSeries(campeonato: Campeonato) {
     .map((participant, index) => {
       const teamName = normalizeTeamDisplayName(participant.time || "Time");
       const currentStanding = standings.get(participant.id);
-
       return {
         participantId: participant.id,
         teamName,
@@ -239,36 +222,33 @@ function buildSeries(campeonato: Campeonato) {
       } satisfies SeriesEntry;
     })
     .sort((current, next) => {
-      if (next.currentPoints !== current.currentPoints) {
-        return next.currentPoints - current.currentPoints;
-      }
-
-      if (next.goalDifference !== current.goalDifference) {
-        return next.goalDifference - current.goalDifference;
-      }
-
-      if (next.wins !== current.wins) {
-        return next.wins - current.wins;
-      }
-
+      if (next.currentPoints !== current.currentPoints) return next.currentPoints - current.currentPoints;
+      if (next.goalDifference !== current.goalDifference) return next.goalDifference - current.goalDifference;
+      if (next.wins !== current.wins) return next.wins - current.wins;
       return current.teamName.localeCompare(next.teamName);
     });
+}
+
+function getYCoordinate(
+  pointValue: number,
+  yAxisMax: number,
+  plotHeight: number,
+): number {
+  return PADDING_TOP + plotHeight - (plotHeight * pointValue) / Math.max(yAxisMax, 1);
 }
 
 function getPointCoordinates(
   pointIndex: number,
   pointValue: number,
   totalPoints: number,
-  maxPoints: number,
+  yAxisMax: number,
   plotWidth: number,
   plotHeight: number,
 ) {
-  const safeMaxPoints = Math.max(maxPoints, 1);
   const horizontalDivisor = Math.max(totalPoints - 1, 1);
   const x =
     PADDING_LEFT + (totalPoints <= 1 ? 0 : (plotWidth * pointIndex) / horizontalDivisor);
-  const y = PADDING_TOP + plotHeight - (plotHeight * pointValue) / safeMaxPoints;
-
+  const y = getYCoordinate(pointValue, yAxisMax, plotHeight);
   return { x, y };
 }
 
@@ -277,7 +257,6 @@ function getSegmentStyle(x1: number, y1: number, x2: number, y2: number, color: 
   const dy = y2 - y1;
   const length = Math.max(Math.hypot(dx, dy), 2);
   const angle = Math.atan2(dy, dx);
-
   return {
     position: "absolute" as const,
     left: (x1 + x2) / 2 - length / 2,
@@ -295,7 +274,6 @@ function getSegmentGlowStyle(x1: number, y1: number, x2: number, y2: number, col
   const dy = y2 - y1;
   const length = Math.max(Math.hypot(dx, dy), 2);
   const angle = Math.atan2(dy, dx);
-
   return {
     position: "absolute" as const,
     left: (x1 + x2) / 2 - length / 2,
@@ -318,7 +296,6 @@ function getMovementMeta(positionDelta: number) {
       borderColor: "rgba(34,197,94,0.20)",
     };
   }
-
   if (positionDelta < 0) {
     return {
       symbol: "▼",
@@ -328,7 +305,6 @@ function getMovementMeta(positionDelta: number) {
       borderColor: "rgba(239,68,68,0.20)",
     };
   }
-
   return {
     symbol: "•",
     label: "estavel",
@@ -342,14 +318,18 @@ export function LeagueProgressChart({
   campeonato,
   format,
 }: LeagueProgressChartProps) {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const isPhone = screenWidth < 768;
-  const [chartViewportWidth, setChartViewportWidth] = useState(420);
+
+  const [containerWidth, setContainerWidth] = useState(Math.max(screenWidth - 48, 280));
   const [legendVisible, setLegendVisible] = useState(true);
+
+  // Chart height fills a good portion of the screen — larger on tall phones
+  const chartHeight = isPhone
+    ? Math.min(Math.round(screenHeight * 0.46), 420)
+    : Math.min(Math.round(screenHeight * 0.52), 580);
+
   const series = useMemo(() => buildSeries(campeonato), [campeonato]);
-  // Times sem nenhum ponto ficam escondidos do plot ate marcarem o primeiro
-  // ponto. Evita poluicao visual no inicio do campeonato (todos empilhados
-  // no zero) e mantem o foco nos times que ja entraram em acao.
   const visibleSeries = useMemo(
     () => series.filter((entry) => entry.currentPoints > 0),
     [series],
@@ -366,18 +346,16 @@ export function LeagueProgressChart({
     [campeonato, latestFinishedRound],
   );
   const previousPositionByParticipantId = useMemo(
-    () =>
-      new Map(
-        previousRoundStandings.map((entry, index) => [entry.participanteId, index + 1]),
-      ),
+    () => new Map(previousRoundStandings.map((entry, index) => [entry.participanteId, index + 1])),
     [previousRoundStandings],
   );
+
   const totalRounds = Math.max(campeonato.rodadas.length, 0);
   const activeRoundCount =
     totalRounds > 0
       ? campeonato.rodadas.reduce(
-          (lastRoundIndex, round, roundIndex) =>
-            round.some((match) => match.status === "finalizado") ? roundIndex + 1 : lastRoundIndex,
+          (last, round, idx) =>
+            round.some((m) => m.status === "finalizado") ? idx + 1 : last,
           0,
         )
       : 0;
@@ -393,74 +371,107 @@ export function LeagueProgressChart({
     { length: Math.floor(yAxisMax / tickStep) + 1 },
     (_, index) => index * tickStep,
   );
-  const chartHeight = isPhone ? 260 : 440;
-  const pointSpacing = isPhone ? 64 : 92;
+
+  // Chart canvas: width minus the badge panel on the right
+  const chartPanelWidth = containerWidth - BADGE_PANEL_WIDTH;
+  const pointSpacing = isPhone ? 68 : 96;
   const chartCanvasWidth = Math.max(
-    chartViewportWidth,
-    PADDING_LEFT + PADDING_RIGHT + Math.max(isPhone ? 280 : 420, Math.max(visiblePointCount - 1, 1) * pointSpacing),
+    chartPanelWidth,
+    PADDING_LEFT + PADDING_RIGHT + Math.max(isPhone ? 260 : 400, Math.max(visiblePointCount - 1, 1) * pointSpacing),
   );
-  const plotWidth = Math.max(chartCanvasWidth - PADDING_LEFT - PADDING_RIGHT, 260);
+  const plotWidth = Math.max(chartCanvasWidth - PADDING_LEFT - PADDING_RIGHT, 240);
   const plotHeight = chartHeight - PADDING_TOP - PADDING_BOTTOM;
+
+  // Badge panel: position each crest at the Y corresponding to its final points,
+  // with a sweep-down + clamp-up pass to prevent overlaps.
+  const badgePanelEntries = useMemo(() => {
+    if (!activeRoundCount || visibleSeries.length === 0) return [];
+
+    const MIN_SPACING = BADGE_SIZE + 3;
+    const maxY = chartHeight - PADDING_BOTTOM - BADGE_SIZE / 2;
+    const minY = PADDING_TOP + BADGE_SIZE / 2;
+
+    const items = visibleSeries.map((entry) => {
+      const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
+      const finalValue = visiblePoints[visiblePoints.length - 1] ?? 0;
+      const idealY = getYCoordinate(finalValue, yAxisMax, plotHeight);
+      return { entry, idealY, y: idealY };
+    });
+
+    // Sort ascending by Y (top of chart = smallest Y = highest points)
+    items.sort((a, b) => a.idealY - b.idealY);
+
+    // Sweep down: push overlapping badges downward
+    for (let i = 1; i < items.length; i++) {
+      const prev = items[i - 1]!;
+      const curr = items[i]!;
+      if (curr.y - prev.y < MIN_SPACING) {
+        curr.y = prev.y + MIN_SPACING;
+      }
+    }
+
+    // Sweep up from bottom: clamp to maxY and pull previous ones up
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i]!;
+      if (item.y > maxY) item.y = maxY;
+      if (i > 0) {
+        const prev = items[i - 1]!;
+        if (item.y - prev.y < MIN_SPACING) {
+          prev.y = item.y - MIN_SPACING;
+        }
+      }
+    }
+
+    // Clamp top
+    items.forEach((item) => { item.y = Math.max(item.y, minY); });
+
+    return items;
+  }, [visibleSeries, visiblePointCount, plotHeight, yAxisMax, chartHeight, activeRoundCount]);
+
   const hasParticipants = campeonato.participantes.length > 0;
   const hasRounds = totalRounds > 0;
   const canRenderLeagueChart = hasParticipants && hasRounds;
   const xAxisLabels = Array.from({ length: visiblePointCount }, (_, index) => index);
-  const emptyStateTitle = !hasParticipants
-    ? "Campeonato sem participantes"
-    : "Rodadas ainda nao geradas";
+  const emptyStateTitle = !hasParticipants ? "Campeonato sem participantes" : "Rodadas ainda nao geradas";
   const emptyStateDescription = !hasParticipants
-    ? "Este campeonato foi salvo sem jogadores vinculados. Enquanto isso nao for corrigido, nao ha linha de evolucao para mostrar."
+    ? "Este campeonato foi salvo sem jogadores vinculados."
     : format === "groups" || format === "groups_knockout"
-      ? "O campeonato esta na fase de grupos, mas ainda nao existem rodadas finalizadas para montar a curva de evolucao."
-      : "O campeonato esta em pontos corridos, mas ainda nao existem confrontos estruturados para montar a curva de evolucao.";
+      ? "Fase de grupos sem rodadas finalizadas para montar a curva de evolucao."
+      : "O campeonato esta em pontos corridos, mas ainda nao ha confrontos finalizados.";
 
-  function handleLayout(event: LayoutChangeEvent) {
-    const nextWidth = Math.max(Math.round(event.nativeEvent.layout.width), 320);
-
-    if (Math.abs(nextWidth - chartViewportWidth) > 4) {
-      setChartViewportWidth(nextWidth);
-    }
+  function handleContainerLayout(event: LayoutChangeEvent) {
+    const w = Math.max(Math.round(event.nativeEvent.layout.width), 280);
+    if (Math.abs(w - containerWidth) > 4) setContainerWidth(w);
   }
 
   if (format === "knockout") return null;
 
   return (
-    <View className="gap-4">
-      <View className="gap-3">
-        <View
-          onLayout={handleLayout}
-          style={{
-            height: chartHeight,
-            borderRadius: 22,
-            overflow: "hidden",
-            position: "relative",
-            borderWidth: 1,
-            borderColor: "rgba(88,128,255,0.22)",
-            backgroundColor: "#EDF4FF",
-          }}
-        >
+    <View style={{ gap: 4 }}>
+      {/* ── Main chart + badge panel row ── */}
+      <View
+        onLayout={handleContainerLayout}
+        style={{
+          flexDirection: "row",
+          height: chartHeight,
+          borderRadius: 22,
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: "rgba(88,128,255,0.22)",
+        }}
+      >
+        {/* ── Scrollable chart area ── */}
+        <View style={{ flex: 1, backgroundColor: "#EDF4FF" }}>
           {canRenderLeagueChart ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ minWidth: chartCanvasWidth }}
             >
-              <View
-                style={{
-                  width: chartCanvasWidth,
-                  height: chartHeight,
-                }}
-              >
+              <View style={{ width: chartCanvasWidth, height: chartHeight }}>
+                {/* Y-axis grid lines + labels */}
                 {yAxisValues.map((label) => {
-                  const point = getPointCoordinates(
-                    0,
-                    label,
-                    visiblePointCount,
-                    yAxisMax,
-                    plotWidth,
-                    plotHeight,
-                  );
-
+                  const y = getYCoordinate(label, yAxisMax, plotHeight);
                   return (
                     <View key={`grid-y-${label}`}>
                       <View
@@ -468,7 +479,7 @@ export function LeagueProgressChart({
                           position: "absolute",
                           left: PADDING_LEFT,
                           right: PADDING_RIGHT,
-                          top: point.y,
+                          top: y,
                           height: GRID_LINE_THICKNESS,
                           backgroundColor: "rgba(59,91,255,0.10)",
                         }}
@@ -477,7 +488,7 @@ export function LeagueProgressChart({
                         style={{
                           position: "absolute",
                           left: 8,
-                          top: point.y - 8,
+                          top: y - 8,
                           width: AXIS_LABEL_WIDTH,
                           color: "#5E6E91",
                           fontSize: 11,
@@ -491,22 +502,15 @@ export function LeagueProgressChart({
                   );
                 })}
 
+                {/* X-axis grid lines */}
                 {xAxisLabels.map((label, index) => {
-                  const point = getPointCoordinates(
-                    index,
-                    0,
-                    visiblePointCount,
-                    yAxisMax,
-                    plotWidth,
-                    plotHeight,
-                  );
-
+                  const { x } = getPointCoordinates(index, 0, visiblePointCount, yAxisMax, plotWidth, plotHeight);
                   return (
                     <View
                       key={`grid-x-${label}`}
                       style={{
                         position: "absolute",
-                        left: point.x,
+                        left: x,
                         top: PADDING_TOP,
                         bottom: PADDING_BOTTOM,
                         width: GRID_LINE_THICKNESS,
@@ -516,29 +520,14 @@ export function LeagueProgressChart({
                   );
                 })}
 
+                {/* Series line segments */}
                 {visibleSeries.map((entry) => {
                   const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
-
                   return visiblePoints.slice(1).map((pointValue, index) => {
-                    const start = getPointCoordinates(
-                      index,
-                      visiblePoints[index] ?? 0,
-                      visiblePointCount,
-                      yAxisMax,
-                      plotWidth,
-                      plotHeight,
-                    );
-                    const end = getPointCoordinates(
-                      index + 1,
-                      pointValue,
-                      visiblePointCount,
-                      yAxisMax,
-                      plotWidth,
-                      plotHeight,
-                    );
-
+                    const start = getPointCoordinates(index, visiblePoints[index] ?? 0, visiblePointCount, yAxisMax, plotWidth, plotHeight);
+                    const end = getPointCoordinates(index + 1, pointValue, visiblePointCount, yAxisMax, plotWidth, plotHeight);
                     return (
-                      <View key={`${entry.participantId}-segment-${index}`}>
+                      <View key={`${entry.participantId}-seg-${index}`}>
                         <View style={getSegmentGlowStyle(start.x, start.y, end.x, end.y, entry.color)} />
                         <View style={getSegmentStyle(start.x, start.y, end.x, end.y, entry.color)} />
                       </View>
@@ -546,114 +535,49 @@ export function LeagueProgressChart({
                   });
                 })}
 
-                {activeRoundCount > 0
-                  ? (() => {
-                      // Para evitar que badges de times empatados em pontos
-                      // se sobreponham (mesma coordenada Y e X final), agrupamos
-                      // por valor final e distribuimos horizontalmente — o time
-                      // melhor classificado (primeiro do series ja ordenado por
-                      // criterios) fica mais a direita; os demais escalonam para
-                      // a esquerda em linhas (wraps verticais quando o cluster
-                      // ficaria muito largo).
-                      const ringSize = MARKER_SIZE + 4;
-                      const horizontalGap = 6;
-                      const verticalGap = 4;
-                      const horizontalStep = ringSize + horizontalGap;
-                      const verticalStep = ringSize + verticalGap;
-                      const maxPerRow = Math.max(
-                        1,
-                        Math.floor((plotWidth - 8) / horizontalStep),
-                      );
+                {/* Terminal dots at the last visible point (no badge here — badges are in the panel) */}
+                {activeRoundCount > 0 && visibleSeries.map((entry) => {
+                  const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
+                  const finalValue = visiblePoints[visiblePoints.length - 1] ?? 0;
+                  const { x, y } = getPointCoordinates(
+                    Math.max(visiblePoints.length - 1, 0),
+                    finalValue,
+                    visiblePointCount,
+                    yAxisMax,
+                    plotWidth,
+                    plotHeight,
+                  );
+                  return (
+                    <View
+                      key={`${entry.participantId}-dot`}
+                      style={{
+                        position: "absolute",
+                        left: x - DOT_SIZE / 2,
+                        top: y - DOT_SIZE / 2,
+                        width: DOT_SIZE,
+                        height: DOT_SIZE,
+                        borderRadius: DOT_SIZE / 2,
+                        backgroundColor: entry.color,
+                        borderWidth: 2,
+                        borderColor: "#EDF4FF",
+                      }}
+                    />
+                  );
+                })}
 
-                      const rawMarkers = visibleSeries.map((entry) => {
-                        const visiblePoints = entry.pointsByRound.slice(0, visiblePointCount);
-                        const finalValue = visiblePoints[visiblePoints.length - 1] ?? 0;
-                        const finalPoint = getPointCoordinates(
-                          Math.max(visiblePoints.length - 1, 0),
-                          finalValue,
-                          visiblePointCount,
-                          yAxisMax,
-                          plotWidth,
-                          plotHeight,
-                        );
-                        return { entry, finalValue, finalPoint };
-                      });
-
-                      const clusters = new Map<number, typeof rawMarkers>();
-                      rawMarkers.forEach((marker) => {
-                        const list = clusters.get(marker.finalValue) ?? [];
-                        list.push(marker);
-                        clusters.set(marker.finalValue, list);
-                      });
-
-                      const placed: Array<{
-                        entry: SeriesEntry;
-                        x: number;
-                        y: number;
-                      }> = [];
-
-                      clusters.forEach((cluster) => {
-                        cluster.forEach((marker, indexInCluster) => {
-                          const row = Math.floor(indexInCluster / maxPerRow);
-                          const col = indexInCluster % maxPerRow;
-                          // O time melhor ranqueado (col=0) fica na posicao
-                          // original (mais a direita). Os demais escalonam
-                          // para a esquerda na mesma linha.
-                          const x = marker.finalPoint.x - col * horizontalStep;
-                          // Quando ha varias linhas (cluster maior que cabe na
-                          // horizontal), as linhas seguintes sobem para nao
-                          // colidir com o eixo X.
-                          const y = marker.finalPoint.y - row * verticalStep;
-                          placed.push({ entry: marker.entry, x, y });
-                        });
-                      });
-
-                      return placed.map(({ entry, x, y }) => (
-                        <View
-                          key={`${entry.participantId}-marker`}
-                          style={{
-                            position: "absolute",
-                            left: x - ringSize / 2,
-                            top: y - ringSize / 2,
-                          }}
-                        >
-                          <SeriesBadge
-                            badgeUrl={entry.badgeUrl}
-                            color={entry.color}
-                            initials={entry.initials}
-                            size={ringSize}
-                          />
-                        </View>
-                      ));
-                    })()
-                  : null}
-
+                {/* X-axis round labels */}
                 <View
                   pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    right: 0,
-                    bottom: 8,
-                    height: 18,
-                  }}
+                  style={{ position: "absolute", left: 0, right: 0, bottom: 8, height: 18 }}
                 >
                   {xAxisLabels.map((label, index) => {
-                    const point = getPointCoordinates(
-                      index,
-                      0,
-                      visiblePointCount,
-                      yAxisMax,
-                      plotWidth,
-                      plotHeight,
-                    );
-
+                    const { x } = getPointCoordinates(index, 0, visiblePointCount, yAxisMax, plotWidth, plotHeight);
                     return (
                       <Text
                         key={`round-label-${label}`}
                         style={{
                           position: "absolute",
-                          left: point.x - X_AXIS_LABEL_WIDTH / 2,
+                          left: x - X_AXIS_LABEL_WIDTH / 2,
                           color: "#5E6E91",
                           fontSize: 11,
                           fontWeight: "700",
@@ -691,72 +615,139 @@ export function LeagueProgressChart({
             </ScrollView>
           ) : (
             <View
-              className="items-center justify-center gap-3 px-6"
-              style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.36)" }}
+              style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24, backgroundColor: "rgba(255,255,255,0.36)" }}
             >
-              <Text className="text-center text-lg font-black text-[#1C2B4A]">
+              <Text style={{ color: "#1C2B4A", fontSize: 16, fontWeight: "900", textAlign: "center" }}>
                 {emptyStateTitle}
               </Text>
-              <Text className="text-center text-sm leading-6 text-[#6B7EA3]">
+              <Text style={{ color: "#6B7EA3", fontSize: 13, lineHeight: 22, textAlign: "center" }}>
                 {emptyStateDescription}
               </Text>
             </View>
           )}
         </View>
 
-        {canRenderLeagueChart ? (
-          <View className="gap-2">
-            <Pressable
-              onPress={() => setLegendVisible((v) => !v)}
-              className="self-start flex-row items-center gap-1"
-              style={{ paddingVertical: 2 }}
-            >
-              <Text style={{ color: "#5678C9", fontSize: 12, fontWeight: "700", letterSpacing: 1.2 }}>
-                {legendVisible ? "Ocultar times" : "Mostrar times"}
-              </Text>
-              <Ionicons
-                name={legendVisible ? "chevron-up" : "chevron-down"}
-                size={14}
-                color="#5678C9"
-              />
-            </Pressable>
+        {/* ── Badge panel (right sidebar) ── */}
+        <View
+          style={{
+            width: BADGE_PANEL_WIDTH,
+            height: chartHeight,
+            backgroundColor: "rgba(220,232,255,0.72)",
+            borderLeftWidth: 1,
+            borderLeftColor: "rgba(88,128,255,0.18)",
+            position: "relative",
+          }}
+        >
+          {/* Subtle divider label */}
+          <Text
+            style={{
+              position: "absolute",
+              bottom: 6,
+              left: 0,
+              right: 0,
+              textAlign: "center",
+              color: "rgba(59,91,255,0.38)",
+              fontSize: 8,
+              fontWeight: "900",
+              letterSpacing: 0.8,
+              textTransform: "uppercase",
+            }}
+          >
+            Times
+          </Text>
 
-            {legendVisible ? (
-            <View className="flex-row flex-wrap gap-2">
-            {series.map((entry) => (
+          {canRenderLeagueChart && badgePanelEntries.map(({ entry, y }) => (
+            <View
+              key={`panel-${entry.participantId}`}
+              style={{
+                position: "absolute",
+                left: (BADGE_PANEL_WIDTH - BADGE_SIZE) / 2,
+                top: y - BADGE_SIZE / 2,
+              }}
+            >
+              <SeriesBadge
+                badgeUrl={entry.badgeUrl}
+                color={entry.color}
+                initials={entry.initials}
+                size={BADGE_SIZE}
+              />
+            </View>
+          ))}
+
+          {/* When no active rounds yet, show all series in stacked order */}
+          {canRenderLeagueChart && activeRoundCount === 0 && series.map((entry, index) => {
+            const spacing = Math.min((chartHeight - PADDING_TOP - PADDING_BOTTOM) / Math.max(series.length, 1), BADGE_SIZE + 6);
+            const y = PADDING_TOP + index * spacing;
+            return (
               <View
-                key={`chip-${entry.participantId}`}
-                className="flex-row items-center gap-2 rounded-full border px-3 py-2"
+                key={`panel-idle-${entry.participantId}`}
                 style={{
-                  borderColor: `${entry.color}33`,
-                  backgroundColor: "#FFFFFF",
+                  position: "absolute",
+                  left: (BADGE_PANEL_WIDTH - BADGE_SIZE) / 2,
+                  top: y,
                 }}
               >
-                <View
-                  className="rounded-full"
-                  style={{
-                    width: 10,
-                    height: 10,
-                    backgroundColor: entry.color,
-                  }}
+                <SeriesBadge
+                  badgeUrl={entry.badgeUrl}
+                  color={entry.color}
+                  initials={entry.initials}
+                  size={BADGE_SIZE}
                 />
-                <Text className="text-xs font-black text-[#1C2B4A]">{entry.teamName}</Text>
-                <Text className="text-xs font-semibold text-[#6B7EA3]">
-                  {entry.currentPoints} pts
-                </Text>
-                {(() => {
-                  const currentPosition = series.findIndex((item) => item.participantId === entry.participantId) + 1;
-                  const previousPosition = previousPositionByParticipantId.get(entry.participantId);
-                  const movementMeta = getMovementMeta(
-                    previousPosition && previousPosition > 0 ? previousPosition - currentPosition : 0,
-                  );
+              </View>
+            );
+          })}
+        </View>
+      </View>
 
-                  return (
+      {/* ── Legend ── */}
+      {canRenderLeagueChart ? (
+        <View style={{ gap: 8 }}>
+          <Pressable
+            onPress={() => setLegendVisible((v) => !v)}
+            style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 2 }}
+          >
+            <Text style={{ color: "#5678C9", fontSize: 12, fontWeight: "700", letterSpacing: 1.2 }}>
+              {legendVisible ? "Ocultar times" : "Mostrar times"}
+            </Text>
+            <Ionicons name={legendVisible ? "chevron-up" : "chevron-down"} size={14} color="#5678C9" />
+          </Pressable>
+
+          {legendVisible ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {series.map((entry) => {
+                const currentPosition = series.findIndex((item) => item.participantId === entry.participantId) + 1;
+                const previousPosition = previousPositionByParticipantId.get(entry.participantId);
+                const movementMeta = getMovementMeta(
+                  previousPosition && previousPosition > 0 ? previousPosition - currentPosition : 0,
+                );
+                return (
+                  <View
+                    key={`chip-${entry.participantId}`}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: `${entry.color}33`,
+                      backgroundColor: "#FFFFFF",
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                    }}
+                  >
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: entry.color }} />
+                    <Text style={{ color: "#1C2B4A", fontSize: 12, fontWeight: "900" }}>{entry.teamName}</Text>
+                    <Text style={{ color: "#6B7EA3", fontSize: 12, fontWeight: "600" }}>
+                      {entry.currentPoints} pts
+                    </Text>
                     <View
-                      className="rounded-full border px-2 py-1"
                       style={{
-                        backgroundColor: movementMeta.backgroundColor,
+                        borderRadius: 999,
+                        borderWidth: 1,
                         borderColor: movementMeta.borderColor,
+                        backgroundColor: movementMeta.backgroundColor,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
                       }}
                     >
                       <Text
@@ -771,15 +762,13 @@ export function LeagueProgressChart({
                         {movementMeta.symbol} {movementMeta.label}
                       </Text>
                     </View>
-                  );
-                })()}
-              </View>
-            ))}
-          </View>
-            ) : null}
-          </View>
-        ) : null}
-      </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
