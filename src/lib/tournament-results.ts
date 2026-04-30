@@ -183,6 +183,17 @@ export function saveCampeonatoMatchScore(
 }
 
 export function resetMatchInCampeonato(campeonato: Campeonato, jogoId: string): Campeonato {
+  const numRodadasGrupos = campeonato.numRodadasGrupos ?? 0;
+  const targetJogo = campeonato.rodadas.flat().find((j) => j.id === jogoId);
+
+  // Resetting a group-stage match invalidates the knockout bracket — strip KO rounds
+  // so they get regenerated once the group stage is complete again.
+  const isGroupStageMatch =
+    campeonato.formato === "groups_knockout" &&
+    numRodadasGrupos > 0 &&
+    targetJogo != null &&
+    targetJogo.rodada <= numRodadasGrupos;
+
   const rodadas = campeonato.rodadas.map((rodada) =>
     rodada.map((jogo) =>
       jogo.id === jogoId
@@ -190,11 +201,14 @@ export function resetMatchInCampeonato(campeonato: Campeonato, jogoId: string): 
         : jogo,
     ),
   );
+
+  const finalRodadas = isGroupStageMatch ? rodadas.slice(0, numRodadasGrupos) : rodadas;
+
   return {
     ...campeonato,
     status: "ativo",
     fimEm: undefined,
-    rodadas,
-    classificacao: recomputeCampeonatoClassificacao({ ...campeonato, rodadas }),
+    rodadas: finalRodadas,
+    classificacao: recomputeCampeonatoClassificacao({ ...campeonato, rodadas: finalRodadas }),
   };
 }
