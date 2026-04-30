@@ -154,6 +154,15 @@ export default function TournamentMatchesScreen() {
     return groupRounds.flat().every((m) => m.status === "finalizado");
   })();
 
+  // Hide KO rounds from tabs/cards until group stage is fully done
+  const visibleGroupedMatches = useMemo(
+    () =>
+      isGroupsKnockout && !groupStageAllDone
+        ? groupedMatches.filter(([round]) => round <= numRodadasGrupos)
+        : groupedMatches,
+    [groupedMatches, isGroupsKnockout, groupStageAllDone, numRodadasGrupos],
+  );
+
   const showGerarMataMataBt = canManageMatch && groupStageAllDone && !hasKnockoutRounds;
 
   const isPureKnockout = bundle?.campeonato.formato === "knockout";
@@ -191,9 +200,17 @@ export default function TournamentMatchesScreen() {
     }
   }, [showGerarProximaFaseBt]);
 
+  // Reset selected round when it points to a KO round that is now hidden
+  useEffect(() => {
+    if (!isGroupsKnockout || groupStageAllDone || selectedRound == null) return;
+    if (selectedRound > numRodadasGrupos) {
+      setSelectedRound(null);
+    }
+  }, [isGroupsKnockout, groupStageAllDone, numRodadasGrupos, selectedRound]);
+
   // Auto-select: open round, or last round with finished matches, or first round
   useEffect(() => {
-    if (!bundle || groupedMatches.length === 0) return;
+    if (!bundle || visibleGroupedMatches.length === 0) return;
     if (selectedRound != null) return;
 
     if (currentOpenRound != null) {
@@ -201,12 +218,12 @@ export default function TournamentMatchesScreen() {
       return;
     }
 
-    const lastFinishedRound = [...groupedMatches]
+    const lastFinishedRound = [...visibleGroupedMatches]
       .reverse()
       .find(([, matches]) => matches.some((m) => m.status === "finished"));
 
-    setSelectedRound(lastFinishedRound?.[0] ?? groupedMatches[0]?.[0] ?? null);
-  }, [groupedMatches, currentOpenRound, bundle, selectedRound]);
+    setSelectedRound(lastFinishedRound?.[0] ?? visibleGroupedMatches[0]?.[0] ?? null);
+  }, [visibleGroupedMatches, currentOpenRound, bundle, selectedRound]);
 
   function formatDate(value?: string | null) {
     if (!value) return "Sem prazo";
@@ -313,7 +330,7 @@ export default function TournamentMatchesScreen() {
       ? getRoundDeadlineCountdown(bundle.campeonato, currentOpenRound, new Date(now))
       : null;
 
-  const selectedRoundMatches = groupedMatches.find(([r]) => r === selectedRound)?.[1] ?? [];
+  const selectedRoundMatches = visibleGroupedMatches.find(([r]) => r === selectedRound)?.[1] ?? [];
 
   function getHistoricItems(roundMatches: typeof selectedRoundMatches): HistoricCupItem[] {
     return roundMatches.map((match) => {
@@ -903,7 +920,7 @@ export default function TournamentMatchesScreen() {
       )}
 
       {/* ── Round tab selector (fixed) ── */}
-      {viewMode === "rounds" && groupedMatches.length > 0 && (
+      {viewMode === "rounds" && visibleGroupedMatches.length > 0 && (
         <View
           style={{
             borderBottomWidth: 1,
@@ -921,7 +938,7 @@ export default function TournamentMatchesScreen() {
               gap: 8,
             }}
           >
-            {groupedMatches.map(([round, rMatches]) => {
+            {visibleGroupedMatches.map(([round, rMatches]) => {
               const isActive = round === selectedRound;
               const isOpen = round === currentOpenRound;
               const finishedCount = rMatches.filter((m) => m.status === "finished").length;
@@ -1112,7 +1129,7 @@ export default function TournamentMatchesScreen() {
             items={getHistoricItems(selectedRoundMatches)}
             onPressItem={(item) => setSelectedMatchId(item.id)}
           />
-        ) : groupedMatches.length === 0 ? (
+        ) : visibleGroupedMatches.length === 0 ? (
           <ScreenState
             title="Partidas indisponíveis"
             description={
