@@ -185,6 +185,31 @@ export default function TournamentsScreen() {
           </View>
         ) : null}
 
+        {archivedCampeonatos.length > 0 ? (
+          <View className="gap-4">
+            <SectionHeader
+              eyebrow="Encerrados"
+              title="Temporadas finalizadas"
+              subtitle="Campeonatos concluídos com histórico de resultados, pódio e estatísticas preservadas."
+            />
+
+            <View className="gap-5">
+              {archivedCampeonatos.map((campeonato, index) => (
+                <RevealOnScroll key={campeonato.id} delay={index * 70}>
+                  <TournamentCard
+                    tournament={campeonato}
+                    surface="dark"
+                    primaryAction={{
+                      label: "Ver resultados",
+                      onPress: () => openTournament(campeonato.id),
+                    }}
+                  />
+                </RevealOnScroll>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
       </View>
     </Screen>
   );

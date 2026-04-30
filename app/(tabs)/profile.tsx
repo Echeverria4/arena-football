@@ -1,19 +1,34 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Alert, Text, View } from "react-native";
 
-import { Badge } from "@/components/ui/Badge";
-import { FeatureCard } from "@/components/ui/FeatureCard";
+import { LiveBorderCard } from "@/components/ui/LiveBorderCard";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { usePanelGrid } from "@/components/ui/usePanelGrid";
+import { resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { signOut } from "@/services/auth";
+import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useTournamentStore } from "@/stores/tournament-store";
+
+const ROLE_LABELS: Record<string, string> = {
+  organizer: "Organizador",
+  admin: "Admin",
+  player: "Jogador",
+};
 
 export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
-  const { cardWidth, contentMaxWidth } = usePanelGrid();
+  const currentTournamentId = useAppStore((state) => state.currentTournamentId);
+  const tournamentAccess = useAppStore((state) => state.tournamentAccess);
+  const campeonatos = useTournamentStore((state) => state.campeonatos);
+
+  const activeCampeonato = campeonatos.find((c) => c.id === currentTournamentId) ?? null;
+  const accessMode = resolveTournamentAccessMode(tournamentAccess, currentTournamentId);
+  const isOwner = accessMode === "owner";
 
   async function handleSignOut() {
     try {
@@ -21,78 +36,157 @@ export default function ProfileScreen() {
       clearSession();
       router.replace("/login");
     } catch (error) {
-      Alert.alert("Saida nao concluida", error instanceof Error ? error.message : "Tente novamente.");
+      Alert.alert("Saída não concluída", error instanceof Error ? error.message : "Tente novamente.");
     }
+  }
+
+  function handleManageShare() {
+    if (!currentTournamentId) return;
+    router.push({ pathname: "/tournament/access", params: { id: currentTournamentId } });
   }
 
   return (
     <Screen scroll className="px-6">
-      <View className="w-full self-center gap-6 py-8" style={{ maxWidth: contentMaxWidth }}>
+      <View className="w-full self-center gap-6 py-8" style={{ maxWidth: 680 }}>
         <SectionHeader
           eyebrow="Perfil"
           title={user?.name ?? "Jogador Arena"}
-          subtitle="Dados do usuario, canais de contato e configuracoes principais em cards no mesmo padrao do menu."
+          subtitle="Dados da conta, identidade competitiva e gerenciamento de acesso ao campeonato ativo."
         />
 
-        <View className="flex-row flex-wrap gap-5 px-2">
-          <RevealOnScroll delay={0}>
-            <View
-              className="rounded-[24px] border p-6 gap-4"
-              style={{
-                width: cardWidth,
-                minHeight: 236,
-                borderColor: "#D3D7DC",
-                backgroundColor: "rgba(250,250,250,0.94)",
-                shadowColor: "#A3A8AF",
-                shadowOpacity: 0.12,
-                shadowRadius: 18,
-              }}
-            >
-              <View className="gap-2">
-                <Badge label={user?.role ?? "player"} tone="neon" />
-                <Text className="text-3xl font-semibold text-[#3F454C]">{user?.whatsappName ?? "WhatsApp Arena"}</Text>
-                <Text className="text-base text-[#777D85]">{user?.email ?? "email@arena.com"}</Text>
+        {/* Account card */}
+        <RevealOnScroll delay={0}>
+          <LiveBorderCard
+            accent="blue"
+            radius={22}
+            padding={1.4}
+            backgroundColor="#060D18"
+            contentStyle={{ paddingHorizontal: 22, paddingVertical: 22 }}
+          >
+            <View style={{ gap: 16 }}>
+              {/* Role badge */}
+              <View
+                style={{
+                  alignSelf: "flex-start",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(139,92,246,0.18)",
+                  borderWidth: 1,
+                  borderColor: "rgba(139,92,246,0.35)",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#C4B5FD",
+                    fontSize: 11,
+                    fontWeight: "800",
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {ROLE_LABELS[user?.role ?? "player"] ?? "Jogador"}
+                </Text>
               </View>
-              <Text className="text-base leading-7 text-[#777D85]">
-                Perfil central para manter contato, identidade competitiva e dados do jogador dentro do Arena.
-              </Text>
-              <Text className="text-sm font-semibold uppercase tracking-[2px] text-[#464B52]">Perfil principal</Text>
-            </View>
-          </RevealOnScroll>
 
+              {/* Name */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: "#F3F7FF", fontSize: 26, fontWeight: "900", lineHeight: 32 }}>
+                  {user?.name ?? "Arena Player"}
+                </Text>
+                {user?.gamertag ? (
+                  <Text style={{ color: "#7C9BDA", fontSize: 14, fontWeight: "700" }}>
+                    @{user.gamertag}
+                  </Text>
+                ) : null}
+              </View>
+
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: "rgba(59,91,255,0.18)",
+                }}
+              />
+
+              {/* Contact info */}
+              <View style={{ gap: 10 }}>
+                {user?.whatsappName || user?.whatsappNumber ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Ionicons name="logo-whatsapp" size={15} color="#4ADE80" />
+                    <Text style={{ color: "#AEBBDA", fontSize: 14, fontWeight: "600" }}>
+                      {user.whatsappName ?? user.whatsappNumber}
+                    </Text>
+                  </View>
+                ) : null}
+                {user?.email ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Ionicons name="mail-outline" size={15} color="#60A5FA" />
+                    <Text style={{ color: "#AEBBDA", fontSize: 14, fontWeight: "600" }}>
+                      {user.email}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </LiveBorderCard>
+        </RevealOnScroll>
+
+        {/* Share links card — only for tournament owners with an active tournament */}
+        {isOwner && activeCampeonato ? (
           <RevealOnScroll delay={90}>
-            <FeatureCard
-              icon="game-controller-outline"
-              title={user?.gamertag ?? "ArenaLegend"}
-              subtitle="Gamertag"
-              description="Nome competitivo usado para identificar o jogador nas partidas, rankings e confrontos do campeonato."
-              meta="Identidade de jogo"
-              width={cardWidth}
-            />
-          </RevealOnScroll>
-          <RevealOnScroll delay={180}>
-            <FeatureCard
-              icon="shield-outline"
-              title={user?.favoriteTeam ?? "Barcelona"}
-              subtitle="Time favorito"
-              description="Equipe de preferencia usada como referencia visual e estatistica dentro das areas do torneio."
-              meta="Preferencia ativa"
-              width={cardWidth}
+            <LiveBorderCard
               accent="blue"
-            />
+              radius={22}
+              padding={1.4}
+              backgroundColor="#060D18"
+              contentStyle={{ paddingHorizontal: 22, paddingVertical: 22 }}
+            >
+              <View style={{ gap: 16 }}>
+                <View style={{ gap: 6 }}>
+                  <Text
+                    style={{
+                      color: "#60A5FA",
+                      fontSize: 11,
+                      fontWeight: "800",
+                      letterSpacing: 2.2,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Compartilhamento
+                  </Text>
+                  <Text style={{ color: "#F3F7FF", fontSize: 20, fontWeight: "900" }}>
+                    {activeCampeonato.nome}
+                  </Text>
+                  {activeCampeonato.temporada ? (
+                    <Text style={{ color: "#5B7FC4", fontSize: 13, fontWeight: "700" }}>
+                      {activeCampeonato.temporada}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <Text style={{ color: "#7B9EC8", fontSize: 14, lineHeight: 22 }}>
+                  Gere links de acesso para convidados entrarem como Visualizador ou Editor neste campeonato.
+                </Text>
+
+                <PrimaryButton
+                  label="Gerenciar links"
+                  onPress={handleManageShare}
+                  size="sm"
+                  className="self-start"
+                />
+              </View>
+            </LiveBorderCard>
           </RevealOnScroll>
-          <RevealOnScroll delay={270}>
-            <FeatureCard
-              icon="log-out-outline"
-              title="Sair da conta"
-              subtitle="Encerrar sessao"
-              description="Finalize sua sessao atual e retorne para a tela de autenticacao com seguranca."
-              meta="Logout"
-              onPress={handleSignOut}
-              width={cardWidth}
-            />
-          </RevealOnScroll>
-        </View>
+        ) : null}
+
+        {/* Sign out */}
+        <RevealOnScroll delay={180}>
+          <PrimaryButton
+            label="Sair da conta"
+            variant="secondary"
+            onPress={handleSignOut}
+          />
+        </RevealOnScroll>
       </View>
     </Screen>
   );

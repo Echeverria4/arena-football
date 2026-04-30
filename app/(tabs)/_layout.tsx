@@ -403,9 +403,9 @@ function GradientTabBarButton({ ...props }: GradientTabBarButtonProps) {
         <LinearGradient
           colors={
             isActive
-              ? ["#06070A", "#2C0108", "#8A0619", "#FF2A49", "#8A0619", "#2C0108", "#06070A"]
+              ? ["#06060A", "#0E0720", "#3B1F8A", "#6D28D9", "#3B1F8A", "#0E0720", "#06060A"]
               : isHovered
-                ? ["#07070A", "#1B0105", "#650311", "#E71D3D", "#650311", "#1B0105", "#07070A"]
+                ? ["#07070A", "#0C0618", "#2A1568", "#5B21B6", "#2A1568", "#0C0618", "#07070A"]
                 : ["rgba(9,15,20,0.82)", "rgba(8,14,19,0.88)", "rgba(7,12,17,0.92)"]
           }
           start={{ x: 0, y: 0.5 }}
@@ -427,11 +427,11 @@ function GradientTabBarButton({ ...props }: GradientTabBarButtonProps) {
               <LinearGradient
                 colors={[
                   "rgba(0,0,0,0)",
-                  "rgba(255,65,96,0.05)",
-                  "rgba(255,92,119,0.28)",
-                  "rgba(255,210,216,0.18)",
-                  "rgba(255,92,119,0.28)",
-                  "rgba(255,65,96,0.05)",
+                  "rgba(139,92,246,0.05)",
+                  "rgba(167,139,250,0.28)",
+                  "rgba(196,181,253,0.18)",
+                  "rgba(167,139,250,0.28)",
+                  "rgba(139,92,246,0.05)",
                   "rgba(0,0,0,0)",
                 ]}
                 start={{ x: 0, y: 0.5 }}
@@ -454,16 +454,16 @@ function GradientTabBarButton({ ...props }: GradientTabBarButtonProps) {
                   isActive
                     ? [
                         "rgba(0,0,0,0.05)",
-                        "rgba(255,55,87,0.22)",
-                        "rgba(255,198,205,0.18)",
-                        "rgba(255,55,87,0.22)",
+                        "rgba(139,92,246,0.22)",
+                        "rgba(196,181,253,0.18)",
+                        "rgba(139,92,246,0.22)",
                         "rgba(0,0,0,0.05)",
                       ]
                     : [
                         "rgba(0,0,0,0.03)",
-                        "rgba(255,55,87,0.14)",
-                        "rgba(255,198,205,0.1)",
-                        "rgba(255,55,87,0.14)",
+                        "rgba(139,92,246,0.14)",
+                        "rgba(167,139,250,0.10)",
+                        "rgba(139,92,246,0.14)",
                         "rgba(0,0,0,0.03)",
                       ]
                 }
@@ -631,21 +631,29 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="tournaments"
           options={{
-            title: "Campeonatos",
+            title: "Torneios",
             tabBarIcon: ({ color, size }) => <Ionicons name="trophy-outline" color={color} size={size} />,
             tabBarButton: (props) => <GradientTabBarButton {...props} />,
           }}
         />
         <Tabs.Screen
-          name="history"
+          name="videos"
           options={{
-            title: "Histórico",
-            tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" color={color} size={size} />,
+            title: "Vídeos",
+            tabBarIcon: ({ color, size }) => <Ionicons name="play-circle-outline" color={color} size={size} />,
             tabBarButton: (props) => <GradientTabBarButton {...props} />,
           }}
         />
         <Tabs.Screen
-          name="videos"
+          name="profile"
+          options={{
+            title: "Perfil",
+            tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" color={color} size={size} />,
+            tabBarButton: (props) => <GradientTabBarButton {...props} />,
+          }}
+        />
+        <Tabs.Screen
+          name="history"
           options={{ href: null }}
         />
         <Tabs.Screen
@@ -666,10 +674,6 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="hall-of-fame"
-          options={{ href: null }}
-        />
-        <Tabs.Screen
-          name="profile"
           options={{ href: null }}
         />
         <Tabs.Screen
