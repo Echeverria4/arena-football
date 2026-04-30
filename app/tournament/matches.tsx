@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { STADIUM_BG } from "../../assets/images/stadium-bg";
 import { HistoricCupGrid } from "@/components/matches/HistoricCupGrid";
 import type { HistoricCupItem } from "@/components/matches/HistoricCupCard";
@@ -706,7 +707,7 @@ export default function TournamentMatchesScreen() {
                 Prazo por rodada
               </Text>
               <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, lineHeight: 20 }}>
-                Defina a data limite para cada rodada. Rodadas sem data usam a configuração global. Várias rodadas podem ter a mesma data.
+                Defina a data limite para cada rodada. Ao zerar, jogos pendentes são encerrados como 0 x 0 automaticamente. Datas no passado terão efeito imediato.
               </Text>
 
               <ScrollView
@@ -719,49 +720,68 @@ export default function TournamentMatchesScreen() {
                   const isKO = isGroupsKnockout && round > numRodadasGrupos;
                   const label = isKO ? `MM${round - numRodadasGrupos}` : `R${round}`;
                   const inputValue = pendingRoundDates[String(round)] ?? "";
-                  const isValid = inputValue === "" || parseDateInput(inputValue) !== null;
+                  const parsedIso = inputValue ? parseDateInput(inputValue) : null;
+                  const isValidFormat = inputValue === "" || parsedIso !== null;
+                  const isPast = parsedIso !== null && new Date(parsedIso).getTime() <= Date.now();
+                  const borderColor = inputValue
+                    ? (!isValidFormat
+                        ? "rgba(220,60,60,0.55)"
+                        : isPast
+                          ? "rgba(245,158,11,0.55)"
+                          : "rgba(59,130,246,0.50)")
+                    : "rgba(255,255,255,0.12)";
                   return (
-                    <View key={round} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                      <View style={{ width: 46, height: 38, borderRadius: 10, backgroundColor: "rgba(154,184,255,0.10)", alignItems: "center", justifyContent: "center" }}>
-                        <Text style={{ color: "#9AB8FF", fontSize: 12, fontWeight: "900" }}>{label}</Text>
-                      </View>
-                      <TextInput
-                        style={{
-                          flex: 1,
-                          color: "#F3F7FF",
-                          fontSize: 14,
-                          fontWeight: "700",
-                          backgroundColor: "rgba(255,255,255,0.06)",
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: inputValue
-                            ? (isValid ? "rgba(59,130,246,0.50)" : "rgba(220,60,60,0.50)")
-                            : "rgba(255,255,255,0.12)",
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                        }}
-                        placeholder="DD/MM/AAAA"
-                        placeholderTextColor="rgba(255,255,255,0.28)"
-                        value={inputValue}
-                        onChangeText={(text) =>
-                          setPendingRoundDates((prev) => ({ ...prev, [String(round)]: text }))
-                        }
-                        keyboardType="numeric"
-                        maxLength={10}
-                      />
-                      {inputValue !== "" && (
-                        <Pressable
-                          onPress={() =>
-                            setPendingRoundDates((prev) => {
-                              const next = { ...prev };
-                              delete next[String(round)];
-                              return next;
-                            })
+                    <View key={round} style={{ gap: 4 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <View style={{ width: 46, height: 38, borderRadius: 10, backgroundColor: "rgba(154,184,255,0.10)", alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ color: "#9AB8FF", fontSize: 12, fontWeight: "900" }}>{label}</Text>
+                        </View>
+                        <TextInput
+                          style={{
+                            flex: 1,
+                            color: "#F3F7FF",
+                            fontSize: 14,
+                            fontWeight: "700",
+                            backgroundColor: "rgba(255,255,255,0.06)",
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                          }}
+                          placeholder="DD/MM/AAAA"
+                          placeholderTextColor="rgba(255,255,255,0.28)"
+                          value={inputValue}
+                          onChangeText={(text) =>
+                            setPendingRoundDates((prev) => ({ ...prev, [String(round)]: text }))
                           }
-                          style={{ padding: 4 }}
-                        >
-                          <Text style={{ color: "#DC4040", fontSize: 18, fontWeight: "900", lineHeight: 20 }}>×</Text>
-                        </Pressable>
+                          keyboardType="numeric"
+                          maxLength={10}
+                        />
+                        {inputValue !== "" && (
+                          <Pressable
+                            onPress={() =>
+                              setPendingRoundDates((prev) => {
+                                const next = { ...prev };
+                                delete next[String(round)];
+                                return next;
+                              })
+                            }
+                            style={{ padding: 4 }}
+                          >
+                            <Text style={{ color: "#DC4040", fontSize: 18, fontWeight: "900", lineHeight: 20 }}>×</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                      {isPast && (
+                        <Text style={{ color: "#F59E0B", fontSize: 11, fontWeight: "700", paddingLeft: 56 }}>
+                          Data no passado — jogos pendentes serão encerrados ao salvar
+                        </Text>
+                      )}
+                      {inputValue !== "" && !isValidFormat && (
+                        <Text style={{ color: "#DC4040", fontSize: 11, fontWeight: "700", paddingLeft: 56 }}>
+                          Formato inválido. Use DD/MM/AAAA
+                        </Text>
                       )}
                     </View>
                   );
@@ -849,28 +869,68 @@ export default function TournamentMatchesScreen() {
             </Text>
           </View>
 
-          {activeRoundCountdown && (
-            <Pressable
-              onPress={() => setCountdownExpanded((v) => !v)}
-              style={{
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                backgroundColor: "rgba(59,130,246,0.14)",
-                borderWidth: 1,
-                borderColor: "rgba(59,130,246,0.28)",
-                gap: 2,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#60A5FA", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
-                Rodada {currentOpenRound} • Prazo
-              </Text>
-              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 0.5 }}>
-                {activeRoundCountdown.days}d {activeRoundCountdown.hours}h {activeRoundCountdown.minutes}m
-              </Text>
-            </Pressable>
-          )}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {canManageMatch && (
+              <Pressable
+                onPress={() => {
+                  const currentDatas = bundle.campeonato.prazoRodasDatas ?? {};
+                  const displayDates: Record<string, string> = {};
+                  for (const [k, v] of Object.entries(currentDatas)) {
+                    displayDates[k] = formatDateForInput(v);
+                  }
+                  setPendingRoundDates(displayDates);
+                  setShowRoundsModal(true);
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: Object.keys(bundle.campeonato.prazoRodasDatas ?? {}).length > 0
+                    ? "rgba(59,130,246,0.18)"
+                    : "rgba(255,255,255,0.07)",
+                  borderWidth: 1,
+                  borderColor: Object.keys(bundle.campeonato.prazoRodasDatas ?? {}).length > 0
+                    ? "rgba(59,130,246,0.42)"
+                    : "rgba(255,255,255,0.14)",
+                }}
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={18}
+                  color={
+                    Object.keys(bundle.campeonato.prazoRodasDatas ?? {}).length > 0
+                      ? "#60A5FA"
+                      : "rgba(255,255,255,0.55)"
+                  }
+                />
+              </Pressable>
+            )}
+
+            {activeRoundCountdown && (
+              <Pressable
+                onPress={() => setCountdownExpanded((v) => !v)}
+                style={{
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  backgroundColor: "rgba(59,130,246,0.14)",
+                  borderWidth: 1,
+                  borderColor: "rgba(59,130,246,0.28)",
+                  gap: 2,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#60A5FA", fontSize: 10, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>
+                  Rodada {currentOpenRound} • Prazo
+                </Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 0.5 }}>
+                  {activeRoundCountdown.days}d {activeRoundCountdown.hours}h {activeRoundCountdown.minutes}m
+                </Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
 
