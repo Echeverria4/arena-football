@@ -39,24 +39,25 @@ const SERIES_COLORS = [
   "#06B6D4", "#F97316", "#84CC16", "#EC4899", "#14B8A6",
 ];
 
-// ─── Layout constants ────────────────────────────────────────────────────────
-// Landscape chart: X = points (left→right), Y = rounds (top→bottom)
-// Chart expands DOWNWARD as rounds progress.
-// Badge panel on the RIGHT shows all scored teams stacked vertically.
+// ── Layout ──────────────────────────────────────────────────────────────────
+// Landscape chart: X = pontos (esq→dir), Y = rodadas (cima→baixo)
+// Badges ficam no FUNDO do canvas, centralizados em cima da posição X da pontuação.
+// Times com mesma pontuação ficam lado a lado verticalmente (empilhados abaixo).
 
-const PAD_TOP    = 28;   // space for X-axis (point) labels at top
-const PAD_BOTTOM = 10;
-const PAD_LEFT   = 38;   // space for Y-axis (round) labels on left
-const PAD_RIGHT  = 12;
-const BADGE_PANEL_W = 68;
-const BADGE_SIZE    = 32;
-const BADGE_SLOT_H  = BADGE_SIZE + 6;   // vertical slot per badge
-const DOT_SIZE      = 8;
-const GRID_LINE     = 0.6;
-const SEG_W         = 2.5;
-const SEG_GLOW_W    = 7;
-const ROW_HEIGHT_PHONE  = 54;  // vertical px per round interval
-const ROW_HEIGHT_TABLET = 68;
+const PAD_TOP   = 28;   // espaço para labels de pontos no topo
+const PAD_LEFT  = 38;   // espaço para labels de rodadas na esquerda
+const PAD_RIGHT = 16;
+const BADGE_SIZE  = 32;
+const BADGE_GAP   = 4;  // gap entre badges na mesma coluna
+const BADGE_SLOT  = BADGE_SIZE + BADGE_GAP;
+const DOT_SIZE    = 8;
+const DOT_TO_BADGE_GAP = 10;   // gap entre o dot final e o primeiro badge
+const BADGE_AREA_BOTTOM_PAD = 10;
+const GRID_LINE = 0.6;
+const SEG_W     = 2.5;
+const SEG_GLOW  = 7;
+const ROW_H_PHONE  = 54;
+const ROW_H_TABLET = 68;
 
 function SeriesBadge({
   badgeUrl, color, initials, size = BADGE_SIZE,
@@ -80,7 +81,7 @@ function SeriesBadge({
   );
 }
 
-function getSeriesColor(i: number) {
+function getColor(i: number) {
   return i < SERIES_COLORS.length ? SERIES_COLORS[i]! : `hsl(${(i * 47) % 360},72%,52%)`;
 }
 
@@ -99,14 +100,15 @@ function buildSeries(campeonato: Campeonato): SeriesEntry[] {
   campeonato.rodadas.forEach((round) => {
     round.forEach((m) => {
       if (m.status !== "finalizado" || m.placarMandante == null || m.placarVisitante == null) return;
-      const h = standings.get(m.mandanteId); const a = standings.get(m.visitanteId);
+      const h = standings.get(m.mandanteId);
+      const a = standings.get(m.visitanteId);
       if (!h || !a) return;
       const hg = m.placarMandante, ag = m.placarVisitante;
       h.goalsFor += hg; h.goalsAgainst += ag; h.goalDifference = h.goalsFor - h.goalsAgainst;
       a.goalsFor += ag; a.goalsAgainst += hg; a.goalDifference = a.goalsFor - a.goalsAgainst;
-      if (hg > ag) { h.points += 3; h.wins++; a.losses++; }
+      if (hg > ag)      { h.points += 3; h.wins++; a.losses++; }
       else if (ag > hg) { a.points += 3; a.wins++; h.losses++; }
-      else { h.points++; a.points++; h.draws++; a.draws++; }
+      else              { h.points++; a.points++; h.draws++; a.draws++; }
     });
     campeonato.participantes.forEach((p) => {
       const s = byRound.get(p.id) ?? [0];
@@ -125,7 +127,7 @@ function buildSeries(campeonato: Campeonato): SeriesEntry[] {
         currentPoints: st?.points ?? 0,
         goalDifference: st?.goalDifference ?? 0,
         wins: st?.wins ?? 0,
-        color: getSeriesColor(i),
+        color: getColor(i),
         badgeUrl: p.timeImagem ?? resolveTeamVisualByName(tn),
         initials: getTeamInitials(tn),
       } satisfies SeriesEntry;
@@ -138,14 +140,14 @@ function buildSeries(campeonato: Campeonato): SeriesEntry[] {
     });
 }
 
-// Landscape coordinates: X = points, Y = round index
-function xCoord(pts: number, xMax: number, plotW: number) {
+// Coordenadas: X = pontos, Y = índice da rodada
+function cx(pts: number, xMax: number, plotW: number) {
   return PAD_LEFT + (plotW * pts) / Math.max(xMax, 1);
 }
-function yCoord(roundIdx: number, numIntervals: number, plotH: number) {
+function cy(roundIdx: number, numIntervals: number, plotH: number) {
   return PAD_TOP + (numIntervals <= 0 ? 0 : (plotH * roundIdx) / numIntervals);
 }
-function segStyle(x1: number, y1: number, x2: number, y2: number, col: string, w: number) {
+function seg(x1: number, y1: number, x2: number, y2: number, col: string, w: number) {
   const dx = x2 - x1, dy = y2 - y1, len = Math.max(Math.hypot(dx, dy), 2);
   return {
     position: "absolute" as const,
@@ -155,7 +157,7 @@ function segStyle(x1: number, y1: number, x2: number, y2: number, col: string, w
   };
 }
 
-function getMovementMeta(d: number) {
+function movMeta(d: number) {
   if (d > 0) return { symbol: "▲", label: `+${d} pos`, color: "#15803D", backgroundColor: "rgba(34,197,94,0.12)", borderColor: "rgba(34,197,94,0.20)" };
   if (d < 0) return { symbol: "▼", label: `${d} pos`, color: "#B91C1C", backgroundColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.20)" };
   return { symbol: "•", label: "estavel", color: "#64748B", backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.18)" };
@@ -168,13 +170,15 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
   const [containerWidth, setContainerWidth] = useState(Math.max(screenWidth - 48, 280));
   const [legendVisible, setLegendVisible] = useState(true);
 
-  const series     = useMemo(() => buildSeries(campeonato), [campeonato]);
-  const scored     = useMemo(
+  const series = useMemo(() => buildSeries(campeonato), [campeonato]);
+
+  // Times com pelo menos 1 ponto (desenha no canvas e badge)
+  const scored = useMemo(
     () => series.filter((e) => e.currentPoints > 0),
     [series],
   );
 
-  const latestRound   = useMemo(() => getLatestFinishedRound(campeonato), [campeonato]);
+  const latestRound = useMemo(() => getLatestFinishedRound(campeonato), [campeonato]);
   const prevStandings = useMemo(
     () => latestRound > 1 ? recomputeCampeonatoClassificacaoUntilRound(campeonato, latestRound - 1) : [],
     [campeonato, latestRound],
@@ -188,33 +192,56 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
   const activeRounds = totalRounds > 0
     ? campeonato.rodadas.reduce((last, r, i) => r.some((m) => m.status === "finalizado") ? i + 1 : last, 0)
     : 0;
-  const visiblePtCount = activeRounds + 1;   // includes round-0 baseline
+  const visiblePtCount = activeRounds + 1;
   const numIntervals   = Math.max(visiblePtCount - 1, 1);
 
-  // X-axis scale (points)
-  const maxPts  = Math.max(0, ...series.flatMap((e) => e.pointsByRound.slice(0, visiblePtCount)));
-  const tStep   = maxPts <= 4 ? 1 : Math.ceil(maxPts / 5);
-  const tCount  = maxPts <= 4 ? Math.max(maxPts, 1) : 5;
-  const xMax    = Math.max(tStep * tCount, 1);
-  const xTicks  = Array.from({ length: Math.floor(xMax / tStep) + 1 }, (_, i) => i * tStep);
+  // Escala X (pontos)
+  const maxPts = Math.max(0, ...series.flatMap((e) => e.pointsByRound.slice(0, visiblePtCount)));
+  const xMax   = Math.max(Math.ceil(maxPts / 3) * 3, 3);
+  const xTicks = Array.from({ length: Math.floor(xMax / 3) + 1 }, (_, i) => i * 3);
 
-  // ── Chart height ────────────────────────────────────────────────────────────
-  // Determined by whichever is taller: the round rows or the badge stack.
-  const ROW_H       = isPhone ? ROW_HEIGHT_PHONE : ROW_HEIGHT_TABLET;
-  const linesH      = numIntervals * ROW_H + PAD_TOP + PAD_BOTTOM;
-  const badgeStackH = scored.length * BADGE_SLOT_H + PAD_TOP + PAD_BOTTOM;
-  const chartHeight = Math.max(linesH, badgeStackH, isPhone ? 200 : 260);
-  const plotH       = linesH - PAD_TOP - PAD_BOTTOM;   // round-grid uses linesH, not chartHeight
+  // Grupos de times por pontuação final (para posicionar badges)
+  const scoreGroups = useMemo(() => {
+    if (activeRounds === 0 || scored.length === 0) return new Map<number, SeriesEntry[]>();
+    const map = new Map<number, SeriesEntry[]>();
+    scored.forEach((e) => {
+      const pts = e.pointsByRound.slice(0, visiblePtCount).at(-1) ?? 0;
+      if (!map.has(pts)) map.set(pts, []);
+      map.get(pts)!.push(e);
+    });
+    return map;
+  }, [scored, visiblePtCount, activeRounds]);
 
-  // ── Canvas width — fills container, no horizontal scroll needed ─────────────
-  const canvasW  = containerWidth - BADGE_PANEL_W;
-  const plotW    = Math.max(canvasW - PAD_LEFT - PAD_RIGHT, 160);
+  // Maior grupo de times com mesma pontuação → determina altura da área de badges
+  const maxGroupSize = Math.max(0, ...Array.from(scoreGroups.values()).map((g) => g.length));
 
-  // ── Badge panel: scored teams stacked vertically top→bottom by ranking ──────
-  const badgePanelEntries = useMemo(
-    () => scored.map((entry, i) => ({ entry, y: PAD_TOP + i * BADGE_SLOT_H })),
-    [scored],
-  );
+  // Altura do canvas: rodadas + área de badges no fundo
+  const ROW_H  = isPhone ? ROW_H_PHONE : ROW_H_TABLET;
+  const plotH  = numIntervals * ROW_H;
+  const badgePad = maxGroupSize > 0
+    ? DOT_TO_BADGE_GAP + maxGroupSize * BADGE_SLOT + BADGE_AREA_BOTTOM_PAD
+    : 24;
+  const chartH = PAD_TOP + plotH + badgePad;
+
+  // Largura total do canvas (sem painel lateral)
+  const plotW = Math.max(containerWidth - PAD_LEFT - PAD_RIGHT, 160);
+
+  // Posição dos badges: centrados no X da pontuação, empilhados verticalmente por grupo
+  const badgeTopY = PAD_TOP + plotH + DOT_TO_BADGE_GAP;
+  const badgePositions = useMemo(() => {
+    const positions: { entry: SeriesEntry; bx: number; by: number }[] = [];
+    scoreGroups.forEach((entries, pts) => {
+      const centreX = cx(pts, xMax, plotW);
+      entries.forEach((entry, idx) => {
+        positions.push({
+          entry,
+          bx: centreX - BADGE_SIZE / 2,
+          by: badgeTopY + idx * BADGE_SLOT,
+        });
+      });
+    });
+    return positions;
+  }, [scoreGroups, xMax, plotW, badgeTopY]);
 
   const hasParticipants = campeonato.participantes.length > 0;
   const hasRounds       = totalRounds > 0;
@@ -229,163 +256,147 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
 
   return (
     <View style={{ gap: 4 }}>
-      {/* ── Main chart container ── */}
+      {/* ── Canvas principal ── */}
       <View
         onLayout={handleLayout}
         style={{
-          flexDirection: "row",
-          height: chartHeight,
+          height: chartH,
           borderRadius: 22,
           overflow: "hidden",
           borderWidth: 1,
           borderColor: "rgba(88,128,255,0.22)",
+          backgroundColor: "#EDF4FF",
         }}
       >
-        {/* ── Chart canvas (landscape: X=points, Y=rounds) ── */}
-        <View style={{ flex: 1, backgroundColor: "#EDF4FF" }}>
-          {canRender ? (
-            <View style={{ width: canvasW, height: chartHeight }}>
+        {canRender ? (
+          <View style={{ width: containerWidth, height: chartH }}>
 
-              {/* X-axis: point-value labels at top + vertical grid lines */}
-              {xTicks.map((pts) => {
-                const x = xCoord(pts, xMax, plotW);
-                return (
-                  <View key={`xt-${pts}`}>
-                    <View style={{
-                      position: "absolute", left: x, top: PAD_TOP, bottom: PAD_BOTTOM,
-                      width: GRID_LINE, backgroundColor: pts === 0
-                        ? "rgba(59,91,255,0.18)" : "rgba(59,91,255,0.07)",
-                    }} />
-                    <Text style={{
-                      position: "absolute", left: x - 12, top: 5,
-                      width: 24, color: "#5E6E91", fontSize: 10, fontWeight: "800", textAlign: "center",
-                    }}>
-                      {pts}
-                    </Text>
-                  </View>
-                );
-              })}
-
-              {/* Y-axis: round labels on left + horizontal grid lines */}
-              {Array.from({ length: visiblePtCount }, (_, i) => i).map((ri) => {
-                const y = yCoord(ri, numIntervals, plotH);
-                return (
-                  <View key={`yl-${ri}`}>
-                    <View style={{
-                      position: "absolute", left: PAD_LEFT, right: PAD_RIGHT,
-                      top: y, height: GRID_LINE, backgroundColor: "rgba(59,91,255,0.10)",
-                    }} />
-                    <Text style={{
-                      position: "absolute", left: 2, top: y - 8,
-                      width: PAD_LEFT - 4, color: "#5E6E91",
-                      fontSize: 10, fontWeight: "800", textAlign: "right",
-                    }}>
-                      {ri === 0 ? "R0" : `R${ri}`}
-                    </Text>
-                  </View>
-                );
-              })}
-
-              {/* Series lines (only scored teams) */}
-              {scored.map((entry) => {
-                const pts = entry.pointsByRound.slice(0, visiblePtCount);
-                return pts.slice(1).map((pv, idx) => {
-                  const sx = xCoord(pts[idx] ?? 0, xMax, plotW);
-                  const sy = yCoord(idx, numIntervals, plotH);
-                  const ex = xCoord(pv, xMax, plotW);
-                  const ey = yCoord(idx + 1, numIntervals, plotH);
-                  return (
-                    <View key={`${entry.participantId}-${idx}`}>
-                      <View style={segStyle(sx, sy, ex, ey, `${entry.color}20`, SEG_GLOW_W)} />
-                      <View style={segStyle(sx, sy, ex, ey, entry.color, SEG_W)} />
-                    </View>
-                  );
-                });
-              })}
-
-              {/* Terminal dots at the end of each line (last active round) */}
-              {activeRounds > 0 && scored.map((entry) => {
-                const pts = entry.pointsByRound.slice(0, visiblePtCount);
-                const fv  = pts.at(-1) ?? 0;
-                const x   = xCoord(fv, xMax, plotW);
-                const y   = yCoord(pts.length - 1, numIntervals, plotH);
-                return (
-                  <View key={`dot-${entry.participantId}`} style={{
-                    position: "absolute",
-                    left: x - DOT_SIZE / 2, top: y - DOT_SIZE / 2,
-                    width: DOT_SIZE, height: DOT_SIZE,
-                    borderRadius: DOT_SIZE / 2, backgroundColor: entry.color,
-                    borderWidth: 2, borderColor: "#EDF4FF",
+            {/* X-axis: labels de pontuação no topo + linhas verticais */}
+            {xTicks.map((pts) => {
+              const x = cx(pts, xMax, plotW);
+              return (
+                <View key={`xt-${pts}`}>
+                  <View style={{
+                    position: "absolute", left: x,
+                    top: PAD_TOP, bottom: 0,
+                    width: GRID_LINE,
+                    backgroundColor: pts === 0 ? "rgba(59,91,255,0.18)" : "rgba(59,91,255,0.07)",
                   }} />
-                );
-              })}
-
-              {activeRounds === 0 && (
-                <View pointerEvents="none" style={{
-                  position: "absolute", right: 14, top: 14,
-                  borderRadius: 999, borderWidth: 1,
-                  borderColor: "rgba(59,91,255,0.14)",
-                  backgroundColor: "rgba(255,255,255,0.82)",
-                  paddingHorizontal: 12, paddingVertical: 7,
-                }}>
-                  <Text style={{ color: "#3150A6", fontSize: 11, fontWeight: "800" }}>Inicio em 0 ponto</Text>
+                  <Text style={{
+                    position: "absolute", left: x - 12, top: 5,
+                    width: 24, color: "#5E6E91", fontSize: 10, fontWeight: "800", textAlign: "center",
+                  }}>
+                    {pts}
+                  </Text>
                 </View>
-              )}
-            </View>
-          ) : (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24, backgroundColor: "#EDF4FF" }}>
-              <Text style={{ color: "#1C2B4A", fontSize: 16, fontWeight: "900", textAlign: "center" }}>
-                {!hasParticipants ? "Campeonato sem participantes" : "Rodadas ainda nao geradas"}
-              </Text>
-            </View>
-          )}
-        </View>
+              );
+            })}
 
-        {/* ── Badge panel — all scored teams stacked VERTICALLY, 1st→last ── */}
-        <View style={{
-          width: BADGE_PANEL_W,
-          height: chartHeight,
-          backgroundColor: "rgba(215,228,255,0.82)",
-          borderLeftWidth: 1,
-          borderLeftColor: "rgba(88,128,255,0.20)",
-          position: "relative",
-        }}>
-          {/* Column header */}
-          <Text style={{
-            position: "absolute", top: 6, left: 0, right: 0,
-            textAlign: "center", color: "rgba(59,91,255,0.45)",
-            fontSize: 8, fontWeight: "900", letterSpacing: 0.8, textTransform: "uppercase",
-          }}>
-            Times
-          </Text>
+            {/* Y-axis: labels de rodadas na esquerda + linhas horizontais */}
+            {Array.from({ length: visiblePtCount }, (_, i) => i).map((ri) => {
+              const y = cy(ri, numIntervals, plotH);
+              return (
+                <View key={`yl-${ri}`}>
+                  <View style={{
+                    position: "absolute", left: PAD_LEFT, right: 0,
+                    top: y, height: GRID_LINE,
+                    backgroundColor: "rgba(59,91,255,0.10)",
+                  }} />
+                  <Text style={{
+                    position: "absolute", left: 2, top: y - 8,
+                    width: PAD_LEFT - 4, color: "#5E6E91",
+                    fontSize: 10, fontWeight: "800", textAlign: "right",
+                  }}>
+                    {ri === 0 ? "R0" : `R${ri}`}
+                  </Text>
+                </View>
+              );
+            })}
 
-          {canRender && badgePanelEntries.map(({ entry, y }) => (
-            <View key={`bp-${entry.participantId}`} style={{
-              position: "absolute",
-              left: (BADGE_PANEL_W - BADGE_SIZE) / 2,
-              top: y,
-            }}>
-              <SeriesBadge badgeUrl={entry.badgeUrl} color={entry.color} initials={entry.initials} />
-            </View>
-          ))}
-
-          {/* Idle state: show all teams stacked before any round */}
-          {canRender && activeRounds === 0 && series.map((entry, i) => {
-            const sp = Math.min((chartHeight - PAD_TOP - PAD_BOTTOM) / Math.max(series.length, 1), BADGE_SLOT_H);
-            return (
-              <View key={`idle-${entry.participantId}`} style={{
+            {/* Linha separadora entre gráfico e área de badges */}
+            {activeRounds > 0 && (
+              <View style={{
                 position: "absolute",
-                left: (BADGE_PANEL_W - BADGE_SIZE) / 2,
-                top: PAD_TOP + i * sp,
+                left: PAD_LEFT, right: PAD_RIGHT,
+                top: PAD_TOP + plotH + DOT_TO_BADGE_GAP / 2,
+                height: 1,
+                backgroundColor: "rgba(59,91,255,0.12)",
+              }} />
+            )}
+
+            {/* Linhas das equipes (apenas times com pontos) */}
+            {scored.map((entry) => {
+              const pts = entry.pointsByRound.slice(0, visiblePtCount);
+              return pts.slice(1).map((pv, idx) => {
+                const sx = cx(pts[idx] ?? 0, xMax, plotW);
+                const sy = cy(idx, numIntervals, plotH);
+                const ex = cx(pv, xMax, plotW);
+                const ey = cy(idx + 1, numIntervals, plotH);
+                return (
+                  <View key={`${entry.participantId}-${idx}`}>
+                    <View style={seg(sx, sy, ex, ey, `${entry.color}20`, SEG_GLOW)} />
+                    <View style={seg(sx, sy, ex, ey, entry.color, SEG_W)} />
+                  </View>
+                );
+              });
+            })}
+
+            {/* Dot terminal no fim de cada linha */}
+            {activeRounds > 0 && scored.map((entry) => {
+              const pts = entry.pointsByRound.slice(0, visiblePtCount);
+              const fv  = pts.at(-1) ?? 0;
+              const x   = cx(fv, xMax, plotW);
+              const y   = cy(pts.length - 1, numIntervals, plotH);
+              return (
+                <View key={`dot-${entry.participantId}`} style={{
+                  position: "absolute",
+                  left: x - DOT_SIZE / 2, top: y - DOT_SIZE / 2,
+                  width: DOT_SIZE, height: DOT_SIZE,
+                  borderRadius: DOT_SIZE / 2, backgroundColor: entry.color,
+                  borderWidth: 2, borderColor: "#EDF4FF",
+                }} />
+              );
+            })}
+
+            {/* ── Badges no fundo, alinhados ao X da pontuação ──
+                Times com mesma pontuação empilhados verticalmente um abaixo do outro */}
+            {badgePositions.map(({ entry, bx, by }) => (
+              <View key={`badge-${entry.participantId}`} style={{
+                position: "absolute",
+                left: bx,
+                top: by,
               }}>
-                <SeriesBadge badgeUrl={entry.badgeUrl} color={entry.color} initials={entry.initials} />
+                <SeriesBadge
+                  badgeUrl={entry.badgeUrl}
+                  color={entry.color}
+                  initials={entry.initials}
+                  size={BADGE_SIZE}
+                />
               </View>
-            );
-          })}
-        </View>
+            ))}
+
+            {activeRounds === 0 && (
+              <View pointerEvents="none" style={{
+                position: "absolute", right: 14, top: 14,
+                borderRadius: 999, borderWidth: 1,
+                borderColor: "rgba(59,91,255,0.14)",
+                backgroundColor: "rgba(255,255,255,0.82)",
+                paddingHorizontal: 12, paddingVertical: 7,
+              }}>
+                <Text style={{ color: "#3150A6", fontSize: 11, fontWeight: "800" }}>Inicio em 0 ponto</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 }}>
+            <Text style={{ color: "#1C2B4A", fontSize: 16, fontWeight: "900", textAlign: "center" }}>
+              {!hasParticipants ? "Campeonato sem participantes" : "Rodadas ainda nao geradas"}
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* ── Legend ── */}
+      {/* ── Legenda ── */}
       {canRender ? (
         <View style={{ gap: 8 }}>
           <Pressable
@@ -403,7 +414,7 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
               {series.map((entry) => {
                 const pos     = series.findIndex((s) => s.participantId === entry.participantId) + 1;
                 const prevPos = prevPosById.get(entry.participantId);
-                const meta    = getMovementMeta(prevPos && prevPos > 0 ? prevPos - pos : 0);
+                const meta    = movMeta(prevPos && prevPos > 0 ? prevPos - pos : 0);
                 return (
                   <View key={`chip-${entry.participantId}`} style={{
                     flexDirection: "row", alignItems: "center", gap: 8,

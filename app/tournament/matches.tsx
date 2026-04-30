@@ -74,6 +74,9 @@ function MatchCrest({ teamName, onPress }: { teamName: string; onPress: () => vo
   );
 }
 
+const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"] as const;
+const DAY_HEADERS_PT = ["Dom","2ª","3ª","4ª","5ª","6ª","Sáb"] as const;
+
 export default function TournamentMatchesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { width } = useWindowDimensions();
@@ -107,6 +110,12 @@ export default function TournamentMatchesScreen() {
   const [showRoundsModal, setShowRoundsModal] = useState(false);
   const [pendingRoundDates, setPendingRoundDates] = useState<Record<string, string>>({});
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [calendarOpenForRound, setCalendarOpenForRound] = useState<number | null>(null);
+  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
+  const [calendarSelectedDay, setCalendarSelectedDay] = useState<number | null>(null);
+  const [calendarHour, setCalendarHour] = useState("23");
+  const [calendarMinute, setCalendarMinute] = useState("59");
 
   const roundTabsRef = useRef<ScrollView>(null);
   const tournamentMissing = Boolean(hydrated && (!id || !campeonatos.some((c) => c.id === id)));
@@ -682,10 +691,10 @@ export default function TournamentMatchesScreen() {
           transparent
           visible={showRoundsModal}
           animationType="fade"
-          onRequestClose={() => setShowRoundsModal(false)}
+          onRequestClose={() => { setShowRoundsModal(false); setCalendarOpenForRound(null); }}
         >
           <Pressable
-            onPress={() => setShowRoundsModal(false)}
+            onPress={() => { setShowRoundsModal(false); setCalendarOpenForRound(null); }}
             style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(4,8,18,0.60)" }}
           >
             <Pressable
@@ -711,7 +720,7 @@ export default function TournamentMatchesScreen() {
               </Text>
 
               <ScrollView
-                style={{ maxHeight: 280 }}
+                style={{ maxHeight: 380 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ gap: 10 }}
                 keyboardShouldPersistTaps="handled"
@@ -719,54 +728,75 @@ export default function TournamentMatchesScreen() {
                 {groupedMatches.map(([round]) => {
                   const isKO = isGroupsKnockout && round > numRodadasGrupos;
                   const label = isKO ? `MM${round - numRodadasGrupos}` : `R${round}`;
-                  const inputValue = pendingRoundDates[String(round)] ?? "";
-                  const parsedIso = inputValue ? parseDateInput(inputValue) : null;
-                  const isValidFormat = inputValue === "" || parsedIso !== null;
-                  const isPast = parsedIso !== null && new Date(parsedIso).getTime() <= Date.now();
-                  const borderColor = inputValue
-                    ? (!isValidFormat
-                        ? "rgba(220,60,60,0.55)"
-                        : isPast
-                          ? "rgba(245,158,11,0.55)"
-                          : "rgba(59,130,246,0.50)")
-                    : "rgba(255,255,255,0.12)";
+                  const isoVal = pendingRoundDates[String(round)] ?? "";
+                  const isPast = isoVal ? new Date(isoVal).getTime() <= Date.now() : false;
+                  const isCalOpen = calendarOpenForRound === round;
+                  const displayVal = isoVal ? (() => {
+                    const d = new Date(isoVal);
+                    return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+                  })() : null;
                   return (
-                    <View key={round} style={{ gap: 4 }}>
+                    <View key={round} style={{ gap: 6 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <View style={{ width: 46, height: 38, borderRadius: 10, backgroundColor: "rgba(154,184,255,0.10)", alignItems: "center", justifyContent: "center" }}>
                           <Text style={{ color: "#9AB8FF", fontSize: 12, fontWeight: "900" }}>{label}</Text>
                         </View>
-                        <TextInput
+                        <Pressable
+                          onPress={() => {
+                            if (isCalOpen) {
+                              setCalendarOpenForRound(null);
+                            } else {
+                              const existing = pendingRoundDates[String(round)];
+                              if (existing) {
+                                const d = new Date(existing);
+                                setCalendarYear(d.getFullYear());
+                                setCalendarMonth(d.getMonth());
+                                setCalendarSelectedDay(d.getDate());
+                                setCalendarHour(String(d.getHours()).padStart(2, "0"));
+                                setCalendarMinute(String(d.getMinutes()).padStart(2, "0"));
+                              } else {
+                                const now = new Date();
+                                setCalendarYear(now.getFullYear());
+                                setCalendarMonth(now.getMonth());
+                                setCalendarSelectedDay(null);
+                                setCalendarHour("23");
+                                setCalendarMinute("59");
+                              }
+                              setCalendarOpenForRound(round);
+                            }
+                          }}
                           style={{
                             flex: 1,
-                            color: "#F3F7FF",
-                            fontSize: 14,
-                            fontWeight: "700",
-                            backgroundColor: "rgba(255,255,255,0.06)",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            backgroundColor: isoVal
+                              ? (isPast ? "rgba(245,158,11,0.08)" : "rgba(59,130,246,0.10)")
+                              : "rgba(255,255,255,0.06)",
                             borderRadius: 10,
                             borderWidth: 1,
-                            borderColor,
+                            borderColor: isoVal
+                              ? (isPast ? "rgba(245,158,11,0.55)" : "rgba(59,130,246,0.50)")
+                              : "rgba(255,255,255,0.12)",
                             paddingHorizontal: 12,
-                            paddingVertical: 8,
+                            paddingVertical: 9,
                           }}
-                          placeholder="DD/MM/AAAA"
-                          placeholderTextColor="rgba(255,255,255,0.28)"
-                          value={inputValue}
-                          onChangeText={(text) =>
-                            setPendingRoundDates((prev) => ({ ...prev, [String(round)]: text }))
-                          }
-                          keyboardType="numeric"
-                          maxLength={10}
-                        />
-                        {inputValue !== "" && (
+                        >
+                          <Text style={{ color: isoVal ? "#F3F7FF" : "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: isoVal ? "700" : "400" }}>
+                            {displayVal ?? "Selecionar data"}
+                          </Text>
+                          <Ionicons name={isCalOpen ? "chevron-up" : "calendar-outline"} size={15} color={isoVal ? "#60A5FA" : "rgba(255,255,255,0.35)"} />
+                        </Pressable>
+                        {isoVal !== "" && (
                           <Pressable
-                            onPress={() =>
+                            onPress={() => {
                               setPendingRoundDates((prev) => {
                                 const next = { ...prev };
                                 delete next[String(round)];
                                 return next;
-                              })
-                            }
+                              });
+                              if (isCalOpen) setCalendarOpenForRound(null);
+                            }}
                             style={{ padding: 4 }}
                           >
                             <Text style={{ color: "#DC4040", fontSize: 18, fontWeight: "900", lineHeight: 20 }}>×</Text>
@@ -778,10 +808,160 @@ export default function TournamentMatchesScreen() {
                           Data no passado — jogos pendentes serão encerrados ao salvar
                         </Text>
                       )}
-                      {inputValue !== "" && !isValidFormat && (
-                        <Text style={{ color: "#DC4040", fontSize: 11, fontWeight: "700", paddingLeft: 56 }}>
-                          Formato inválido. Use DD/MM/AAAA
-                        </Text>
+                      {isCalOpen && (
+                        <View style={{
+                          marginLeft: 56,
+                          borderRadius: 14,
+                          backgroundColor: "rgba(5,10,22,0.95)",
+                          borderWidth: 1,
+                          borderColor: "rgba(59,130,246,0.24)",
+                          padding: 12,
+                          gap: 8,
+                        }}>
+                          {/* Month navigation */}
+                          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                            <Pressable
+                              onPress={() => {
+                                if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear((y) => y - 1); }
+                                else setCalendarMonth((m) => m - 1);
+                              }}
+                              style={{ padding: 8 }}
+                            >
+                              <Ionicons name="chevron-back" size={18} color="#9AB8FF" />
+                            </Pressable>
+                            <Text style={{ color: "#F3F7FF", fontSize: 13, fontWeight: "900" }}>
+                              {MONTHS_PT[calendarMonth]} {calendarYear}
+                            </Text>
+                            <Pressable
+                              onPress={() => {
+                                if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear((y) => y + 1); }
+                                else setCalendarMonth((m) => m + 1);
+                              }}
+                              style={{ padding: 8 }}
+                            >
+                              <Ionicons name="chevron-forward" size={18} color="#9AB8FF" />
+                            </Pressable>
+                          </View>
+                          {/* Day headers */}
+                          <View style={{ flexDirection: "row" }}>
+                            {DAY_HEADERS_PT.map((d) => (
+                              <View key={d} style={{ flex: 1, alignItems: "center", paddingVertical: 2 }}>
+                                <Text style={{ color: "#5678C9", fontSize: 10, fontWeight: "800" }}>{d}</Text>
+                              </View>
+                            ))}
+                          </View>
+                          {/* Day grid */}
+                          {(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+                            const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+                            const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+                            while (cells.length % 7 !== 0) cells.push(null);
+                            const weeks: (number | null)[][] = [];
+                            for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+                            return weeks.map((week, wi) => (
+                              <View key={wi} style={{ flexDirection: "row" }}>
+                                {week.map((day, di) => {
+                                  if (day === null) return <View key={di} style={{ flex: 1 }} />;
+                                  const cellDate = new Date(calendarYear, calendarMonth, day);
+                                  cellDate.setHours(0, 0, 0, 0);
+                                  const isPastDay = cellDate < today;
+                                  const isToday = cellDate.getTime() === today.getTime();
+                                  const isSel = calendarSelectedDay === day;
+                                  return (
+                                    <Pressable
+                                      key={di}
+                                      onPress={() => !isPastDay && setCalendarSelectedDay(day)}
+                                      disabled={isPastDay}
+                                      style={{ flex: 1, alignItems: "center", paddingVertical: 3 }}
+                                    >
+                                      <View style={{
+                                        width: 28, height: 28, borderRadius: 14,
+                                        alignItems: "center", justifyContent: "center",
+                                        backgroundColor: isSel ? "#2447A6" : "transparent",
+                                        borderWidth: isToday && !isSel ? 1.5 : 0,
+                                        borderColor: "#3B82F6",
+                                      }}>
+                                        <Text style={{
+                                          color: isSel ? "#FFFFFF" : isPastDay ? "rgba(255,255,255,0.18)" : isToday ? "#60A5FA" : "#F3F7FF",
+                                          fontSize: 12,
+                                          fontWeight: isSel || isToday ? "900" : "500",
+                                        }}>{day}</Text>
+                                      </View>
+                                    </Pressable>
+                                  );
+                                })}
+                              </View>
+                            ));
+                          })()}
+                          {/* Time input HH:MM */}
+                          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 }}>
+                            <TextInput
+                              value={calendarHour}
+                              onChangeText={(t) => {
+                                const n = t.replace(/\D/g, "").slice(0, 2);
+                                const num = parseInt(n, 10);
+                                if (n === "" || (!isNaN(num) && num >= 0 && num <= 23)) setCalendarHour(n);
+                              }}
+                              style={{ width: 48, color: "#F3F7FF", fontSize: 18, fontWeight: "900", textAlign: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(154,184,255,0.20)", paddingVertical: 7 }}
+                              keyboardType="numeric"
+                              maxLength={2}
+                              placeholder="HH"
+                              placeholderTextColor="rgba(255,255,255,0.30)"
+                            />
+                            <Text style={{ color: "#9AB8FF", fontSize: 18, fontWeight: "900" }}>:</Text>
+                            <TextInput
+                              value={calendarMinute}
+                              onChangeText={(t) => {
+                                const n = t.replace(/\D/g, "").slice(0, 2);
+                                const num = parseInt(n, 10);
+                                if (n === "" || (!isNaN(num) && num >= 0 && num <= 59)) setCalendarMinute(n);
+                              }}
+                              style={{ width: 48, color: "#F3F7FF", fontSize: 18, fontWeight: "900", textAlign: "center", backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 10, borderWidth: 1, borderColor: "rgba(154,184,255,0.20)", paddingVertical: 7 }}
+                              keyboardType="numeric"
+                              maxLength={2}
+                              placeholder="MM"
+                              placeholderTextColor="rgba(255,255,255,0.30)"
+                            />
+                          </View>
+                          {/* Calendar action buttons */}
+                          <View style={{ flexDirection: "row", gap: 6, marginTop: 2 }}>
+                            <Pressable
+                              onPress={() => {
+                                setPendingRoundDates((prev) => {
+                                  const next = { ...prev };
+                                  delete next[String(round)];
+                                  return next;
+                                });
+                                setCalendarOpenForRound(null);
+                              }}
+                              style={{ paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(220,60,60,0.30)", backgroundColor: "rgba(220,60,60,0.08)" }}
+                            >
+                              <Text style={{ color: "#DC4040", fontSize: 12, fontWeight: "800" }}>Zerar</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => setCalendarOpenForRound(null)}
+                              style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(154,184,255,0.18)" }}
+                            >
+                              <Text style={{ color: "#9AB8FF", fontSize: 12, fontWeight: "800" }}>Cancelar</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => {
+                                if (calendarSelectedDay !== null) {
+                                  const h = Math.min(parseInt(calendarHour || "23", 10) || 23, 23);
+                                  const m = Math.min(parseInt(calendarMinute || "59", 10) || 59, 59);
+                                  const d = new Date(calendarYear, calendarMonth, calendarSelectedDay, h, m, 0);
+                                  setPendingRoundDates((prev) => ({ ...prev, [String(round)]: d.toISOString() }));
+                                }
+                                setCalendarOpenForRound(null);
+                              }}
+                              style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", backgroundColor: calendarSelectedDay !== null ? "#2447A6" : "rgba(36,71,166,0.30)" }}
+                            >
+                              <Text style={{ color: calendarSelectedDay !== null ? "#FFFFFF" : "rgba(255,255,255,0.40)", fontSize: 12, fontWeight: "900" }}>Confirmar</Text>
+                            </Pressable>
+                          </View>
+                        </View>
                       )}
                     </View>
                   );
@@ -790,7 +970,7 @@ export default function TournamentMatchesScreen() {
 
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <Pressable
-                  onPress={() => setPendingRoundDates({})}
+                  onPress={() => { setPendingRoundDates({}); setCalendarOpenForRound(null); }}
                   style={{
                     paddingVertical: 13,
                     paddingHorizontal: 16,
@@ -804,7 +984,7 @@ export default function TournamentMatchesScreen() {
                   <Text style={{ color: "#DC4040", fontSize: 13, fontWeight: "800" }}>Limpar</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => setShowRoundsModal(false)}
+                  onPress={() => { setShowRoundsModal(false); setCalendarOpenForRound(null); }}
                   style={{
                     flex: 1,
                     paddingVertical: 13,
@@ -819,13 +999,12 @@ export default function TournamentMatchesScreen() {
                 <Pressable
                   onPress={() => {
                     if (!bundle) return;
-                    const parsed: Record<string, string> = {};
+                    const toSave: Record<string, string> = {};
                     for (const [k, v] of Object.entries(pendingRoundDates)) {
-                      if (!v.trim()) continue;
-                      const iso = parseDateInput(v);
-                      if (iso) parsed[k] = iso;
+                      if (v) toSave[k] = v;
                     }
-                    definirPrazoRodasDatas(bundle.campeonato.id, parsed);
+                    definirPrazoRodasDatas(bundle.campeonato.id, toSave);
+                    setCalendarOpenForRound(null);
                     setShowRoundsModal(false);
                   }}
                   style={{
@@ -873,12 +1052,8 @@ export default function TournamentMatchesScreen() {
             {canManageMatch && (
               <Pressable
                 onPress={() => {
-                  const currentDatas = bundle.campeonato.prazoRodasDatas ?? {};
-                  const displayDates: Record<string, string> = {};
-                  for (const [k, v] of Object.entries(currentDatas)) {
-                    displayDates[k] = formatDateForInput(v);
-                  }
-                  setPendingRoundDates(displayDates);
+                  setPendingRoundDates({ ...(bundle.campeonato.prazoRodasDatas ?? {}) });
+                  setCalendarOpenForRound(null);
                   setShowRoundsModal(true);
                 }}
                 style={{
@@ -1131,42 +1306,6 @@ export default function TournamentMatchesScreen() {
               onDecreaseHour={() => handleAdjustRoundExtraTime(-HOUR_MS)}
               onIncreaseHour={() => handleAdjustRoundExtraTime(HOUR_MS)}
             />
-            {canManageMatch && (
-              <Pressable
-                onPress={() => {
-                  const currentDatas = bundle.campeonato.prazoRodasDatas ?? {};
-                  const displayDates: Record<string, string> = {};
-                  for (const [k, v] of Object.entries(currentDatas)) {
-                    displayDates[k] = formatDateForInput(v);
-                  }
-                  setPendingRoundDates(displayDates);
-                  setShowRoundsModal(true);
-                }}
-                style={{
-                  marginTop: 10,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  alignSelf: "flex-start",
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: "rgba(59,130,246,0.30)",
-                  backgroundColor: "rgba(59,130,246,0.08)",
-                }}
-              >
-                <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
-                  {(() => {
-                    const count = Object.keys(bundle.campeonato.prazoRodasDatas ?? {}).length;
-                    return count > 0
-                      ? `${count} rodada${count > 1 ? "s" : ""} com prazo`
-                      : "Prazos por rodada";
-                  })()}
-                </Text>
-                <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "900" }}>✎ Configurar</Text>
-              </Pressable>
-            )}
           </View>
         )}
 

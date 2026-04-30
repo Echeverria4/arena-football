@@ -82,7 +82,7 @@ export function TournamentDeadlinePill() {
     return () => clearInterval(interval);
   }, [campeonato?.prazoFinalEm]);
 
-  if (!campeonato) return null;
+  if (!campeonato || !deadline) return null;
 
   function handleSaveDeadline(date: Date) {
     if (!campeonato) return;
