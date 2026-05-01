@@ -173,15 +173,15 @@ function buildRadarData(
 }
 
 // ── Evolução Chart ────────────────────────────────────────────────────────────
-// Orientation: Y = rounds (rows), X = cumulative points (columns)
-// Crests stacked vertically below the final round line, centred on each player's final X.
+// Orientation: X = rounds (left→right), Y = cumulative points (bottom→top)
+// Crests placed side-by-side horizontally at the right end of each line.
 
-const EVO_ROW_H = 52;
-const EVO_PAD_T = 22;
-const EVO_PAD_L = 36;
-const EVO_PAD_R = 14;
-const EVO_CREST_SZ = 28;
-const EVO_CREST_VGAP = 4;
+const EVO_H = 220;
+const EVO_PAD_T = 16;
+const EVO_PAD_B = 34;
+const EVO_PAD_L = 38;
+const CREST_SZ = 22;
+const CREST_GAP = 3;
 
 function EvolucaoChart({
   series,
@@ -217,23 +217,23 @@ function EvolucaoChart({
     [endGroups],
   );
 
+  const EVO_PAD_R = 6 + maxGroupSize * (CREST_SZ + CREST_GAP);
   const plotW = containerWidth - EVO_PAD_L - EVO_PAD_R;
-  const crestAreaH = 10 + maxGroupSize * (EVO_CREST_SZ + EVO_CREST_VGAP);
-  const totalH = EVO_PAD_T + numRounds * EVO_ROW_H + crestAreaH;
+  const plotH = EVO_H - EVO_PAD_T - EVO_PAD_B;
 
   if (containerWidth < 10) return null;
 
-  function xPos(pts: number) {
-    return EVO_PAD_L + (maxPts <= 0 ? 0 : (pts / maxPts) * plotW);
+  function xPos(roundIdx: number) {
+    return EVO_PAD_L + (numRounds <= 0 ? 0 : (roundIdx / numRounds) * plotW);
   }
-  function yPos(roundIdx: number) {
-    return EVO_PAD_T + roundIdx * EVO_ROW_H;
+  function yPos(pts: number) {
+    return EVO_PAD_T + (1 - (maxPts <= 0 ? 0 : pts / maxPts)) * plotH;
   }
 
-  // X-axis grid at multiples of 3
-  const xGridPts: number[] = [];
-  for (let p = 0; p <= maxPts; p += 3) xGridPts.push(p);
-  if (xGridPts[xGridPts.length - 1] !== maxPts) xGridPts.push(maxPts);
+  // Y-axis grid at multiples of 3 (point values)
+  const yGridPts: number[] = [];
+  for (let p = 0; p <= maxPts; p += 3) yGridPts.push(p);
+  if (yGridPts[yGridPts.length - 1] !== maxPts) yGridPts.push(maxPts);
 
   if (numRounds === 0) {
     return (
@@ -244,41 +244,39 @@ function EvolucaoChart({
   }
 
   return (
-    <View style={{ width: containerWidth, height: totalH }}>
+    <View style={{ width: containerWidth, height: EVO_H }}>
 
-      {/* X-axis: vertical grid lines + point labels at top */}
-      {xGridPts.map((pts) => (
-        <View key={`vg-${pts}`}>
+      {/* Y-axis: horizontal grid lines + point labels at left */}
+      {yGridPts.map((pts) => (
+        <View key={`hg-${pts}`}>
           <View style={{
             position: "absolute",
-            left: xPos(pts), top: EVO_PAD_T,
-            width: 0.6, height: numRounds * EVO_ROW_H,
+            left: EVO_PAD_L, right: EVO_PAD_R,
+            top: yPos(pts), height: 0.6,
             backgroundColor: pts === 0 ? "rgba(59,91,255,0.30)" : "rgba(59,91,255,0.12)",
           }} />
           <Text style={{
             position: "absolute",
-            left: xPos(pts) - 12, top: 4,
-            width: 24, textAlign: "center",
+            left: 2, top: yPos(pts) - 8,
+            width: EVO_PAD_L - 6, textAlign: "right",
             fontSize: 10, fontWeight: "800", color: "#4A6490",
           }}>{pts}</Text>
         </View>
       ))}
 
-      {/* Y-axis: horizontal grid lines + round labels at left */}
+      {/* X-axis: vertical grid lines + round labels at bottom */}
       {Array.from({ length: numRounds + 1 }, (_, r) => r).map((r) => (
-        <View key={`hg-${r}`}>
+        <View key={`vg-${r}`}>
           <View style={{
             position: "absolute",
-            left: EVO_PAD_L, right: EVO_PAD_R,
-            top: yPos(r), height: 0.6,
-            backgroundColor: r === numRounds
-              ? "rgba(59,91,255,0.24)"
-              : "rgba(59,91,255,0.14)",
+            left: xPos(r), top: EVO_PAD_T,
+            width: 0.6, height: plotH,
+            backgroundColor: r === 0 ? "rgba(59,91,255,0.30)" : "rgba(59,91,255,0.12)",
           }} />
           <Text style={{
             position: "absolute",
-            left: 2, top: yPos(r) - 8,
-            width: EVO_PAD_L - 4, textAlign: "right",
+            left: xPos(r) - 10, top: EVO_PAD_T + plotH + 6,
+            width: 20, textAlign: "center",
             fontSize: 10, fontWeight: "800", color: "#4A6490",
           }}>R{r}</Text>
         </View>
@@ -292,7 +290,7 @@ function EvolucaoChart({
           return (
             <View
               key={`${s.participantId}-glow-${i}`}
-              style={seg(xPos(pts), yPos(i), xPos(nextPts), yPos(i + 1), s.color, 8, active ? 0.13 : 0.02)}
+              style={seg(xPos(i), yPos(pts), xPos(i + 1), yPos(nextPts), s.color, 8, active ? 0.13 : 0.02)}
             />
           );
         });
@@ -306,13 +304,13 @@ function EvolucaoChart({
           return (
             <View
               key={`${s.participantId}-line-${i}`}
-              style={seg(xPos(pts), yPos(i), xPos(nextPts), yPos(i + 1), s.color, 2.5, active ? 1 : 0.08)}
+              style={seg(xPos(i), yPos(pts), xPos(i + 1), yPos(nextPts), s.color, 2.5, active ? 1 : 0.08)}
             />
           );
         });
       })}
 
-      {/* Junction dots at each round boundary */}
+      {/* Junction dots at each round */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
         return s.pointsByRound.map((pts, i) => {
@@ -322,7 +320,7 @@ function EvolucaoChart({
           return (
             <View key={`${s.participantId}-dot-${i}`} style={{
               position: "absolute",
-              left: xPos(pts) - r, top: yPos(i) - r,
+              left: xPos(i) - r, top: yPos(pts) - r,
               width: r * 2, height: r * 2, borderRadius: r,
               backgroundColor: isFinal ? s.color : "#060D18",
               borderWidth: isFinal ? 0 : 1.5,
@@ -333,13 +331,13 @@ function EvolucaoChart({
         });
       })}
 
-      {/* Crests below final round — same X as final points, stacked vertically when tied */}
+      {/* Crests side by side at the right end of lines */}
       {series.map((s) => {
         const finalPts = s.pointsByRound[numRounds] ?? 0;
         const group = endGroups.get(finalPts) ?? [s];
         const idx = group.findIndex((g) => g.participantId === s.participantId);
-        const xCrest = xPos(finalPts) - EVO_CREST_SZ / 2;
-        const yCrest = yPos(numRounds) + 10 + idx * (EVO_CREST_SZ + EVO_CREST_VGAP);
+        const xCrest = xPos(numRounds) + 5 + idx * (CREST_SZ + CREST_GAP);
+        const yCrest = yPos(finalPts) - CREST_SZ / 2;
         const active = !selectedId || selectedId === s.participantId;
         return (
           <View
@@ -347,8 +345,8 @@ function EvolucaoChart({
             style={{
               position: "absolute",
               left: xCrest, top: yCrest,
-              width: EVO_CREST_SZ, height: EVO_CREST_SZ,
-              borderRadius: EVO_CREST_SZ / 2,
+              width: CREST_SZ, height: CREST_SZ,
+              borderRadius: CREST_SZ / 2,
               overflow: "hidden",
               backgroundColor: "#060D18",
               borderWidth: 1.5, borderColor: s.color,
@@ -360,7 +358,7 @@ function EvolucaoChart({
             {s.crest ? (
               <Image
                 source={{ uri: s.crest }}
-                style={{ width: EVO_CREST_SZ - 4, height: EVO_CREST_SZ - 4 }}
+                style={{ width: CREST_SZ - 4, height: CREST_SZ - 4 }}
                 resizeMode="contain"
               />
             ) : (

@@ -4,7 +4,6 @@ import { Alert, Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { KnockoutBracket } from "@/components/matches/KnockoutBracket";
-import { LeagueProgressChart } from "@/components/tournament/LeagueProgressChart";
 import { BackButton } from "@/components/ui/BackButton";
 import { Card3D } from "@/components/ui/Card3D";
 import { ChoiceChip } from "@/components/ui/ChoiceChip";
@@ -69,10 +68,6 @@ export default function TournamentDetailsScreen() {
   const showBracketPanel =
     formato === "knockout" ||
     (formato === "groups_knockout" && hasKnockoutRounds && groupStageAllDone);
-  const showChartPanel =
-    formato === "league" ||
-    formato === "groups" ||
-    (formato === "groups_knockout" && (!hasKnockoutRounds || !groupStageAllDone));
   const isPersistedTournament = campeonatos.some((campeonato) => campeonato.id === bundle?.campeonato.id);
   const isCurrentTournament =
     currentTournamentId == null || currentTournamentId === bundle?.campeonato.id;
@@ -301,17 +296,17 @@ export default function TournamentDetailsScreen() {
           ))}
         </ScrollRow>
 
-        <RevealOnScroll delay={0}>
-          <Card3D
-            accent={bundle.tournament.status === "finished" ? "gold" : "blue"}
-            ambientSurface={bundle.tournament.status !== "finished"}
-            eyebrow="Tela principal"
-            badge={bundle.tournament.status === "finished" ? "Finalizado" : "Em andamento"}
-            hideHeroPanel
-            minHeight={540}
-            footerLeft={`${bundle.participants.length} jogadores`}
-            content={
-              showBracketPanel ? (
+        {showBracketPanel && (
+          <RevealOnScroll delay={0}>
+            <Card3D
+              accent={bundle.tournament.status === "finished" ? "gold" : "blue"}
+              ambientSurface={bundle.tournament.status !== "finished"}
+              eyebrow="Tela principal"
+              badge={bundle.tournament.status === "finished" ? "Finalizado" : "Em andamento"}
+              hideHeroPanel
+              minHeight={540}
+              footerLeft={`${bundle.participants.length} jogadores`}
+              content={
                 <KnockoutBracket
                   campeonato={bundle.campeonato}
                   participantes={bundle.campeonato.participantes}
@@ -319,15 +314,10 @@ export default function TournamentDetailsScreen() {
                     router.push({ pathname: "/tournament/matches", params: { id: bundle.campeonato.id } })
                   }
                 />
-              ) : showChartPanel ? (
-                <LeagueProgressChart
-                  campeonato={bundle.campeonato}
-                  format={bundle.tournament.format}
-                />
-              ) : null
-            }
-          />
-        </RevealOnScroll>
+              }
+            />
+          </RevealOnScroll>
+        )}
 
 
         <View style={{ gap: 12 }}>

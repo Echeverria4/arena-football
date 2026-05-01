@@ -197,7 +197,9 @@ export default function TournamentStandingsScreen() {
       map.set(groupName, [...current, entry]);
     });
 
-    return Array.from(map.entries()).map(([label, entries]) => ({ label, entries }));
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, entries]) => ({ label, entries }));
   }, [bundle.participants, effectiveGroupedView, sortedStandings]);
 
   const groupedRows = useMemo(
