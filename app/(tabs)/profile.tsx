@@ -1,17 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Alert, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, Platform, Pressable, Share, Text, View } from "react-native";
 
 import { LiveBorderCard } from "@/components/ui/LiveBorderCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { buildTournamentShareLink } from "@/lib/tournament-sharing";
 import { resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { signOut } from "@/services/auth";
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTournamentStore } from "@/stores/tournament-store";
+import { useVideoStore } from "@/stores/video-store";
 
 const ROLE_LABELS: Record<string, string> = {
   organizer: "Organizador",
@@ -19,12 +22,25 @@ const ROLE_LABELS: Record<string, string> = {
   player: "Jogador",
 };
 
+async function copyOrShare(link: string) {
+  if (Platform.OS === "web" && globalThis.navigator?.clipboard?.writeText) {
+    await globalThis.navigator.clipboard.writeText(link);
+    return "copied" as const;
+  }
+  await Share.share({ message: link, url: link });
+  return "shared" as const;
+}
+
 export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
   const campeonatos = useTournamentStore((state) => state.campeonatos);
+  const videos = useVideoStore((state) => state.videos);
+  const [copiedViewer, setCopiedViewer] = useState(false);
+  const [copiedEditor, setCopiedEditor] = useState(false);
+  const [linkBusy, setLinkBusy] = useState<"viewer" | "editor" | null>(null);
 
   const activeCampeonato = campeonatos.find((c) => c.id === currentTournamentId) ?? null;
   const accessMode = resolveTournamentAccessMode(tournamentAccess, currentTournamentId);
@@ -40,9 +56,35 @@ export default function ProfileScreen() {
     }
   }
 
-  function handleManageShare() {
-    if (!currentTournamentId) return;
-    router.push({ pathname: "/tournament/access", params: { id: currentTournamentId } });
+  async function handleCopyLink(access: "viewer" | "editor") {
+    if (!activeCampeonato || linkBusy) return;
+    setLinkBusy(access);
+    try {
+      const tournamentVideos = videos.filter((v) => v.tournamentId === activeCampeonato.id);
+      const link = await buildTournamentShareLink({
+        access,
+        campeonato: activeCampeonato,
+        videos: tournamentVideos,
+      });
+      if (!link) {
+        Alert.alert("Link indisponível", "Este campeonato já foi finalizado e não aceita novos links de acesso.");
+        return;
+      }
+      const result = await copyOrShare(link);
+      if (result === "copied") {
+        if (access === "viewer") {
+          setCopiedViewer(true);
+          setTimeout(() => setCopiedViewer(false), 2200);
+        } else {
+          setCopiedEditor(true);
+          setTimeout(() => setCopiedEditor(false), 2200);
+        }
+      }
+    } catch {
+      Alert.alert("Falha ao gerar link", "Não foi possível criar o link agora. Tente novamente.");
+    } finally {
+      setLinkBusy(null);
+    }
   }
 
   return (
@@ -168,12 +210,77 @@ export default function ProfileScreen() {
                   Gere links de acesso para convidados entrarem como Visualizador ou Editor neste campeonato.
                 </Text>
 
-                <PrimaryButton
-                  label="Gerenciar links"
-                  onPress={handleManageShare}
-                  size="sm"
-                  className="self-start"
-                />
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                  {/* Visualizador — gold */}
+                  <Pressable
+                    onPress={() => handleCopyLink("viewer")}
+                    disabled={linkBusy !== null}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 7,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: copiedViewer ? "rgba(87,255,124,0.40)" : "rgba(255,215,106,0.38)",
+                      backgroundColor: copiedViewer ? "rgba(87,255,124,0.10)" : "rgba(255,215,106,0.10)",
+                      opacity: pressed || (linkBusy !== null && linkBusy !== "viewer") ? 0.65 : 1,
+                    })}
+                  >
+                    <Ionicons
+                      name={copiedViewer ? "checkmark-outline" : "copy-outline"}
+                      size={13}
+                      color={copiedViewer ? "#C6F8D6" : "#FFD76A"}
+                    />
+                    <Text
+                      style={{
+                        color: copiedViewer ? "#C6F8D6" : "#FFD76A",
+                        fontSize: 12,
+                        fontWeight: "800",
+                        letterSpacing: 1.4,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {copiedViewer ? "Copiado!" : linkBusy === "viewer" ? "Gerando..." : "Visualizador"}
+                    </Text>
+                  </Pressable>
+
+                  {/* Editor — neon violet */}
+                  <Pressable
+                    onPress={() => handleCopyLink("editor")}
+                    disabled={linkBusy !== null}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 7,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: copiedEditor ? "rgba(87,255,124,0.40)" : "rgba(167,139,250,0.40)",
+                      backgroundColor: copiedEditor ? "rgba(87,255,124,0.10)" : "rgba(139,92,246,0.12)",
+                      opacity: pressed || (linkBusy !== null && linkBusy !== "editor") ? 0.65 : 1,
+                    })}
+                  >
+                    <Ionicons
+                      name={copiedEditor ? "checkmark-outline" : "copy-outline"}
+                      size={13}
+                      color={copiedEditor ? "#C6F8D6" : "#C4B5FD"}
+                    />
+                    <Text
+                      style={{
+                        color: copiedEditor ? "#C6F8D6" : "#C4B5FD",
+                        fontSize: 12,
+                        fontWeight: "800",
+                        letterSpacing: 1.4,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {copiedEditor ? "Copiado!" : linkBusy === "editor" ? "Gerando..." : "Editor"}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </LiveBorderCard>
           </RevealOnScroll>

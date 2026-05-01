@@ -607,7 +607,7 @@ export default function TabsLayout() {
             flexShrink: 0,
             flexBasis: "auto",
             width: "auto",
-            paddingHorizontal: isSmallPhone ? 20 : isPhone ? 28 : 36,
+            paddingHorizontal: isSmallPhone ? 10 : isPhone ? 18 : 28,
           },
           tabBarLabelStyle: {
             fontSize: isSmallPhone ? 11 : isPhone ? 12 : 13,
@@ -633,6 +633,22 @@ export default function TabsLayout() {
           options={{
             title: "Torneios",
             tabBarIcon: ({ color, size }) => <Ionicons name="trophy-outline" color={color} size={size} />,
+            tabBarButton: (props) => <GradientTabBarButton {...props} />,
+          }}
+        />
+        <Tabs.Screen
+          name="jogos"
+          options={{
+            title: "Jogos",
+            tabBarIcon: ({ color, size }) => <Ionicons name="football-outline" color={color} size={size} />,
+            tabBarButton: (props) => <GradientTabBarButton {...props} />,
+          }}
+        />
+        <Tabs.Screen
+          name="tabela"
+          options={{
+            title: "Tabela",
+            tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart-outline" color={color} size={size} />,
             tabBarButton: (props) => <GradientTabBarButton {...props} />,
           }}
         />
