@@ -227,16 +227,6 @@ export default function TournamentDetailsScreen() {
       active: false,
       onPress: () => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } }),
     },
-    ...(accessMode === "owner"
-      ? [
-          {
-            label: "Links",
-            active: false,
-            onPress: () =>
-              router.push({ pathname: "/tournament/access", params: { id: bundle.campeonato.id } }),
-          },
-        ]
-      : []),
   ];
 
   return (

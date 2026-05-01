@@ -831,33 +831,6 @@ export default function VideosScreen() {
 
         <View className="flex-row flex-wrap gap-5">
           {isModerator ? (
-            <RevealOnScroll delay={40} style={{ width: galleryColumns === 1 ? "100%" : galleryCardWidth }}>
-              <Card3D
-                accent="obsidian"
-                eyebrow="Compartilhamento"
-                badge={videoPanelAccessMode === "moderator" ? "Moderando por link" : "Painel local"}
-                title="Links do painel"
-                subtitle="Compartilhe o painel inteiro em modo visualizador para jogadores, ou em modo moderador para quem vai administrar esta galeria."
-                hideHeroPanel
-                content={
-                  <View className="gap-3">
-                    <PrimaryButton
-                      label="Copiar link visualizador"
-                      onPress={() => handleSharePanelLink("viewer")}
-                      variant="light"
-                    />
-                    <PrimaryButton
-                      label="Copiar link moderador"
-                      onPress={() => handleSharePanelLink("moderator")}
-                      variant="secondary"
-                    />
-                  </View>
-                }
-              />
-            </RevealOnScroll>
-          ) : null}
-
-          {isModerator ? (
             <RevealOnScroll delay={60} style={{ width: galleryColumns === 1 ? "100%" : galleryCardWidth }}>
               <Card3D
                 accent="obsidian"

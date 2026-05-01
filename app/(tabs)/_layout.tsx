@@ -529,7 +529,7 @@ export default function TabsLayout() {
       return;
     }
 
-    if (pathname?.startsWith("/tournament/") || pathname === "/history" || pathname === "/hall-of-fame") {
+    if (pathname?.startsWith("/tournament/") || pathname === "/history") {
       return;
     }
 
@@ -584,9 +584,9 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: "transparent",
             borderTopColor: "transparent",
-            height: isSmallPhone ? 64 : isPhone ? 68 : 74,
-            paddingBottom: isSmallPhone ? 8 : isPhone ? 10 : 12,
-            paddingTop: isSmallPhone ? 6 : 8,
+            height: isSmallPhone ? 70 : isPhone ? 74 : 80,
+            paddingBottom: isSmallPhone ? 10 : isPhone ? 12 : 14,
+            paddingTop: isSmallPhone ? 8 : 10,
             flexShrink: 0,
             position: "absolute",
             left: 0,
@@ -600,7 +600,7 @@ export default function TabsLayout() {
             backgroundColor: "transparent",
             flex: 1,
             minHeight: 0,
-            paddingBottom: lockToActiveTournament ? 0 : isSmallPhone ? 72 : isPhone ? 80 : 90,
+            paddingBottom: lockToActiveTournament ? 0 : isSmallPhone ? 78 : isPhone ? 86 : 96,
           },
           tabBarItemStyle: {
             flexGrow: 0,
@@ -608,6 +608,7 @@ export default function TabsLayout() {
             flexBasis: "auto",
             width: "auto",
             paddingHorizontal: isSmallPhone ? 10 : isPhone ? 18 : 28,
+            minHeight: isSmallPhone ? 48 : 52,
           },
           tabBarLabelStyle: {
             fontSize: isSmallPhone ? 11 : isPhone ? 12 : 13,
@@ -615,7 +616,9 @@ export default function TabsLayout() {
             marginTop: Platform.OS === "android" ? 0 : 2,
           },
           tabBarIconStyle: {
-            marginTop: isSmallPhone ? 4 : 0,
+            marginTop: 0,
+            minWidth: 26,
+            minHeight: 26,
           },
           tabBarBackground: () => <TabBarBackdrop />,
         }}
@@ -686,10 +689,6 @@ export default function TabsLayout() {
         />
         <Tabs.Screen
           name="selections"
-          options={{ href: null }}
-        />
-        <Tabs.Screen
-          name="hall-of-fame"
           options={{ href: null }}
         />
         <Tabs.Screen

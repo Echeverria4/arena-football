@@ -190,12 +190,6 @@ export default function TournamentParticipantsScreen() {
             label="Videos"
             onPress={() => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } })}
           />
-          {accessMode === "owner" ? (
-            <ChoiceChip
-              label="Links"
-              onPress={() => router.push({ pathname: "/tournament/access", params: { id: bundle.campeonato.id } })}
-            />
-          ) : null}
         </ScrollRow>
 
         <RevealOnScroll delay={0}>
