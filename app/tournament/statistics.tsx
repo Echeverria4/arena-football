@@ -105,6 +105,11 @@ function buildEvolucaoSeries(
   );
 
   (campeonato.rodadas ?? []).forEach((round) => {
+    const hasFinalized = round.some(
+      (m) => m.status === "finalizado" && m.placarMandante != null && m.placarVisitante != null,
+    );
+    if (!hasFinalized) return;
+
     round.forEach((m) => {
       if (m.status !== "finalizado" || m.placarMandante == null || m.placarVisitante == null) return;
       const hg = m.placarMandante, ag = m.placarVisitante;
@@ -168,10 +173,15 @@ function buildRadarData(
 }
 
 // ── Evolução Chart ────────────────────────────────────────────────────────────
+// Orientation: Y = rounds (rows), X = cumulative points (columns)
+// Crests stacked vertically below the final round line, centred on each player's final X.
 
-const EVO_H = 220;
-const EVO_PAD_T = 16, EVO_PAD_B = 34, EVO_PAD_L = 38;
-const CREST_SZ = 22, CREST_GAP = 3;
+const EVO_ROW_H = 52;
+const EVO_PAD_T = 22;
+const EVO_PAD_L = 36;
+const EVO_PAD_R = 14;
+const EVO_CREST_SZ = 28;
+const EVO_CREST_VGAP = 4;
 
 function EvolucaoChart({
   series,
@@ -191,7 +201,6 @@ function EvolucaoChart({
     [series],
   );
 
-  // Group series by final points so tied teams sit side by side
   const endGroups = useMemo(() => {
     const map = new Map<number, EvolucaoSeries[]>();
     series.forEach((s) => {
@@ -208,131 +217,157 @@ function EvolucaoChart({
     [endGroups],
   );
 
-  const EVO_PAD_R = 6 + maxGroupSize * (CREST_SZ + CREST_GAP);
   const plotW = containerWidth - EVO_PAD_L - EVO_PAD_R;
-  const plotH = EVO_H - EVO_PAD_T - EVO_PAD_B;
+  const crestAreaH = 10 + maxGroupSize * (EVO_CREST_SZ + EVO_CREST_VGAP);
+  const totalH = EVO_PAD_T + numRounds * EVO_ROW_H + crestAreaH;
 
   if (containerWidth < 10) return null;
 
-  function xPos(i: number) {
-    return EVO_PAD_L + (numRounds <= 0 ? 0 : (i / numRounds) * plotW);
+  function xPos(pts: number) {
+    return EVO_PAD_L + (maxPts <= 0 ? 0 : (pts / maxPts) * plotW);
   }
-  function yPos(v: number) {
-    return EVO_PAD_T + (1 - v / maxPts) * plotH;
+  function yPos(roundIdx: number) {
+    return EVO_PAD_T + roundIdx * EVO_ROW_H;
   }
 
-  const gridVals = [0, Math.round(maxPts * 0.25), Math.round(maxPts * 0.5), Math.round(maxPts * 0.75), maxPts];
+  // X-axis grid at multiples of 3
+  const xGridPts: number[] = [];
+  for (let p = 0; p <= maxPts; p += 3) xGridPts.push(p);
+  if (xGridPts[xGridPts.length - 1] !== maxPts) xGridPts.push(maxPts);
 
   if (numRounds === 0) {
     return (
-      <View style={{ height: EVO_H, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ height: 100, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ color: "#5B7FC4", fontSize: 12 }}>Nenhuma rodada disputada ainda.</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ width: containerWidth, height: EVO_H }}>
-      {/* Grid Y lines + labels */}
-      {gridVals.map((v) => (
-        <View key={`gy-${v}`}>
+    <View style={{ width: containerWidth, height: totalH }}>
+
+      {/* X-axis: vertical grid lines + point labels at top */}
+      {xGridPts.map((pts) => (
+        <View key={`vg-${pts}`}>
           <View style={{
             position: "absolute",
-            left: EVO_PAD_L, right: EVO_PAD_R,
-            top: yPos(v), height: 1,
-            backgroundColor: "rgba(255,255,255,0.06)",
+            left: xPos(pts), top: EVO_PAD_T,
+            width: 0.6, height: numRounds * EVO_ROW_H,
+            backgroundColor: pts === 0 ? "rgba(59,91,255,0.30)" : "rgba(59,91,255,0.12)",
           }} />
           <Text style={{
             position: "absolute",
-            left: 0, top: yPos(v) - 7,
-            width: EVO_PAD_L - 4,
-            textAlign: "right",
-            fontSize: 9, fontWeight: "700", color: "#4A5568",
-          }}>{v}</Text>
+            left: xPos(pts) - 12, top: 4,
+            width: 24, textAlign: "center",
+            fontSize: 10, fontWeight: "800", color: "#4A6490",
+          }}>{pts}</Text>
         </View>
       ))}
 
-      {/* X round labels */}
-      {Array.from({ length: numRounds }, (_, i) => i + 1).map((r) => (
-        <Text key={`rx-${r}`} style={{
-          position: "absolute",
-          top: EVO_H - EVO_PAD_B + 7,
-          left: xPos(r) - 12, width: 24,
-          textAlign: "center",
-          fontSize: 9, fontWeight: "700", color: "#4A5568",
-        }}>R{r}</Text>
+      {/* Y-axis: horizontal grid lines + round labels at left */}
+      {Array.from({ length: numRounds + 1 }, (_, r) => r).map((r) => (
+        <View key={`hg-${r}`}>
+          <View style={{
+            position: "absolute",
+            left: EVO_PAD_L, right: EVO_PAD_R,
+            top: yPos(r), height: 0.6,
+            backgroundColor: r === numRounds
+              ? "rgba(59,91,255,0.24)"
+              : "rgba(59,91,255,0.14)",
+          }} />
+          <Text style={{
+            position: "absolute",
+            left: 2, top: yPos(r) - 8,
+            width: EVO_PAD_L - 4, textAlign: "right",
+            fontSize: 10, fontWeight: "800", color: "#4A6490",
+          }}>R{r}</Text>
+        </View>
       ))}
 
-      {/* Line segments per series */}
+      {/* Glow behind each line segment */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
-        return s.pointsByRound.slice(1).map((pts, i) => {
-          const x1 = xPos(i), y1 = yPos(s.pointsByRound[i] ?? 0);
-          const x2 = xPos(i + 1), y2 = yPos(pts);
+        return s.pointsByRound.slice(0, numRounds).map((pts, i) => {
+          const nextPts = s.pointsByRound[i + 1] ?? pts;
           return (
-            <View key={`${s.participantId}-seg-${i}`} style={seg(x1, y1, x2, y2, s.color, 2.5, active ? 1 : 0.1)} />
+            <View
+              key={`${s.participantId}-glow-${i}`}
+              style={seg(xPos(pts), yPos(i), xPos(nextPts), yPos(i + 1), s.color, 8, active ? 0.13 : 0.02)}
+            />
           );
         });
       })}
 
-      {/* Intermediate data points (skip index 0 and last) */}
+      {/* Main line segments */}
+      {series.map((s) => {
+        const active = !selectedId || selectedId === s.participantId;
+        return s.pointsByRound.slice(0, numRounds).map((pts, i) => {
+          const nextPts = s.pointsByRound[i + 1] ?? pts;
+          return (
+            <View
+              key={`${s.participantId}-line-${i}`}
+              style={seg(xPos(pts), yPos(i), xPos(nextPts), yPos(i + 1), s.color, 2.5, active ? 1 : 0.08)}
+            />
+          );
+        });
+      })}
+
+      {/* Junction dots at each round boundary */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
         return s.pointsByRound.map((pts, i) => {
-          if (i === 0 || i === numRounds) return null;
+          if (i === 0) return null;
+          const r = 4;
+          const isFinal = i === numRounds;
           return (
             <View key={`${s.participantId}-dot-${i}`} style={{
               position: "absolute",
-              left: xPos(i) - 3, top: yPos(pts) - 3,
-              width: 6, height: 6, borderRadius: 3,
-              backgroundColor: "#060D18",
-              borderWidth: 1.5, borderColor: s.color,
-              opacity: active ? 1 : 0.1,
+              left: xPos(pts) - r, top: yPos(i) - r,
+              width: r * 2, height: r * 2, borderRadius: r,
+              backgroundColor: isFinal ? s.color : "#060D18",
+              borderWidth: isFinal ? 0 : 1.5,
+              borderColor: s.color,
+              opacity: active ? 1 : 0.08,
             }} />
           );
         });
       })}
 
-      {/* Team crests at end of each line — tied teams placed side by side */}
+      {/* Crests below final round — same X as final points, stacked vertically when tied */}
       {series.map((s) => {
-        const lastPts = s.pointsByRound[numRounds] ?? 0;
-        const group = endGroups.get(lastPts) ?? [s];
+        const finalPts = s.pointsByRound[numRounds] ?? 0;
+        const group = endGroups.get(finalPts) ?? [s];
         const idx = group.findIndex((g) => g.participantId === s.participantId);
-        const xCrest = xPos(numRounds) + 5 + idx * (CREST_SZ + CREST_GAP);
-        const yCrest = yPos(lastPts) - CREST_SZ / 2;
+        const xCrest = xPos(finalPts) - EVO_CREST_SZ / 2;
+        const yCrest = yPos(numRounds) + 10 + idx * (EVO_CREST_SZ + EVO_CREST_VGAP);
         const active = !selectedId || selectedId === s.participantId;
-
-        if (s.crest) {
-          return (
-            <Image
-              key={`crest-${s.participantId}`}
-              source={{ uri: s.crest }}
-              style={{
-                position: "absolute",
-                left: xCrest, top: yCrest,
-                width: CREST_SZ, height: CREST_SZ,
-                opacity: active ? 1 : 0.1,
-              }}
-              resizeMode="contain"
-            />
-          );
-        }
         return (
           <View
             key={`crest-${s.participantId}`}
             style={{
               position: "absolute",
               left: xCrest, top: yCrest,
-              width: CREST_SZ, height: CREST_SZ, borderRadius: CREST_SZ / 2,
-              backgroundColor: `${s.color}22`,
+              width: EVO_CREST_SZ, height: EVO_CREST_SZ,
+              borderRadius: EVO_CREST_SZ / 2,
+              overflow: "hidden",
+              backgroundColor: "#060D18",
               borderWidth: 1.5, borderColor: s.color,
               alignItems: "center", justifyContent: "center",
               opacity: active ? 1 : 0.1,
+              shadowColor: s.color, shadowOpacity: 0.55, shadowRadius: 6,
             }}
           >
-            <Text style={{ fontSize: 7, fontWeight: "900", color: s.color }}>
-              {s.teamName.slice(0, 2).toUpperCase()}
-            </Text>
+            {s.crest ? (
+              <Image
+                source={{ uri: s.crest }}
+                style={{ width: EVO_CREST_SZ - 4, height: EVO_CREST_SZ - 4 }}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={{ fontSize: 8, fontWeight: "900", color: s.color }}>
+                {s.teamName.slice(0, 2).toUpperCase()}
+              </Text>
+            )}
           </View>
         );
       })}
@@ -647,6 +682,13 @@ export default function TournamentStatisticsScreen() {
     ];
   }, [evolucaoSeries]);
 
+  const radarDataByScore = useMemo(
+    () => [...radarData].sort(
+      (a, b) => b.values.reduce((x, y) => x + y, 0) - a.values.reduce((x, y) => x + y, 0),
+    ),
+    [radarData],
+  );
+
   const radarSize = chartWidth > 0 ? Math.min(Math.floor((chartWidth - 28) * 0.38), 148) : 0;
 
   // ── states ──
@@ -850,8 +892,8 @@ export default function TournamentStatisticsScreen() {
               <View style={{ flex: 1, height: 1, backgroundColor: "rgba(139,92,246,0.18)" }} />
             </View>
 
-            {/* One card per participant */}
-            {radarData.map((entry, idx) => {
+            {/* One card per participant — sorted by composite score */}
+            {radarDataByScore.map((entry, idx) => {
               const score = Math.round(entry.values.reduce((a, b) => a + b, 0) / RADAR_N);
               const rank = idx + 1;
               return (
