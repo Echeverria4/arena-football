@@ -170,7 +170,8 @@ function buildRadarData(
 // ── Evolução Chart ────────────────────────────────────────────────────────────
 
 const EVO_H = 220;
-const EVO_PAD = { t: 16, b: 34, l: 38, r: 54 };
+const EVO_PAD_T = 16, EVO_PAD_B = 34, EVO_PAD_L = 38;
+const CREST_SZ = 22, CREST_GAP = 3;
 
 function EvolucaoChart({
   series,
@@ -181,9 +182,6 @@ function EvolucaoChart({
   containerWidth: number;
   selectedId: string | null;
 }) {
-  const plotW = containerWidth - EVO_PAD.l - EVO_PAD.r;
-  const plotH = EVO_H - EVO_PAD.t - EVO_PAD.b;
-
   const numRounds = useMemo(
     () => Math.max(...series.map((s) => s.pointsByRound.length - 1), 0),
     [series],
@@ -193,13 +191,34 @@ function EvolucaoChart({
     [series],
   );
 
+  // Group series by final points so tied teams sit side by side
+  const endGroups = useMemo(() => {
+    const map = new Map<number, EvolucaoSeries[]>();
+    series.forEach((s) => {
+      const pts = s.pointsByRound[numRounds] ?? 0;
+      const g = map.get(pts) ?? [];
+      g.push(s);
+      map.set(pts, g);
+    });
+    return map;
+  }, [series, numRounds]);
+
+  const maxGroupSize = useMemo(
+    () => Math.max(...[...endGroups.values()].map((g) => g.length), 1),
+    [endGroups],
+  );
+
+  const EVO_PAD_R = 6 + maxGroupSize * (CREST_SZ + CREST_GAP);
+  const plotW = containerWidth - EVO_PAD_L - EVO_PAD_R;
+  const plotH = EVO_H - EVO_PAD_T - EVO_PAD_B;
+
   if (containerWidth < 10) return null;
 
   function xPos(i: number) {
-    return EVO_PAD.l + (numRounds <= 0 ? 0 : (i / numRounds) * plotW);
+    return EVO_PAD_L + (numRounds <= 0 ? 0 : (i / numRounds) * plotW);
   }
   function yPos(v: number) {
-    return EVO_PAD.t + (1 - v / maxPts) * plotH;
+    return EVO_PAD_T + (1 - v / maxPts) * plotH;
   }
 
   const gridVals = [0, Math.round(maxPts * 0.25), Math.round(maxPts * 0.5), Math.round(maxPts * 0.75), maxPts];
@@ -219,14 +238,14 @@ function EvolucaoChart({
         <View key={`gy-${v}`}>
           <View style={{
             position: "absolute",
-            left: EVO_PAD.l, right: EVO_PAD.r,
+            left: EVO_PAD_L, right: EVO_PAD_R,
             top: yPos(v), height: 1,
             backgroundColor: "rgba(255,255,255,0.06)",
           }} />
           <Text style={{
             position: "absolute",
             left: 0, top: yPos(v) - 7,
-            width: EVO_PAD.l - 4,
+            width: EVO_PAD_L - 4,
             textAlign: "right",
             fontSize: 9, fontWeight: "700", color: "#4A5568",
           }}>{v}</Text>
@@ -237,7 +256,7 @@ function EvolucaoChart({
       {Array.from({ length: numRounds }, (_, i) => i + 1).map((r) => (
         <Text key={`rx-${r}`} style={{
           position: "absolute",
-          top: EVO_H - EVO_PAD.b + 7,
+          top: EVO_H - EVO_PAD_B + 7,
           left: xPos(r) - 12, width: 24,
           textAlign: "center",
           fontSize: 9, fontWeight: "700", color: "#4A5568",
@@ -256,39 +275,65 @@ function EvolucaoChart({
         });
       })}
 
-      {/* Data points */}
+      {/* Intermediate data points (skip index 0 and last) */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
         return s.pointsByRound.map((pts, i) => {
-          if (i === 0) return null;
-          const isLast = i === numRounds;
-          const r = isLast ? 5 : 3;
+          if (i === 0 || i === numRounds) return null;
           return (
             <View key={`${s.participantId}-dot-${i}`} style={{
               position: "absolute",
-              left: xPos(i) - r, top: yPos(pts) - r,
-              width: r * 2, height: r * 2, borderRadius: r,
-              backgroundColor: isLast ? s.color : "#060D18",
-              borderWidth: isLast ? 0 : 1.5,
-              borderColor: s.color,
+              left: xPos(i) - 3, top: yPos(pts) - 3,
+              width: 6, height: 6, borderRadius: 3,
+              backgroundColor: "#060D18",
+              borderWidth: 1.5, borderColor: s.color,
               opacity: active ? 1 : 0.1,
             }} />
           );
         });
       })}
 
-      {/* Final value labels */}
+      {/* Team crests at end of each line — tied teams placed side by side */}
       {series.map((s) => {
         const lastPts = s.pointsByRound[numRounds] ?? 0;
+        const group = endGroups.get(lastPts) ?? [s];
+        const idx = group.findIndex((g) => g.participantId === s.participantId);
+        const xCrest = xPos(numRounds) + 5 + idx * (CREST_SZ + CREST_GAP);
+        const yCrest = yPos(lastPts) - CREST_SZ / 2;
         const active = !selectedId || selectedId === s.participantId;
+
+        if (s.crest) {
+          return (
+            <Image
+              key={`crest-${s.participantId}`}
+              source={{ uri: s.crest }}
+              style={{
+                position: "absolute",
+                left: xCrest, top: yCrest,
+                width: CREST_SZ, height: CREST_SZ,
+                opacity: active ? 1 : 0.1,
+              }}
+              resizeMode="contain"
+            />
+          );
+        }
         return (
-          <Text key={`lbl-${s.participantId}`} style={{
-            position: "absolute",
-            left: xPos(numRounds) + 7,
-            top: yPos(lastPts) - 7,
-            fontSize: 9, fontWeight: "800", color: s.color,
-            opacity: active ? 1 : 0.1,
-          }}>{lastPts}pts</Text>
+          <View
+            key={`crest-${s.participantId}`}
+            style={{
+              position: "absolute",
+              left: xCrest, top: yCrest,
+              width: CREST_SZ, height: CREST_SZ, borderRadius: CREST_SZ / 2,
+              backgroundColor: `${s.color}22`,
+              borderWidth: 1.5, borderColor: s.color,
+              alignItems: "center", justifyContent: "center",
+              opacity: active ? 1 : 0.1,
+            }}
+          >
+            <Text style={{ fontSize: 7, fontWeight: "900", color: s.color }}>
+              {s.teamName.slice(0, 2).toUpperCase()}
+            </Text>
+          </View>
         );
       })}
     </View>
@@ -491,7 +536,6 @@ export default function TournamentStatisticsScreen() {
 
   const [activeTab, setActiveTab] = useState<ChartTab>("evolucao");
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
-  const [radarPlayerId, setRadarPlayerId] = useState<string | null>(null);
   const [chartWidth, setChartWidth] = useState(0);
 
   const bundle = hydrated && id ? getTournamentBundle(id, campeonatos, videos) : null;
@@ -514,11 +558,6 @@ export default function TournamentStatisticsScreen() {
     () => (bundle ? buildRadarData(bundle, colorMap) : []),
     [bundle, colorMap],
   );
-
-  const activeRadarEntry = useMemo(() => {
-    if (radarData.length === 0) return null;
-    return radarData.find((e) => e.participantId === radarPlayerId) ?? radarData[0] ?? null;
-  }, [radarData, radarPlayerId]);
 
   // ── bar entries ──
   const attackEntries: BarEntry[] = useMemo(() => {
@@ -608,8 +647,7 @@ export default function TournamentStatisticsScreen() {
     ];
   }, [evolucaoSeries]);
 
-  const radarTopN = radarData.slice(0, 5);
-  const radarSize = chartWidth > 0 ? Math.min(Math.floor(chartWidth * 0.54), 240) : 0;
+  const radarSize = chartWidth > 0 ? Math.min(Math.floor((chartWidth - 28) * 0.38), 148) : 0;
 
   // ── states ──
   if (!hydrated) {
@@ -793,126 +831,114 @@ export default function TournamentStatisticsScreen() {
         )}
 
         {/* ── Radar ── */}
-        {activeTab === "radar" && activeRadarEntry && (
-          <RevealOnScroll delay={0}>
-            <LiveBorderCard accent="blue" radius={22} padding={1.3} backgroundColor="#060D18">
-              <View style={{ gap: 16, padding: 16 }}>
-                <View style={{ gap: 3 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#F3F7FF" }}>Perfil de desempenho</Text>
-                  <Text style={{ fontSize: 11, color: "#6B7EA3" }}>Índice composto de 6 dimensões · score 0–100</Text>
-                </View>
-
-                {/* Player selector */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {radarTopN.map((e) => {
-                    const isActive = activeRadarEntry.participantId === e.participantId;
-                    return (
-                      <Pressable
-                        key={e.participantId}
-                        onPress={() => setRadarPlayerId(e.participantId)}
-                        style={{
-                          flex: 1, minWidth: 80, paddingVertical: 8,
-                          borderRadius: 14, alignItems: "center",
-                          borderWidth: 1,
-                          borderColor: isActive ? `${e.color}88` : "rgba(255,255,255,0.10)",
-                          backgroundColor: isActive ? `${e.color}18` : "rgba(255,255,255,0.03)",
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: "800", color: isActive ? e.color : "#94A3B8" }}>
-                          {e.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                {/* Radar + stat bars side by side */}
-                <View
-                  onLayout={(e: LayoutChangeEvent) => setChartWidth(e.nativeEvent.layout.width)}
-                  style={{ flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "center" }}
-                >
-                  {radarSize > 0 && (
-                    <View style={{ flexShrink: 0 }}>
-                      <RadarChart entry={activeRadarEntry} size={radarSize} />
-                    </View>
-                  )}
-
-                  {/* Stat breakdown bars */}
-                  <View style={{ flex: 1, minWidth: 160, gap: 8 }}>
-                    {RADAR_LABELS.map((lbl, i) => {
-                      const val = Math.round(activeRadarEntry.values[i] ?? 0);
-                      return (
-                        <View key={lbl} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                          <Text style={{ width: 76, fontSize: 10, fontWeight: "700", color: "#6B7EA3" }}>{lbl}</Text>
-                          <View style={{
-                            flex: 1, height: 6, borderRadius: 999,
-                            backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden",
-                          }}>
-                            <View style={{
-                              height: "100%", borderRadius: 999,
-                              backgroundColor: activeRadarEntry.color,
-                              width: `${val}%`, opacity: 0.85,
-                            }} />
-                          </View>
-                          <Text style={{
-                            width: 28, textAlign: "right",
-                            fontSize: 12, fontWeight: "900",
-                            color: activeRadarEntry.color,
-                          }}>{val}</Text>
-                        </View>
-                      );
-                    })}
-
-                    {/* Overall score */}
-                    <View style={{
-                      marginTop: 6, padding: 12, borderRadius: 14,
-                      backgroundColor: `${activeRadarEntry.color}18`,
-                      borderWidth: 1, borderColor: `${activeRadarEntry.color}33`,
-                    }}>
-                      <Text style={{
-                        fontSize: 9, fontWeight: "900",
-                        letterSpacing: 1.6, textTransform: "uppercase",
-                        color: activeRadarEntry.color,
-                      }}>Score geral</Text>
-                      <Text style={{ fontSize: 28, fontWeight: "900", color: activeRadarEntry.color, marginTop: 2 }}>
-                        {Math.round(activeRadarEntry.values.reduce((a, b) => a + b, 0) / RADAR_N)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Comparison row */}
-                <View style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.06)", paddingTop: 14, gap: 10 }}>
-                  <Text style={{
-                    fontSize: 10, fontWeight: "900",
-                    letterSpacing: 1.8, textTransform: "uppercase", color: "#6B7EA3",
-                  }}>Comparativo dos participantes</Text>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    {radarTopN.map((e) => {
-                      const score = Math.round(e.values.reduce((a, b) => a + b, 0) / RADAR_N);
-                      const isActive = activeRadarEntry.participantId === e.participantId;
-                      return (
-                        <Pressable
-                          key={e.participantId}
-                          onPress={() => setRadarPlayerId(e.participantId)}
-                          style={{
-                            flex: 1, minWidth: 80, borderRadius: 14, padding: 12,
-                            backgroundColor: isActive ? `${e.color}18` : "rgba(255,255,255,0.02)",
-                            borderWidth: 1,
-                            borderColor: isActive ? `${e.color}66` : "rgba(255,255,255,0.06)",
-                          }}
-                        >
-                          <Text style={{ fontSize: 10, fontWeight: "800", color: isActive ? e.color : "#94A3B8" }}>{e.name}</Text>
-                          <Text style={{ fontSize: 22, fontWeight: "900", color: isActive ? e.color : "#4A5568", marginTop: 2 }}>{score}</Text>
-                          <Text style={{ fontSize: 9, color: "#6B7EA3", marginTop: 2 }}>{e.teamName.split(" ")[0]}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
+        {activeTab === "radar" && (
+          <View
+            onLayout={(e: LayoutChangeEvent) => setChartWidth(e.nativeEvent.layout.width)}
+            style={{ gap: 14 }}
+          >
+            {/* Group header */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(139,92,246,0.18)" }} />
+              <View style={{ alignItems: "center", gap: 1 }}>
+                <Text style={{ fontSize: 9, fontWeight: "900", letterSpacing: 2.5, textTransform: "uppercase", color: "#7B5CF0" }}>
+                  GRUPO A
+                </Text>
+                <Text style={{ fontSize: 9, color: "#4A5568", letterSpacing: 0.5 }}>
+                  {bundle.tournament.name}
+                </Text>
               </View>
-            </LiveBorderCard>
-          </RevealOnScroll>
+              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(139,92,246,0.18)" }} />
+            </View>
+
+            {/* One card per participant */}
+            {radarData.map((entry, idx) => {
+              const score = Math.round(entry.values.reduce((a, b) => a + b, 0) / RADAR_N);
+              const rank = idx + 1;
+              return (
+                <RevealOnScroll key={entry.participantId} delay={idx * 55}>
+                  <LiveBorderCard accent="blue" radius={22} padding={1.3} backgroundColor="#060D18">
+                    <View style={{ padding: 14, gap: 12 }}>
+
+                      {/* Player header */}
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        {/* Rank badge */}
+                        <View style={{
+                          width: 26, height: 26, borderRadius: 13, flexShrink: 0,
+                          backgroundColor: rank === 1 ? "rgba(255,215,106,0.12)" : "rgba(255,255,255,0.05)",
+                          borderWidth: 1,
+                          borderColor: rank === 1 ? "rgba(255,215,106,0.4)" : "rgba(255,255,255,0.1)",
+                          alignItems: "center", justifyContent: "center",
+                        }}>
+                          <Text style={{ fontSize: 11, fontWeight: "900", color: rank === 1 ? "#FFD76A" : "#6B7EA3" }}>
+                            {rank}
+                          </Text>
+                        </View>
+                        {/* Color dot */}
+                        <View style={{
+                          width: 9, height: 9, borderRadius: 5, flexShrink: 0,
+                          backgroundColor: entry.color,
+                          shadowColor: entry.color, shadowOpacity: 0.65, shadowRadius: 5,
+                        }} />
+                        {/* Name + team */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 13, fontWeight: "900", color: "#F3F7FF" }}>
+                            {entry.name}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: "#6B7EA3" }}>
+                            {entry.teamName}
+                          </Text>
+                        </View>
+                        {/* Score badge */}
+                        <View style={{
+                          paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, flexShrink: 0,
+                          backgroundColor: `${entry.color}18`,
+                          borderWidth: 1, borderColor: `${entry.color}44`,
+                        }}>
+                          <Text style={{ fontSize: 17, fontWeight: "900", color: entry.color, lineHeight: 20 }}>
+                            {score}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Radar + stat bars */}
+                      <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+                        {radarSize > 0 && (
+                          <View style={{ flexShrink: 0 }}>
+                            <RadarChart entry={entry} size={radarSize} />
+                          </View>
+                        )}
+                        <View style={{ flex: 1, gap: 7 }}>
+                          {RADAR_LABELS.map((lbl, i) => {
+                            const val = Math.round(entry.values[i] ?? 0);
+                            return (
+                              <View key={lbl} style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+                                <Text style={{ width: 66, fontSize: 9, fontWeight: "700", color: "#6B7EA3" }}>{lbl}</Text>
+                                <View style={{
+                                  flex: 1, height: 5, borderRadius: 999,
+                                  backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden",
+                                }}>
+                                  <View style={{
+                                    height: "100%", borderRadius: 999,
+                                    backgroundColor: entry.color,
+                                    width: `${val}%`, opacity: 0.88,
+                                  }} />
+                                </View>
+                                <Text style={{
+                                  width: 26, textAlign: "right",
+                                  fontSize: 11, fontWeight: "900", color: entry.color,
+                                }}>{val}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+
+                    </View>
+                  </LiveBorderCard>
+                </RevealOnScroll>
+              );
+            })}
+          </View>
         )}
 
       </View>
