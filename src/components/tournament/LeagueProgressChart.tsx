@@ -66,14 +66,14 @@ function SeriesBadge({
     <View style={{
       width: size, height: size, borderRadius: size / 2,
       overflow: "hidden", alignItems: "center", justifyContent: "center",
-      backgroundColor: "#FFFFFF", borderWidth: 1.5, borderColor: color,
-      shadowColor: color, shadowOpacity: 0.25, shadowRadius: 4,
-      shadowOffset: { width: 0, height: 2 }, elevation: 3,
+      backgroundColor: "#060D18", borderWidth: 1.5, borderColor: color,
+      shadowColor: color, shadowOpacity: 0.55, shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 }, elevation: 4,
     }}>
       {badgeUrl ? (
         <Image source={{ uri: badgeUrl }} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
       ) : (
-        <View style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: `${color}22` }}>
+        <View style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: `${color}28` }}>
           <Text style={{ color, fontSize: 9, fontWeight: "900" }}>{initials}</Text>
         </View>
       )}
@@ -158,9 +158,9 @@ function seg(x1: number, y1: number, x2: number, y2: number, col: string, w: num
 }
 
 function movMeta(d: number) {
-  if (d > 0) return { symbol: "▲", label: `+${d} pos`, color: "#15803D", backgroundColor: "rgba(34,197,94,0.12)", borderColor: "rgba(34,197,94,0.20)" };
-  if (d < 0) return { symbol: "▼", label: `${d} pos`, color: "#B91C1C", backgroundColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.20)" };
-  return { symbol: "•", label: "estavel", color: "#64748B", backgroundColor: "rgba(148,163,184,0.12)", borderColor: "rgba(148,163,184,0.18)" };
+  if (d > 0) return { symbol: "▲", label: `+${d} pos`, color: "#4ADE80", backgroundColor: "rgba(74,222,128,0.12)", borderColor: "rgba(74,222,128,0.22)" };
+  if (d < 0) return { symbol: "▼", label: `${d} pos`, color: "#F87171", backgroundColor: "rgba(248,113,113,0.12)", borderColor: "rgba(248,113,113,0.22)" };
+  return { symbol: "•", label: "estável", color: "#5B7FC4", backgroundColor: "rgba(91,127,196,0.12)", borderColor: "rgba(91,127,196,0.18)" };
 }
 
 export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartProps) {
@@ -264,8 +264,8 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
           borderRadius: 22,
           overflow: "hidden",
           borderWidth: 1,
-          borderColor: "rgba(88,128,255,0.22)",
-          backgroundColor: "#EDF4FF",
+          borderColor: "rgba(59,91,255,0.28)",
+          backgroundColor: "#060D18",
         }}
       >
         {canRender ? (
@@ -280,11 +280,11 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
                     position: "absolute", left: x,
                     top: PAD_TOP, bottom: 0,
                     width: GRID_LINE,
-                    backgroundColor: pts === 0 ? "rgba(59,91,255,0.18)" : "rgba(59,91,255,0.07)",
+                    backgroundColor: pts === 0 ? "rgba(59,91,255,0.30)" : "rgba(59,91,255,0.12)",
                   }} />
                   <Text style={{
                     position: "absolute", left: x - 12, top: 5,
-                    width: 24, color: "#5E6E91", fontSize: 10, fontWeight: "800", textAlign: "center",
+                    width: 24, color: "#4A6490", fontSize: 10, fontWeight: "800", textAlign: "center",
                   }}>
                     {pts}
                   </Text>
@@ -300,11 +300,11 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
                   <View style={{
                     position: "absolute", left: PAD_LEFT, right: 0,
                     top: y, height: GRID_LINE,
-                    backgroundColor: "rgba(59,91,255,0.10)",
+                    backgroundColor: "rgba(59,91,255,0.14)",
                   }} />
                   <Text style={{
                     position: "absolute", left: 2, top: y - 8,
-                    width: PAD_LEFT - 4, color: "#5E6E91",
+                    width: PAD_LEFT - 4, color: "#4A6490",
                     fontSize: 10, fontWeight: "800", textAlign: "right",
                   }}>
                     {ri === 0 ? "R0" : `R${ri}`}
@@ -320,7 +320,7 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
                 left: PAD_LEFT, right: PAD_RIGHT,
                 top: PAD_TOP + plotH + DOT_TO_BADGE_GAP / 2,
                 height: 1,
-                backgroundColor: "rgba(59,91,255,0.12)",
+                backgroundColor: "rgba(59,91,255,0.20)",
               }} />
             )}
 
@@ -353,7 +353,7 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
                   left: x - DOT_SIZE / 2, top: y - DOT_SIZE / 2,
                   width: DOT_SIZE, height: DOT_SIZE,
                   borderRadius: DOT_SIZE / 2, backgroundColor: entry.color,
-                  borderWidth: 2, borderColor: "#EDF4FF",
+                  borderWidth: 2, borderColor: "#060D18",
                 }} />
               );
             })}
@@ -379,18 +379,18 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
               <View pointerEvents="none" style={{
                 position: "absolute", right: 14, top: 14,
                 borderRadius: 999, borderWidth: 1,
-                borderColor: "rgba(59,91,255,0.14)",
-                backgroundColor: "rgba(255,255,255,0.82)",
+                borderColor: "rgba(59,91,255,0.28)",
+                backgroundColor: "rgba(6,13,24,0.88)",
                 paddingHorizontal: 12, paddingVertical: 7,
               }}>
-                <Text style={{ color: "#3150A6", fontSize: 11, fontWeight: "800" }}>Inicio em 0 ponto</Text>
+                <Text style={{ color: "#7B9EC8", fontSize: 11, fontWeight: "800" }}>Início em 0 pontos</Text>
               </View>
             )}
           </View>
         ) : (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 }}>
-            <Text style={{ color: "#1C2B4A", fontSize: 16, fontWeight: "900", textAlign: "center" }}>
-              {!hasParticipants ? "Campeonato sem participantes" : "Rodadas ainda nao geradas"}
+            <Text style={{ color: "#7B9EC8", fontSize: 16, fontWeight: "900", textAlign: "center" }}>
+              {!hasParticipants ? "Campeonato sem participantes" : "Rodadas ainda não geradas"}
             </Text>
           </View>
         )}
@@ -403,10 +403,10 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
             onPress={() => setLegendVisible((v) => !v)}
             style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 2 }}
           >
-            <Text style={{ color: "#5678C9", fontSize: 12, fontWeight: "700", letterSpacing: 1.2 }}>
+            <Text style={{ color: "#7B9EC8", fontSize: 12, fontWeight: "700", letterSpacing: 1.2 }}>
               {legendVisible ? "Ocultar times" : "Mostrar times"}
             </Text>
-            <Ionicons name={legendVisible ? "chevron-up" : "chevron-down"} size={14} color="#5678C9" />
+            <Ionicons name={legendVisible ? "chevron-up" : "chevron-down"} size={14} color="#7B9EC8" />
           </Pressable>
 
           {legendVisible ? (
@@ -418,12 +418,13 @@ export function LeagueProgressChart({ campeonato, format }: LeagueProgressChartP
                 return (
                   <View key={`chip-${entry.participantId}`} style={{
                     flexDirection: "row", alignItems: "center", gap: 8,
-                    borderRadius: 999, borderWidth: 1, borderColor: `${entry.color}33`,
-                    backgroundColor: "#FFFFFF", paddingHorizontal: 12, paddingVertical: 8,
+                    borderRadius: 999, borderWidth: 1, borderColor: `${entry.color}40`,
+                    backgroundColor: `${entry.color}0E`,
+                    paddingHorizontal: 12, paddingVertical: 8,
                   }}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: entry.color }} />
-                    <Text style={{ color: "#1C2B4A", fontSize: 12, fontWeight: "900" }}>{entry.teamName}</Text>
-                    <Text style={{ color: "#6B7EA3", fontSize: 12, fontWeight: "600" }}>{entry.currentPoints} pts</Text>
+                    <Text style={{ color: "#D7E5FF", fontSize: 12, fontWeight: "900" }}>{entry.teamName}</Text>
+                    <Text style={{ color: "#5B7FC4", fontSize: 12, fontWeight: "600" }}>{entry.currentPoints} pts</Text>
                     <View style={{
                       borderRadius: 999, borderWidth: 1,
                       borderColor: meta.borderColor, backgroundColor: meta.backgroundColor,
