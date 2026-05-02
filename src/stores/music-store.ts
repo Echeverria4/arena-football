@@ -1,8 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { MUSIC_TRACKS } from "@/lib/music-tracks";
+import { persistStorage } from "@/stores/persist-storage";
 
 export type MusicPlayMode = "favorite" | "random";
 
@@ -26,7 +26,7 @@ export const useMusicStore = create<MusicStore>()(
       selectedTrackId: MUSIC_TRACKS[0]?.id ?? null,
       volume: 0.4,
       isPlaying: false,
-      playMode: "favorite",
+      playMode: "random",
       setEnabled: (enabled) => set({ enabled }),
       setSelectedTrackId: (selectedTrackId) => set({ selectedTrackId }),
       setVolume: (volume) => set({ volume }),
@@ -35,7 +35,7 @@ export const useMusicStore = create<MusicStore>()(
     }),
     {
       name: "arena-music",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => persistStorage),
       partialize: (state) => ({
         enabled: state.enabled,
         selectedTrackId: state.selectedTrackId,

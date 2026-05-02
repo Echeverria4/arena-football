@@ -45,6 +45,8 @@ export default function TournamentMusicasScreen() {
 
   async function handleSelectTrack(trackId: string) {
     setSelectedTrackId(trackId);
+    // Selecting a specific track switches to favorite mode automatically
+    setPlayMode("favorite");
     if (enabled) {
       await playTrack(trackId, volume);
       useMusicStore.getState().setIsPlaying(true);

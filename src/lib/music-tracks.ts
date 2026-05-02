@@ -9,6 +9,5 @@ export type MusicTrack = {
 };
 
 export const MUSIC_TRACKS: MusicTrack[] = [
-  // Exemplo — descomente após adicionar o arquivo .mp3:
-  // { id: 'arena_theme', name: 'Arena Theme', source: require('../../assets/music/arena_theme.mp3') },
+  { id: 'dreamers', name: 'Savoir Adore — Dreamers', source: require('../../assets/music/dreamers.mp3') },
 ];

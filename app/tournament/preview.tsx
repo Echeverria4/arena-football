@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -18,7 +19,9 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
 import { ScreenState } from "@/components/ui/ScreenState";
+import { useMusicTrigger } from "@/hooks/useMusicTrigger";
 import { getPlayerTitleLeaderboard } from "@/lib/championship-history";
+import { MUSIC_TRACKS } from "@/lib/music-tracks";
 import {
   normalizeTeamDisplayName,
   resolveTeamVisualByName,
@@ -26,6 +29,7 @@ import {
 } from "@/lib/team-visuals";
 import { getTournamentBundle } from "@/lib/tournament-display";
 import { useAppStore } from "@/stores/app-store";
+import { useMusicStore } from "@/stores/music-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 import { useTournamentDataHydrated } from "@/stores/use-arena-hydration";
 import { useVideoStore } from "@/stores/video-store";
@@ -243,6 +247,10 @@ export default function TournamentPreviewScreen() {
   const videos = useVideoStore((state) => state.videos);
   const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
   const hydrated = useTournamentDataHydrated();
+  const musicEnabled = useMusicStore((s) => s.enabled);
+  const musicIsPlaying = useMusicStore((s) => s.isPlaying);
+  const selectedTrackId = useMusicStore((s) => s.selectedTrackId);
+  const { triggerStart, togglePlayPause } = useMusicTrigger();
 
   if (!hydrated) {
     return (
@@ -312,6 +320,7 @@ export default function TournamentPreviewScreen() {
     });
 
   function handleEnterTournament() {
+    void triggerStart();
     setCurrentTournamentId(campeonato.id);
     router.push({ pathname: "/tournament/[id]", params: { id: campeonato.id } });
   }
@@ -449,6 +458,57 @@ export default function TournamentPreviewScreen() {
             />
           </RevealOnScroll>
         ) : null}
+
+        {/* Music card */}
+        {musicEnabled && MUSIC_TRACKS.length > 0 && (
+          <RevealOnScroll delay={140}>
+            <Pressable
+              onPress={() => router.push({ pathname: "/tournament/musicas", params: { id: campeonato.id } })}
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: "rgba(139,92,246,0.30)",
+                backgroundColor: "rgba(10,6,24,0.82)",
+                padding: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+              }}
+            >
+              {/* Play/pause toggle */}
+              <Pressable
+                onPress={(e) => { e.stopPropagation(); void togglePlayPause(); }}
+                style={{
+                  width: 46, height: 46, borderRadius: 23,
+                  backgroundColor: musicIsPlaying ? "rgba(139,92,246,0.22)" : "rgba(255,255,255,0.07)",
+                  borderWidth: 1,
+                  borderColor: musicIsPlaying ? "rgba(139,92,246,0.55)" : "rgba(255,255,255,0.14)",
+                  alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Ionicons
+                  name={musicIsPlaying ? "pause" : "play"}
+                  size={20}
+                  color={musicIsPlaying ? "#C4B5FD" : "#94A3B8"}
+                />
+              </Pressable>
+
+              {/* Info */}
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontSize: 13, fontWeight: "800", color: "#F3F7FF" }}>
+                  {musicIsPlaying ? "Tocando agora" : "Trilha sonora"}
+                </Text>
+                <Text style={{ fontSize: 11, color: "#6B7EA3" }} numberOfLines={1}>
+                  {MUSIC_TRACKS.find((t) => t.id === selectedTrackId)?.name ?? MUSIC_TRACKS[0]?.name ?? ""}
+                </Text>
+              </View>
+
+              {/* Arrow */}
+              <Ionicons name="chevron-forward" size={16} color="#4A5568" />
+            </Pressable>
+          </RevealOnScroll>
+        )}
 
       </ScrollView>
     </Screen>

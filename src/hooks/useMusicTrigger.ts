@@ -21,23 +21,21 @@ export function useMusicTrigger() {
 
   async function triggerStart() {
     if (!enabled || MUSIC_TRACKS.length === 0) return;
-
-    const { isLoaded, currentTrackId } = getMusicStatus();
+    // Already playing — don't restart mid-song
+    if (isPlaying) return;
 
     if (playMode === "random") {
+      // Always pick a fresh random track each time music starts
       const nextId = pickRandomTrackId(selectedTrackId);
       if (!nextId) return;
-      // If the random track is already loaded and playing, just resume
-      if (isLoaded && currentTrackId === nextId) {
-        await resumeMusic();
-      } else {
-        await playTrack(nextId, volume);
-        setSelectedTrackId(nextId);
-      }
+      await playTrack(nextId, volume);
+      setSelectedTrackId(nextId);
     } else {
+      // Favorite: resume if paused, start selected track if stopped
       const trackId = selectedTrackId ?? MUSIC_TRACKS[0]?.id;
       if (!trackId) return;
-      if (isLoaded) {
+      const { isLoaded, currentTrackId } = getMusicStatus();
+      if (isLoaded && currentTrackId === trackId) {
         await resumeMusic();
       } else {
         await playTrack(trackId, volume);
