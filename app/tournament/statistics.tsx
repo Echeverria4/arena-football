@@ -24,6 +24,8 @@ import { useVideoStore } from "@/stores/video-store";
 
 type ChartTab = "evolucao" | "ataque" | "radar";
 
+type RoundResult = "W" | "D" | "L";
+
 type EvolucaoSeries = {
   participantId: string;
   name: string;
@@ -31,6 +33,7 @@ type EvolucaoSeries = {
   color: string;
   crest?: string | null;
   pointsByRound: number[];
+  resultsByRound: Array<RoundResult | null>; // index 0 = result that produced pointsByRound[1]
 };
 
 type RadarEntry = {
@@ -103,26 +106,50 @@ function buildEvolucaoSeries(
   const byRound = new Map<string, number[]>(
     campeonato.participantes.map((p) => [p.id, [0]]),
   );
+  const resultsByRoundMap = new Map<string, Array<RoundResult | null>>(
+    campeonato.participantes.map((p) => [p.id, []]),
+  );
 
   (campeonato.rodadas ?? []).forEach((round) => {
-    const hasFinalized = round.some(
+    const finalizedMatches = round.filter(
       (m) => m.status === "finalizado" && m.placarMandante != null && m.placarVisitante != null,
     );
-    if (!hasFinalized) return;
+    if (finalizedMatches.length === 0) return;
 
-    round.forEach((m) => {
-      if (m.status !== "finalizado" || m.placarMandante == null || m.placarVisitante == null) return;
-      const hg = m.placarMandante, ag = m.placarVisitante;
+    const playedThisRound = new Set<string>();
+    const roundResultFor = new Map<string, RoundResult>();
+
+    finalizedMatches.forEach((m) => {
+      const hg = m.placarMandante!, ag = m.placarVisitante!;
       const hp = pointsMap.get(m.mandanteId) ?? 0;
       const ap = pointsMap.get(m.visitanteId) ?? 0;
-      if (hg > ag) pointsMap.set(m.mandanteId, hp + 3);
-      else if (ag > hg) pointsMap.set(m.visitanteId, ap + 3);
-      else { pointsMap.set(m.mandanteId, hp + 1); pointsMap.set(m.visitanteId, ap + 1); }
+      playedThisRound.add(m.mandanteId);
+      playedThisRound.add(m.visitanteId);
+      if (hg > ag) {
+        pointsMap.set(m.mandanteId, hp + 3);
+        roundResultFor.set(m.mandanteId, "W");
+        roundResultFor.set(m.visitanteId, "L");
+      } else if (ag > hg) {
+        pointsMap.set(m.visitanteId, ap + 3);
+        roundResultFor.set(m.visitanteId, "W");
+        roundResultFor.set(m.mandanteId, "L");
+      } else {
+        pointsMap.set(m.mandanteId, hp + 1);
+        pointsMap.set(m.visitanteId, ap + 1);
+        roundResultFor.set(m.mandanteId, "D");
+        roundResultFor.set(m.visitanteId, "D");
+      }
     });
+
+    // Only add data point for participants who actually played this round
     campeonato.participantes.forEach((p) => {
+      if (!playedThisRound.has(p.id)) return;
       const arr = byRound.get(p.id) ?? [0];
       arr.push(pointsMap.get(p.id) ?? arr[arr.length - 1] ?? 0);
       byRound.set(p.id, arr);
+      const results = resultsByRoundMap.get(p.id) ?? [];
+      results.push(roundResultFor.get(p.id) ?? null);
+      resultsByRoundMap.set(p.id, results);
     });
   });
 
@@ -136,6 +163,7 @@ function buildEvolucaoSeries(
       color: colorMap.get(p.id) ?? "#94A3B8",
       crest: (p as any).timeImagem ?? participant?.teamBadgeUrl ?? resolveTeamVisualByName(tn),
       pointsByRound: byRound.get(p.id) ?? [0],
+      resultsByRound: resultsByRoundMap.get(p.id) ?? [],
     };
   });
 }
@@ -202,15 +230,17 @@ function EvolucaoChart({
   );
 
   const endGroups = useMemo(() => {
-    const map = new Map<number, EvolucaoSeries[]>();
+    const map = new Map<string, EvolucaoSeries[]>();
     series.forEach((s) => {
-      const pts = s.pointsByRound[numRounds] ?? 0;
-      const g = map.get(pts) ?? [];
+      const lastRound = s.pointsByRound.length - 1;
+      const pts = s.pointsByRound[lastRound] ?? 0;
+      const key = `${lastRound}:${pts}`;
+      const g = map.get(key) ?? [];
       g.push(s);
-      map.set(pts, g);
+      map.set(key, g);
     });
     return map;
-  }, [series, numRounds]);
+  }, [series]);
 
   const maxGroupSize = useMemo(
     () => Math.max(...[...endGroups.values()].map((g) => g.length), 1),
@@ -282,11 +312,12 @@ function EvolucaoChart({
         </View>
       ))}
 
-      {/* Glow behind each line segment */}
+      {/* Glow behind each line segment — only up to last played round */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
-        return s.pointsByRound.slice(0, numRounds).map((pts, i) => {
-          const nextPts = s.pointsByRound[i + 1] ?? pts;
+        const lastRound = s.pointsByRound.length - 1;
+        return s.pointsByRound.slice(0, lastRound).map((pts, i) => {
+          const nextPts = s.pointsByRound[i + 1]!;
           return (
             <View
               key={`${s.participantId}-glow-${i}`}
@@ -296,11 +327,12 @@ function EvolucaoChart({
         });
       })}
 
-      {/* Main line segments */}
+      {/* Main line segments — only up to last played round */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
-        return s.pointsByRound.slice(0, numRounds).map((pts, i) => {
-          const nextPts = s.pointsByRound[i + 1] ?? pts;
+        const lastRound = s.pointsByRound.length - 1;
+        return s.pointsByRound.slice(0, lastRound).map((pts, i) => {
+          const nextPts = s.pointsByRound[i + 1]!;
           return (
             <View
               key={`${s.participantId}-line-${i}`}
@@ -310,33 +342,38 @@ function EvolucaoChart({
         });
       })}
 
-      {/* Junction dots at each round */}
+      {/* Junction dots — colored by round result (green=W, yellow=D, red=L) */}
       {series.map((s) => {
         const active = !selectedId || selectedId === s.participantId;
+        const lastRound = s.pointsByRound.length - 1;
         return s.pointsByRound.map((pts, i) => {
           if (i === 0) return null;
+          const result = s.resultsByRound[i - 1] ?? null;
+          const dotColor = result === "W" ? "#22C55E" : result === "D" ? "#EAB308" : result === "L" ? "#EF4444" : s.color;
+          const isFinal = i === lastRound;
           const r = 4;
-          const isFinal = i === numRounds;
           return (
             <View key={`${s.participantId}-dot-${i}`} style={{
               position: "absolute",
               left: xPos(i) - r, top: yPos(pts) - r,
               width: r * 2, height: r * 2, borderRadius: r,
-              backgroundColor: isFinal ? s.color : "#060D18",
+              backgroundColor: isFinal ? dotColor : "#060D18",
               borderWidth: isFinal ? 0 : 1.5,
-              borderColor: s.color,
+              borderColor: dotColor,
               opacity: active ? 1 : 0.08,
             }} />
           );
         });
       })}
 
-      {/* Crests side by side at the right end of lines */}
+      {/* Crests at each series' own last position */}
       {series.map((s) => {
-        const finalPts = s.pointsByRound[numRounds] ?? 0;
-        const group = endGroups.get(finalPts) ?? [s];
+        const lastRound = s.pointsByRound.length - 1;
+        const finalPts = s.pointsByRound[lastRound] ?? 0;
+        const key = `${lastRound}:${finalPts}`;
+        const group = endGroups.get(key) ?? [s];
         const idx = group.findIndex((g) => g.participantId === s.participantId);
-        const xCrest = xPos(numRounds) + 5 + idx * (CREST_SZ + CREST_GAP);
+        const xCrest = xPos(lastRound) + 5 + idx * (CREST_SZ + CREST_GAP);
         const yCrest = yPos(finalPts) - CREST_SZ / 2;
         const active = !selectedId || selectedId === s.participantId;
         return (

@@ -999,9 +999,14 @@ export default function TournamentMatchesScreen() {
                 <Pressable
                   onPress={() => {
                     if (!bundle) return;
-                    const toSave: Record<string, string> = {};
-                    for (const [k, v] of Object.entries(pendingRoundDates)) {
-                      if (v) toSave[k] = v;
+                    const toSave: Record<string, string> = { ...pendingRoundDates };
+                    // Auto-confirm any calendar that's open with a day already selected
+                    if (calendarOpenForRound !== null && calendarSelectedDay !== null) {
+                      const h = Math.min(parseInt(calendarHour || "23", 10) || 23, 23);
+                      const m = Math.min(parseInt(calendarMinute || "59", 10) || 59, 59);
+                      toSave[String(calendarOpenForRound)] = new Date(
+                        calendarYear, calendarMonth, calendarSelectedDay, h, m, 0,
+                      ).toISOString();
                     }
                     definirPrazoRodasDatas(bundle.campeonato.id, toSave);
                     setCalendarOpenForRound(null);
