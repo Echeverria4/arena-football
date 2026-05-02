@@ -8,7 +8,7 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { setMusicVolume } from "@/lib/music-player";
+import { setMusicVolume, playTrack } from "@/lib/music-player";
 import { MUSIC_TRACKS } from "@/lib/music-tracks";
 import { buildTournamentShareLink } from "@/lib/tournament-sharing";
 import { resolveTournamentAccessMode } from "@/lib/tournament-access";
@@ -50,10 +50,23 @@ export default function ProfileScreen() {
   const musicVolume = useMusicStore((s) => s.volume);
   const musicIsPlaying = useMusicStore((s) => s.isPlaying);
   const musicPlayMode = useMusicStore((s) => s.playMode);
+  const musicSelectedTrackId = useMusicStore((s) => s.selectedTrackId);
   const setMusicEnabled = useMusicStore((s) => s.setEnabled);
   const setMusicVolumeState = useMusicStore((s) => s.setVolume);
   const setMusicPlayMode = useMusicStore((s) => s.setPlayMode);
+  const setMusicSelectedTrackId = useMusicStore((s) => s.setSelectedTrackId);
+  const setMusicIsPlaying = useMusicStore((s) => s.setIsPlaying);
   const { togglePlayPause, stop } = useMusicTrigger();
+  const [tracksExpanded, setTracksExpanded] = useState(false);
+
+  async function handleSelectTrack(trackId: string) {
+    setMusicSelectedTrackId(trackId);
+    setMusicPlayMode("favorite");
+    if (musicEnabled) {
+      await playTrack(trackId, musicVolume);
+      setMusicIsPlaying(true);
+    }
+  }
 
   async function handleToggleMusic(val: boolean) {
     setMusicEnabled(val);
@@ -437,6 +450,82 @@ export default function ProfileScreen() {
                       </View>
                     </Pressable>
                   </View>
+                </View>
+              )}
+
+              {/* Track list — collapsible */}
+              {musicEnabled && MUSIC_TRACKS.length > 0 && (
+                <View style={{ gap: 10 }}>
+                  <View style={{ height: 1, backgroundColor: "rgba(59,91,255,0.12)" }} />
+                  <Pressable
+                    onPress={() => setTracksExpanded((v) => !v)}
+                    style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                  >
+                    <View style={{ gap: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: "#AEBBDA" }}>
+                        Faixas disponíveis
+                      </Text>
+                      <Text style={{ fontSize: 10, color: "#4A6080" }}>
+                        {MUSIC_TRACKS.length} faixa{MUSIC_TRACKS.length > 1 ? "s" : ""}
+                        {musicSelectedTrackId ? ` · ${MUSIC_TRACKS.find((t) => t.id === musicSelectedTrackId)?.name ?? ""}` : ""}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={tracksExpanded ? "chevron-up" : "chevron-down"}
+                      size={16}
+                      color="#6B7EA3"
+                    />
+                  </Pressable>
+
+                  {tracksExpanded && (
+                    <View style={{ gap: 6 }}>
+                      {MUSIC_TRACKS.map((track) => {
+                        const isSelected = musicSelectedTrackId === track.id;
+                        return (
+                          <Pressable
+                            key={track.id}
+                            onPress={() => handleSelectTrack(track.id)}
+                            style={{
+                              flexDirection: "row", alignItems: "center", gap: 10,
+                              paddingVertical: 10, paddingHorizontal: 12,
+                              borderRadius: 12,
+                              backgroundColor: isSelected ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
+                              borderWidth: 1,
+                              borderColor: isSelected ? "rgba(139,92,246,0.40)" : "rgba(255,255,255,0.07)",
+                            }}
+                          >
+                            <View style={{
+                              width: 30, height: 30, borderRadius: 15,
+                              backgroundColor: isSelected ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.06)",
+                              alignItems: "center", justifyContent: "center",
+                              borderWidth: 1,
+                              borderColor: isSelected ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.10)",
+                            }}>
+                              <Ionicons
+                                name={isSelected && musicIsPlaying ? "pause" : "musical-note"}
+                                size={13}
+                                color={isSelected ? "#C4B5FD" : "#6B7EA3"}
+                              />
+                            </View>
+                            <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: "800", color: isSelected ? "#F3F7FF" : "#94A3B8" }}>
+                              {track.name}
+                            </Text>
+                            {isSelected && (
+                              <View style={{
+                                paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
+                                backgroundColor: "rgba(139,92,246,0.18)",
+                                borderWidth: 1, borderColor: "rgba(139,92,246,0.35)",
+                              }}>
+                                <Text style={{ fontSize: 8, fontWeight: "900", color: "#C4B5FD", letterSpacing: 1 }}>
+                                  {musicIsPlaying ? "TOCANDO" : "SELECIONADA"}
+                                </Text>
+                              </View>
+                            )}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               )}
             </View>

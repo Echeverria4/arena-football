@@ -79,7 +79,7 @@ const DAY_HEADERS_PT = ["Dom","2ª","3ª","4ª","5ª","6ª","Sáb"] as const;
 
 export default function TournamentMatchesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const isSmallPhone = width < 420;
   const isPhone = width < 768;
 
@@ -447,6 +447,7 @@ export default function TournamentMatchesScreen() {
                   alignSelf: "center",
                   width: "100%",
                   maxWidth: 440,
+                  maxHeight: windowHeight * 0.85,
                   borderRadius: 20,
                   padding: 20,
                   backgroundColor: "rgba(8,15,28,0.90)",
@@ -462,7 +463,7 @@ export default function TournamentMatchesScreen() {
                     (m) => m.mandanteId === tmParticipantId || m.visitanteId === tmParticipantId,
                   );
                   return (
-                    <View style={{ gap: 12 }}>
+                    <View style={{ gap: 12, flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <Pressable onPress={(e) => { e.stopPropagation(); setTeamMatchesFor(null); }} style={{ padding: 6 }}>
                           <Text style={{ color: "#9AB8FF", fontSize: 20 }}>←</Text>
@@ -474,7 +475,7 @@ export default function TournamentMatchesScreen() {
                         </View>
                       </View>
 
-                      <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} indicatorStyle="white" contentContainerStyle={{ gap: 8 }}>
                         {tmMatches.map((m) => {
                           const isHome = m.mandanteId === tmParticipantId;
                           const oppId = isHome ? m.visitanteId : m.mandanteId;

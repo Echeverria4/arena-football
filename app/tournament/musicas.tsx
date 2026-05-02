@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -40,6 +41,7 @@ export default function TournamentMusicasScreen() {
   const setPlayMode = useMusicStore((s) => s.setPlayMode);
 
   const { togglePlayPause, stop } = useMusicTrigger();
+  const [tracksExpanded, setTracksExpanded] = useState(false);
 
   const bundle = hydrated && id ? getTournamentBundle(id, campeonatos, videos) : null;
 
@@ -229,74 +231,89 @@ export default function TournamentMusicasScreen() {
           </LiveBorderCard>
         </RevealOnScroll>
 
-        {/* Track list */}
+        {/* Track list — collapsible */}
         <RevealOnScroll delay={80}>
           <LiveBorderCard accent="blue" radius={22} padding={1.3} backgroundColor="#060D18">
             <View style={{ padding: 20, gap: 14 }}>
-              <View style={{ gap: 3 }}>
-                <Text style={{ fontSize: 13, fontWeight: "800", color: "#F3F7FF" }}>Faixas disponíveis</Text>
-                <Text style={{ fontSize: 11, color: "#6B7EA3" }}>
-                  {MUSIC_TRACKS.length === 0
-                    ? "Adicione arquivos .mp3 em assets/music/ e registre em src/lib/music-tracks.ts"
-                    : `${MUSIC_TRACKS.length} faixa${MUSIC_TRACKS.length > 1 ? "s" : ""}`}
-                </Text>
-              </View>
-
-              {MUSIC_TRACKS.length === 0 ? (
-                <View style={{ paddingVertical: 24, alignItems: "center", gap: 8 }}>
-                  <Ionicons name="musical-notes-outline" size={36} color="#2D3A52" />
-                  <Text style={{ fontSize: 12, color: "#3D4F6B", textAlign: "center" }}>
-                    Nenhuma música adicionada ainda.{"\n"}Veja assets/music/COMO_ADICIONAR.md
+              {/* Collapsible header */}
+              <Pressable
+                onPress={() => setTracksExpanded((v) => !v)}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+              >
+                <View style={{ gap: 2 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#F3F7FF" }}>Faixas disponíveis</Text>
+                  <Text style={{ fontSize: 11, color: "#6B7EA3" }}>
+                    {MUSIC_TRACKS.length === 0
+                      ? "Nenhuma música cadastrada"
+                      : `${MUSIC_TRACKS.length} faixa${MUSIC_TRACKS.length > 1 ? "s" : ""}${selectedTrackId ? ` · ${MUSIC_TRACKS.find((t) => t.id === selectedTrackId)?.name ?? ""}` : ""}`}
                   </Text>
                 </View>
-              ) : (
-                MUSIC_TRACKS.map((track) => {
-                  const isSelected = selectedTrackId === track.id;
-                  return (
-                    <Pressable
-                      key={track.id}
-                      onPress={() => handleSelectTrack(track.id)}
-                      style={{
-                        flexDirection: "row", alignItems: "center", gap: 12,
-                        paddingVertical: 12, paddingHorizontal: 14,
-                        borderRadius: 14,
-                        backgroundColor: isSelected ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
-                        borderWidth: 1,
-                        borderColor: isSelected ? "rgba(139,92,246,0.40)" : "rgba(255,255,255,0.07)",
-                      }}
-                    >
-                      <View style={{
-                        width: 36, height: 36, borderRadius: 18,
-                        backgroundColor: isSelected ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.06)",
-                        alignItems: "center", justifyContent: "center",
-                        borderWidth: 1,
-                        borderColor: isSelected ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.10)",
-                      }}>
-                        <Ionicons
-                          name={isSelected && isPlaying ? "pause" : "musical-note"}
-                          size={16}
-                          color={isSelected ? "#C4B5FD" : "#6B7EA3"}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 13, fontWeight: "800", color: isSelected ? "#F3F7FF" : "#94A3B8" }}>
-                          {track.name}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <View style={{
-                          paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
-                          backgroundColor: "rgba(139,92,246,0.18)",
-                          borderWidth: 1, borderColor: "rgba(139,92,246,0.35)",
-                        }}>
-                          <Text style={{ fontSize: 9, fontWeight: "900", color: "#C4B5FD", letterSpacing: 1 }}>
-                            {isPlaying ? "TOCANDO" : "SELECIONADA"}
-                          </Text>
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })
+                <Ionicons
+                  name={tracksExpanded ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color="#6B7EA3"
+                />
+              </Pressable>
+
+              {tracksExpanded && (
+                MUSIC_TRACKS.length === 0 ? (
+                  <View style={{ paddingVertical: 24, alignItems: "center", gap: 8 }}>
+                    <Ionicons name="musical-notes-outline" size={36} color="#2D3A52" />
+                    <Text style={{ fontSize: 12, color: "#3D4F6B", textAlign: "center" }}>
+                      Nenhuma música adicionada ainda.{"\n"}Veja assets/music/COMO_ADICIONAR.md
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ gap: 8 }}>
+                    {MUSIC_TRACKS.map((track) => {
+                      const isSelected = selectedTrackId === track.id;
+                      return (
+                        <Pressable
+                          key={track.id}
+                          onPress={() => handleSelectTrack(track.id)}
+                          style={{
+                            flexDirection: "row", alignItems: "center", gap: 12,
+                            paddingVertical: 12, paddingHorizontal: 14,
+                            borderRadius: 14,
+                            backgroundColor: isSelected ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.03)",
+                            borderWidth: 1,
+                            borderColor: isSelected ? "rgba(139,92,246,0.40)" : "rgba(255,255,255,0.07)",
+                          }}
+                        >
+                          <View style={{
+                            width: 36, height: 36, borderRadius: 18,
+                            backgroundColor: isSelected ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.06)",
+                            alignItems: "center", justifyContent: "center",
+                            borderWidth: 1,
+                            borderColor: isSelected ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.10)",
+                          }}>
+                            <Ionicons
+                              name={isSelected && isPlaying ? "pause" : "musical-note"}
+                              size={16}
+                              color={isSelected ? "#C4B5FD" : "#6B7EA3"}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: isSelected ? "#F3F7FF" : "#94A3B8" }}>
+                              {track.name}
+                            </Text>
+                          </View>
+                          {isSelected && (
+                            <View style={{
+                              paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+                              backgroundColor: "rgba(139,92,246,0.18)",
+                              borderWidth: 1, borderColor: "rgba(139,92,246,0.35)",
+                            }}>
+                              <Text style={{ fontSize: 9, fontWeight: "900", color: "#C4B5FD", letterSpacing: 1 }}>
+                                {isPlaying ? "TOCANDO" : "SELECIONADA"}
+                              </Text>
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )
               )}
             </View>
           </LiveBorderCard>
