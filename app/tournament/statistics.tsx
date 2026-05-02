@@ -496,7 +496,7 @@ function BarRanking({
 // ── Home / Away Card ─────────────────────────────────────────────────────────
 
 function HomeAwayCard({ entries }: { entries: HomeAwayEntry[] }) {
-  const maxGoals = Math.max(...entries.flatMap((e) => [e.homeGoals, e.awayGoals]), 1);
+  const maxRate = 100;
   return (
     <View style={{ gap: 12 }}>
       <View style={{ gap: 3 }}>
@@ -538,24 +538,28 @@ function HomeAwayCard({ entries }: { entries: HomeAwayEntry[] }) {
             <View style={{ flex: 1 }}>
               <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: "800", color: "#F3F7FF" }}>{e.name}</Text>
             </View>
-            {/* Casa stats */}
+            {/* Casa % vitórias */}
             <View style={{ width: 78, alignItems: "center", gap: 2 }}>
-              <Text style={{ fontSize: 13, fontWeight: "900", color: "#3B82F6" }}>{e.homeGoals}</Text>
-              <Text style={{ fontSize: 9, color: "#6B7EA3" }}>{e.homeWins}V · {e.homeGames}J</Text>
+              <Text style={{ fontSize: 13, fontWeight: "900", color: "#3B82F6" }}>
+                {e.homeGames > 0 ? Math.round((e.homeWins / e.homeGames) * 100) : 0}%
+              </Text>
+              <Text style={{ fontSize: 9, color: "#6B7EA3" }}>casa</Text>
             </View>
-            {/* Fora stats */}
+            {/* Fora % vitórias */}
             <View style={{ width: 78, alignItems: "center", gap: 2 }}>
-              <Text style={{ fontSize: 13, fontWeight: "900", color: "#A78BFA" }}>{e.awayGoals}</Text>
-              <Text style={{ fontSize: 9, color: "#6B7EA3" }}>{e.awayWins}V · {e.awayGames}J</Text>
+              <Text style={{ fontSize: 13, fontWeight: "900", color: "#A78BFA" }}>
+                {e.awayGames > 0 ? Math.round((e.awayWins / e.awayGames) * 100) : 0}%
+              </Text>
+              <Text style={{ fontSize: 9, color: "#6B7EA3" }}>fora</Text>
             </View>
           </View>
           {/* Dual bar */}
           <View style={{ flexDirection: "row", gap: 4, paddingLeft: 28 }}>
             <View style={{ flex: 1, height: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-              <View style={{ height: "100%", borderRadius: 999, backgroundColor: "#3B82F6", width: `${(e.homeGoals / maxGoals) * 100}%`, opacity: 0.85 }} />
+              <View style={{ height: "100%", borderRadius: 999, backgroundColor: "#3B82F6", width: `${e.homeGames > 0 ? (e.homeWins / e.homeGames) * maxRate : 0}%`, opacity: 0.85 }} />
             </View>
             <View style={{ flex: 1, height: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-              <View style={{ height: "100%", borderRadius: 999, backgroundColor: "#A78BFA", width: `${(e.awayGoals / maxGoals) * 100}%`, opacity: 0.85 }} />
+              <View style={{ height: "100%", borderRadius: 999, backgroundColor: "#A78BFA", width: `${e.awayGames > 0 ? (e.awayWins / e.awayGames) * maxRate : 0}%`, opacity: 0.85 }} />
             </View>
           </View>
         </View>
