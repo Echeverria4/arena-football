@@ -190,6 +190,10 @@ export default function TournamentParticipantsScreen() {
             label="Videos"
             onPress={() => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } })}
           />
+          <ChoiceChip
+            label="Músicas"
+            onPress={() => router.push({ pathname: "/tournament/musicas", params: { id: bundle.campeonato.id } })}
+          />
         </ScrollRow>
 
         <RevealOnScroll delay={0}>

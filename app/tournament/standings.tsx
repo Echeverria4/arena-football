@@ -285,6 +285,10 @@ export default function TournamentStandingsScreen() {
             label="Videos"
             onPress={() => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } })}
           />
+          <ChoiceChip
+            label="Músicas"
+            onPress={() => router.push({ pathname: "/tournament/musicas", params: { id: bundle.campeonato.id } })}
+          />
         </ScrollRow>
 
         {supportsGroupedStandings ? (

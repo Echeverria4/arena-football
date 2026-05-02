@@ -4,6 +4,7 @@ import { View } from "react-native";
 
 import { SyncStatusPill } from "@/components/tournament/SyncStatusPill";
 import { TournamentDeadlinePill } from "@/components/tournament/TournamentDeadlinePill";
+import { FloatingMusicPlayer } from "@/components/ui/FloatingMusicPlayer";
 import { useTournamentRealtimeSync } from "@/hooks/useTournamentRealtimeSync";
 import { useTournamentSnapshotSync } from "@/hooks/useTournamentSnapshotSync";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
@@ -143,6 +144,7 @@ export default function TournamentLayout() {
         />
       </View>
       <TournamentDeadlinePill />
+      <FloatingMusicPlayer />
     </View>
   );
 }

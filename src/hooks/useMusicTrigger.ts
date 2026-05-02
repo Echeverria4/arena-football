@@ -14,24 +14,21 @@ export function useMusicTrigger() {
   const enabled = useMusicStore((s) => s.enabled);
   const selectedTrackId = useMusicStore((s) => s.selectedTrackId);
   const volume = useMusicStore((s) => s.volume);
-  const isPlaying = useMusicStore((s) => s.isPlaying);
   const playMode = useMusicStore((s) => s.playMode);
   const setIsPlaying = useMusicStore((s) => s.setIsPlaying);
   const setSelectedTrackId = useMusicStore((s) => s.setSelectedTrackId);
+  const setPlayMode = useMusicStore((s) => s.setPlayMode);
 
   async function triggerStart() {
     if (!enabled || MUSIC_TRACKS.length === 0) return;
-    // Already playing — don't restart mid-song
-    if (isPlaying) return;
+    if (getMusicStatus().isPlaying) return;
 
     if (playMode === "random") {
-      // Always pick a fresh random track each time music starts
       const nextId = pickRandomTrackId(selectedTrackId);
       if (!nextId) return;
       await playTrack(nextId, volume);
       setSelectedTrackId(nextId);
     } else {
-      // Favorite: resume if paused, start selected track if stopped
       const trackId = selectedTrackId ?? MUSIC_TRACKS[0]?.id;
       if (!trackId) return;
       const { isLoaded, currentTrackId } = getMusicStatus();
@@ -47,7 +44,8 @@ export function useMusicTrigger() {
 
   async function togglePlayPause() {
     if (!enabled || MUSIC_TRACKS.length === 0) return;
-    if (isPlaying) {
+    const { isPlaying: actuallyPlaying } = getMusicStatus();
+    if (actuallyPlaying) {
       await pauseMusic();
       setIsPlaying(false);
     } else {
@@ -63,10 +61,30 @@ export function useMusicTrigger() {
     }
   }
 
+  async function playNext() {
+    if (MUSIC_TRACKS.length === 0) return;
+    const idx = MUSIC_TRACKS.findIndex((t) => t.id === selectedTrackId);
+    const nextId = MUSIC_TRACKS[(idx + 1) % MUSIC_TRACKS.length]!.id;
+    await playTrack(nextId, volume);
+    setSelectedTrackId(nextId);
+    setPlayMode("favorite");
+    setIsPlaying(true);
+  }
+
+  async function playPrev() {
+    if (MUSIC_TRACKS.length === 0) return;
+    const idx = MUSIC_TRACKS.findIndex((t) => t.id === selectedTrackId);
+    const prevId = MUSIC_TRACKS[(idx - 1 + MUSIC_TRACKS.length) % MUSIC_TRACKS.length]!.id;
+    await playTrack(prevId, volume);
+    setSelectedTrackId(prevId);
+    setPlayMode("favorite");
+    setIsPlaying(true);
+  }
+
   async function stop() {
     await stopMusic();
     setIsPlaying(false);
   }
 
-  return { triggerStart, togglePlayPause, stop };
+  return { triggerStart, togglePlayPause, playNext, playPrev, stop };
 }

@@ -222,6 +222,11 @@ export default function TournamentDetailsScreen() {
       active: false,
       onPress: () => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } }),
     },
+    {
+      label: "Músicas",
+      active: false,
+      onPress: () => router.push({ pathname: "/tournament/musicas", params: { id: bundle.campeonato.id } }),
+    },
   ];
 
   return (

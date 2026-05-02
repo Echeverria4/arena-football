@@ -903,6 +903,7 @@ export default function TournamentStatisticsScreen() {
           <ChoiceChip label="Classificação" onPress={() => router.push({ pathname: "/tournament/standings", params: { id: bundle.campeonato.id } })} />
           <ChoiceChip label="Estatísticas" active />
           <ChoiceChip label="Vídeos" onPress={() => router.push({ pathname: "/tournament/videos", params: { id: bundle.campeonato.id } })} />
+          <ChoiceChip label="Músicas" onPress={() => router.push({ pathname: "/tournament/musicas", params: { id: bundle.campeonato.id } })} />
         </ScrollRow>
 
         {/* Chart tab selector */}
