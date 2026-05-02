@@ -312,12 +312,12 @@ export default function StandingsTableExact({
     <View style={s.root}>
       {/* Phase pill */}
       <View style={s.phaseRow}>
-        {showTitle && title ? (
-          <Text style={s.phaseTitle} numberOfLines={1}>{title}</Text>
-        ) : null}
         <View style={s.phasePill}>
           <Text style={s.phaseText}>{phaseLabel}</Text>
         </View>
+        {showTitle && title ? (
+          <Text style={s.phaseTitle} numberOfLines={1}>{title}</Text>
+        ) : null}
       </View>
 
       {/* Table shell */}
@@ -354,28 +354,28 @@ const s = StyleSheet.create({
   },
 
   phaseTitle: {
-    flex: 1,
-    color: "#1E2B5C",
-    fontSize: 15,
-    fontWeight: "900",
+    color: "#6B7EA3",
+    fontSize: 12,
+    fontWeight: "700",
+    flexShrink: 1,
   },
 
   phasePill: {
     alignSelf: "flex-start",
     backgroundColor: "#F8FAFF",
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: "rgba(59,91,255,0.18)",
+    flexShrink: 0,
   },
 
   phaseText: {
-    color: "#3150A6",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    color: "#1E2B5C",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
 
   shell: {
