@@ -27,7 +27,8 @@ function resolveTournamentRouteKey(pathname: string) {
     routeSegment === "share" ||
     routeSegment === "standings" ||
     routeSegment === "statistics" ||
-    routeSegment === "videos"
+    routeSegment === "videos" ||
+    routeSegment === "musicas"
   ) {
     return routeSegment;
   }
@@ -80,7 +81,8 @@ export default function TournamentLayout() {
     routeKey === "preview" ||
     routeKey === "standings" ||
     routeKey === "statistics" ||
-    routeKey === "videos";
+    routeKey === "videos" ||
+    routeKey === "musicas";
   const shouldRedirect =
     Boolean(lockToActiveTournament && currentTournamentId) &&
     !isShareRoute &&

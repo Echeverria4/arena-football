@@ -5,6 +5,7 @@ import { TournamentCard } from "@/components/tournament/TournamentCard";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { useMusicTrigger } from "@/hooks/useMusicTrigger";
 import { getActiveCampeonatos } from "@/lib/tournament-display";
 import { useAppStore } from "@/stores/app-store";
 import { useTournamentStore } from "@/stores/tournament-store";
@@ -12,6 +13,7 @@ import { useTournamentStore } from "@/stores/tournament-store";
 export default function TournamentListScreen() {
   const campeonatos = useTournamentStore((state) => state.campeonatos);
   const setCurrentTournamentId = useAppStore((state) => state.setCurrentTournamentId);
+  const { triggerStart } = useMusicTrigger();
   const ativos = getActiveCampeonatos(campeonatos);
 
   return (
@@ -31,6 +33,7 @@ export default function TournamentListScreen() {
                 primaryAction={{
                   label: "Entrar no campeonato",
                   onPress: () => {
+                    void triggerStart();
                     setCurrentTournamentId(camp.id);
                     router.push(`/tournament/${camp.id}`);
                   },

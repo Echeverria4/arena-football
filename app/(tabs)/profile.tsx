@@ -8,13 +8,17 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { RevealOnScroll } from "@/components/ui/RevealOnScroll";
 import { Screen } from "@/components/ui/Screen";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { setMusicVolume } from "@/lib/music-player";
+import { MUSIC_TRACKS } from "@/lib/music-tracks";
 import { buildTournamentShareLink } from "@/lib/tournament-sharing";
 import { resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { signOut } from "@/services/auth";
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useMusicStore } from "@/stores/music-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 import { useVideoStore } from "@/stores/video-store";
+import { useMusicTrigger } from "@/hooks/useMusicTrigger";
 
 const ROLE_LABELS: Record<string, string> = {
   organizer: "Organizador",
@@ -41,6 +45,27 @@ export default function ProfileScreen() {
   const [copiedViewer, setCopiedViewer] = useState(false);
   const [copiedEditor, setCopiedEditor] = useState(false);
   const [linkBusy, setLinkBusy] = useState<"viewer" | "editor" | null>(null);
+
+  const musicEnabled = useMusicStore((s) => s.enabled);
+  const musicVolume = useMusicStore((s) => s.volume);
+  const musicIsPlaying = useMusicStore((s) => s.isPlaying);
+  const musicPlayMode = useMusicStore((s) => s.playMode);
+  const setMusicEnabled = useMusicStore((s) => s.setEnabled);
+  const setMusicVolumeState = useMusicStore((s) => s.setVolume);
+  const setMusicPlayMode = useMusicStore((s) => s.setPlayMode);
+  const { togglePlayPause, stop } = useMusicTrigger();
+
+  async function handleToggleMusic(val: boolean) {
+    setMusicEnabled(val);
+    if (!val) await stop();
+  }
+
+  async function handleVolumeChange(v: number) {
+    setMusicVolumeState(v);
+    await setMusicVolume(v);
+  }
+
+  const VOLUME_STEPS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
 
   const activeCampeonato = campeonatos.find((c) => c.id === currentTournamentId) ?? null;
   const accessMode = resolveTournamentAccessMode(tournamentAccess, currentTournamentId);
@@ -285,6 +310,138 @@ export default function ProfileScreen() {
             </LiveBorderCard>
           </RevealOnScroll>
         ) : null}
+
+        {/* Music controls */}
+        <RevealOnScroll delay={160}>
+          <LiveBorderCard accent="blue" radius={22} padding={1.4} backgroundColor="#060D18">
+            <View style={{ padding: 20, gap: 18 }}>
+              <View style={{ gap: 3 }}>
+                <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "800", letterSpacing: 2.2, textTransform: "uppercase" }}>
+                  Música
+                </Text>
+                <Text style={{ color: "#F3F7FF", fontSize: 18, fontWeight: "900" }}>Trilha sonora</Text>
+                <Text style={{ color: "#6B7EA3", fontSize: 13, lineHeight: 20 }}>
+                  {musicEnabled ? "Ativa — toca ao entrar no campeonato" : "Desativada — não tocará nas próximas sessões"}
+                </Text>
+              </View>
+
+              {/* Enable toggle */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#AEBBDA" }}>Música de fundo</Text>
+                <Pressable
+                  onPress={() => handleToggleMusic(!musicEnabled)}
+                  style={{
+                    width: 52, height: 30, borderRadius: 15,
+                    backgroundColor: musicEnabled ? "rgba(139,92,246,0.30)" : "rgba(255,255,255,0.08)",
+                    borderWidth: 1,
+                    borderColor: musicEnabled ? "rgba(139,92,246,0.60)" : "rgba(255,255,255,0.14)",
+                    justifyContent: "center",
+                    paddingHorizontal: 3,
+                  }}
+                >
+                  <View style={{
+                    width: 22, height: 22, borderRadius: 11,
+                    backgroundColor: musicEnabled ? "#8B5CF6" : "#4A5568",
+                    alignSelf: musicEnabled ? "flex-end" : "flex-start",
+                  }} />
+                </Pressable>
+              </View>
+
+              {/* Play / Pause */}
+              {musicEnabled && MUSIC_TRACKS.length > 0 && (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                  <Pressable
+                    onPress={togglePlayPause}
+                    style={{
+                      width: 44, height: 44, borderRadius: 22,
+                      backgroundColor: musicIsPlaying ? "rgba(139,92,246,0.20)" : "rgba(255,255,255,0.07)",
+                      borderWidth: 1,
+                      borderColor: musicIsPlaying ? "rgba(139,92,246,0.55)" : "rgba(255,255,255,0.14)",
+                      alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name={musicIsPlaying ? "pause" : "play"} size={20} color={musicIsPlaying ? "#C4B5FD" : "#94A3B8"} />
+                  </Pressable>
+                  <Text style={{ fontSize: 13, color: "#AEBBDA", fontWeight: "700" }}>
+                    {musicIsPlaying ? "Pausar música" : "Retomar música"}
+                  </Text>
+                </View>
+              )}
+
+              {/* Volume */}
+              {musicEnabled && MUSIC_TRACKS.length > 0 && (
+                <View style={{ gap: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#6B7EA3" }}>Volume</Text>
+                    <Text style={{ fontSize: 11, fontWeight: "900", color: "#C4B5FD" }}>{Math.round(musicVolume * 100)}%</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 4 }}>
+                    {VOLUME_STEPS.map((step) => (
+                      <Pressable
+                        key={step}
+                        onPress={() => handleVolumeChange(step)}
+                        style={{ flex: 1, height: 24, justifyContent: "flex-end", alignItems: "center" }}
+                      >
+                        <View style={{
+                          width: "100%",
+                          height: `${step * 100}%`,
+                          borderRadius: 3,
+                          backgroundColor: musicVolume >= step ? "#8B5CF6" : "rgba(255,255,255,0.10)",
+                        }} />
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Play mode */}
+              {musicEnabled && (
+                <View style={{ gap: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#6B7EA3" }}>Modo de reprodução</Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <Pressable
+                      onPress={() => setMusicPlayMode("favorite")}
+                      style={{
+                        flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
+                        paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14,
+                        backgroundColor: musicPlayMode === "favorite" ? "rgba(139,92,246,0.16)" : "rgba(255,255,255,0.04)",
+                        borderWidth: 1,
+                        borderColor: musicPlayMode === "favorite" ? "rgba(139,92,246,0.50)" : "rgba(255,255,255,0.10)",
+                      }}
+                    >
+                      <Ionicons name="heart" size={14} color={musicPlayMode === "favorite" ? "#C4B5FD" : "#4A5568"} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "800", color: musicPlayMode === "favorite" ? "#F3F7FF" : "#6B7EA3" }}>
+                          Favorita
+                        </Text>
+                        <Text style={{ fontSize: 10, color: "#4A6080" }}>Sempre a mesma faixa</Text>
+                      </View>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => setMusicPlayMode("random")}
+                      style={{
+                        flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
+                        paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14,
+                        backgroundColor: musicPlayMode === "random" ? "rgba(234,179,8,0.12)" : "rgba(255,255,255,0.04)",
+                        borderWidth: 1,
+                        borderColor: musicPlayMode === "random" ? "rgba(234,179,8,0.45)" : "rgba(255,255,255,0.10)",
+                      }}
+                    >
+                      <Ionicons name="shuffle" size={14} color={musicPlayMode === "random" ? "#FDE047" : "#4A5568"} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 12, fontWeight: "800", color: musicPlayMode === "random" ? "#FEF08A" : "#6B7EA3" }}>
+                          Aleatório
+                        </Text>
+                        <Text style={{ fontSize: 10, color: "#4A6080" }}>Faixa diferente a cada vez</Text>
+                      </View>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
+          </LiveBorderCard>
+        </RevealOnScroll>
 
         {/* Sign out */}
         <RevealOnScroll delay={180}>

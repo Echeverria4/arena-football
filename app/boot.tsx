@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, Text, useWindowDimensions, View } from "react-native";
 
 import { Screen } from "@/components/ui/Screen";
+import { useMusicTrigger } from "@/hooks/useMusicTrigger";
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -54,6 +55,7 @@ export default function BootScreen() {
   );
   const setBootCompleted = useAppStore((state) => state.setBootCompleted);
   const hydrateSession = useAuthStore((state) => state.hydrateSession);
+  const { triggerStart } = useMusicTrigger();
   const horizontalAnimations = useRef(horizontalGuides.map(() => new Animated.Value(-1800))).current;
   const horizontalReverseAnimations = useRef(horizontalGuides.map(() => new Animated.Value(1800))).current;
   const verticalAnimations = useRef(verticalGuides.map(() => new Animated.Value(-1800))).current;
@@ -279,6 +281,7 @@ export default function BootScreen() {
   return (
     <Screen className="flex-1" backgroundVariant="none">
       <Pressable className="flex-1" onPress={() => {
+        void triggerStart();
         setBootCompleted(true);
         const dest = redirect as string | undefined;
 

@@ -383,8 +383,21 @@ export default function TournamentDetailsScreen() {
               }
             />
           </RevealOnScroll>
+          <RevealOnScroll delay={400}>
+            <FeatureCard
+              icon="musical-notes-outline"
+              title="Músicas"
+              subtitle="Trilha sonora do campeonato"
+              meta="Abrir"
+              width={cardWidth}
+              accent="blue"
+              onPress={() =>
+                router.push({ pathname: "/tournament/musicas", params: { id: bundle.campeonato.id } })
+              }
+            />
+          </RevealOnScroll>
           {accessMode === "owner" ? (
-            <RevealOnScroll delay={400}>
+            <RevealOnScroll delay={480}>
               <FeatureCard
                 icon="link-outline"
                 title="Links"
