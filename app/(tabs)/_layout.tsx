@@ -13,8 +13,10 @@ import {
   type GestureResponderEvent,
   type ViewStyle,
 } from "react-native";
+import { FloatingMusicPlayer } from "@/components/ui/FloatingMusicPlayer";
 import { Screen } from "@/components/ui/Screen";
 import { ScreenState } from "@/components/ui/ScreenState";
+import { useMusicPersistence } from "@/hooks/useMusicPersistence";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -501,6 +503,7 @@ function GradientTabBarButton({ ...props }: GradientTabBarButtonProps) {
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
+  useMusicPersistence();
   const currentTournamentId = useAppStore((state) => state.currentTournamentId);
   const tournamentAccess = useAppStore((state) => state.tournamentAccess);
   const authStatus = useAuthStore((state) => state.status);
@@ -536,7 +539,7 @@ export default function TabsLayout() {
     router.replace({ pathname: "/tournament/preview", params: { id: currentTournamentId } });
   }, [currentTournamentId, lockToActiveTournament, pathname]);
 
-  if (!authHydrated || authStatus === "loading") {
+  if (!authHydrated) {
     return (
       <View style={styles.layoutRoot}>
         <TabsSceneBackground />
@@ -696,6 +699,8 @@ export default function TabsLayout() {
           options={{ href: null }}
         />
       </Tabs>
+
+      <FloatingMusicPlayer />
     </View>
   );
 }

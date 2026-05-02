@@ -26,6 +26,11 @@ import type { Campeonato } from "@/types/tournament";
  * so they can't push from scratch — they update via the existing relational
  * row, which is what salvarPlacarJogo already does).
  */
+
+// Module-level map keeps last-pushed signature across navigations so the hook
+// does not re-push on every screen mount when nothing actually changed.
+const _lastPushedSignatures = new Map<string, string>();
+
 export function useTournamentAutoPush(args: {
   campeonato: Campeonato | null | undefined;
   isOwner: boolean;
@@ -33,7 +38,6 @@ export function useTournamentAutoPush(args: {
   const atualizarCampeonato = useTournamentStore(
     (state) => state.atualizarCampeonato,
   );
-  const lastPushedSignatureRef = useRef<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export function useTournamentAutoPush(args: {
       classificadosDiretosIds: campeonato.classificadosDiretosIds ?? null,
     });
 
-    if (signature === lastPushedSignatureRef.current) {
+    if (signature === _lastPushedSignatures.get(campeonato.id)) {
       return;
     }
 
@@ -100,7 +104,7 @@ export function useTournamentAutoPush(args: {
             participantes: result.campeonato.participantes,
             rodadas: result.campeonato.rodadas,
           });
-          lastPushedSignatureRef.current = signature;
+          _lastPushedSignatures.set(campeonato.id, signature);
           console.log(
             "[useTournamentAutoPush] pushed " +
               campeonato.id +

@@ -68,21 +68,12 @@ function FlagTile({
       }}
     >
       {imageUrl && !failed ? (
-        <View
-          style={{
-            width: innerScale,
-            height: innerScale,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Image
-            source={{ uri: imageUrl }}
-            style={{ width: "100%", height: "100%" }}
-            resizeMode="contain"
-            onError={() => setFailed(true)}
-          />
-        </View>
+        <Image
+          source={{ uri: imageUrl }}
+          style={{ width: innerScale, height: innerScale }}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
       ) : (
         <Text
           style={{
