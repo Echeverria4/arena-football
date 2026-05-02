@@ -41,6 +41,7 @@ type RadarEntry = {
   name: string;
   teamName: string;
   color: string;
+  groupName: string;
   values: number[];
 };
 
@@ -51,6 +52,20 @@ type BarEntry = {
   value: number;
   color: string;
   crest?: string | null;
+};
+
+type HomeAwayEntry = {
+  participantId: string;
+  name: string;
+  teamName: string;
+  color: string;
+  crest?: string | null;
+  homeGoals: number;
+  awayGoals: number;
+  homeWins: number;
+  awayWins: number;
+  homeGames: number;
+  awayGames: number;
 };
 
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -195,6 +210,7 @@ function buildRadarData(
       name: participant?.displayName ?? "Jogador",
       teamName: tn,
       color: colorMap.get(s.participantId) ?? "#94A3B8",
+      groupName: participant?.groupName ?? "Geral",
       values: [ataque, defesa, aproveitamento, consistencia, saldo, vitorias],
     };
   });
@@ -350,16 +366,13 @@ function EvolucaoChart({
           if (i === 0) return null;
           const result = s.resultsByRound[i - 1] ?? null;
           const dotColor = result === "W" ? "#22C55E" : result === "D" ? "#EAB308" : result === "L" ? "#EF4444" : s.color;
-          const isFinal = i === lastRound;
           const r = 4;
           return (
             <View key={`${s.participantId}-dot-${i}`} style={{
               position: "absolute",
               left: xPos(i) - r, top: yPos(pts) - r,
               width: r * 2, height: r * 2, borderRadius: r,
-              backgroundColor: isFinal ? dotColor : "#060D18",
-              borderWidth: isFinal ? 0 : 1.5,
-              borderColor: dotColor,
+              backgroundColor: dotColor,
               opacity: active ? 1 : 0.08,
             }} />
           );
@@ -474,6 +487,77 @@ function BarRanking({
             letterSpacing: 1, textTransform: "uppercase",
             flexShrink: 0, width: 28,
           }}>{unit}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ── Home / Away Card ─────────────────────────────────────────────────────────
+
+function HomeAwayCard({ entries }: { entries: HomeAwayEntry[] }) {
+  const maxGoals = Math.max(...entries.flatMap((e) => [e.homeGoals, e.awayGoals]), 1);
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={{ gap: 3 }}>
+        <Text style={{ fontSize: 13, fontWeight: "800", color: "#F3F7FF" }}>Casa vs Fora</Text>
+        <Text style={{ fontSize: 11, color: "#6B7EA3" }}>Gols marcados e vitórias por localidade</Text>
+      </View>
+
+      {/* Column headers */}
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View style={{ flex: 1 }} />
+        <View style={{ width: 78, alignItems: "center" }}>
+          <Text style={{ fontSize: 9, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase", color: "#3B82F6" }}>Casa</Text>
+        </View>
+        <View style={{ width: 78, alignItems: "center" }}>
+          <Text style={{ fontSize: 9, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase", color: "#A78BFA" }}>Fora</Text>
+        </View>
+      </View>
+
+      {entries.map((e, i) => (
+        <View key={e.participantId} style={{ gap: 6 }}>
+          {/* Name row */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{
+              width: 20, height: 20, borderRadius: 10, flexShrink: 0,
+              backgroundColor: i === 0 ? "rgba(255,215,106,0.12)" : "rgba(255,255,255,0.05)",
+              borderWidth: 1,
+              borderColor: i === 0 ? "rgba(255,215,106,0.4)" : "rgba(255,255,255,0.1)",
+              alignItems: "center", justifyContent: "center",
+            }}>
+              <Text style={{ fontSize: 9, fontWeight: "900", color: i === 0 ? "#FFD76A" : "#6B7EA3" }}>{i + 1}</Text>
+            </View>
+            {e.crest ? (
+              <Image source={{ uri: e.crest }} style={{ width: 20, height: 20, flexShrink: 0 }} resizeMode="contain" />
+            ) : (
+              <View style={{ width: 20, height: 20, borderRadius: 10, flexShrink: 0, backgroundColor: `${e.color}22`, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 7, fontWeight: "900", color: e.color }}>{e.teamName.slice(0, 2).toUpperCase()}</Text>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={{ fontSize: 11, fontWeight: "800", color: "#F3F7FF" }}>{e.name}</Text>
+            </View>
+            {/* Casa stats */}
+            <View style={{ width: 78, alignItems: "center", gap: 2 }}>
+              <Text style={{ fontSize: 13, fontWeight: "900", color: "#3B82F6" }}>{e.homeGoals}</Text>
+              <Text style={{ fontSize: 9, color: "#6B7EA3" }}>{e.homeWins}V · {e.homeGames}J</Text>
+            </View>
+            {/* Fora stats */}
+            <View style={{ width: 78, alignItems: "center", gap: 2 }}>
+              <Text style={{ fontSize: 13, fontWeight: "900", color: "#A78BFA" }}>{e.awayGoals}</Text>
+              <Text style={{ fontSize: 9, color: "#6B7EA3" }}>{e.awayWins}V · {e.awayGames}J</Text>
+            </View>
+          </View>
+          {/* Dual bar */}
+          <View style={{ flexDirection: "row", gap: 4, paddingLeft: 28 }}>
+            <View style={{ flex: 1, height: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+              <View style={{ height: "100%", borderRadius: 999, backgroundColor: "#3B82F6", width: `${(e.homeGoals / maxGoals) * 100}%`, opacity: 0.85 }} />
+            </View>
+            <View style={{ flex: 1, height: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+              <View style={{ height: "100%", borderRadius: 999, backgroundColor: "#A78BFA", width: `${(e.awayGoals / maxGoals) * 100}%`, opacity: 0.85 }} />
+            </View>
+          </View>
         </View>
       ))}
     </View>
@@ -634,7 +718,6 @@ export default function TournamentStatisticsScreen() {
     if (!bundle) return [];
     return [...bundle.standings]
       .sort((a, b) => b.goalsFor - a.goalsFor)
-      .slice(0, 5)
       .map((s) => {
         const p = bundle.participants.find((x) => x.id === s.participantId);
         const tn = normalizeTeamDisplayName(p?.teamName ?? "Time");
@@ -653,7 +736,6 @@ export default function TournamentStatisticsScreen() {
     if (!bundle) return [];
     return [...bundle.standings]
       .sort((a, b) => a.goalsAgainst - b.goalsAgainst)
-      .slice(0, 5)
       .map((s) => {
         const p = bundle.participants.find((x) => x.id === s.participantId);
         const tn = normalizeTeamDisplayName(p?.teamName ?? "Time");
@@ -675,7 +757,6 @@ export default function TournamentStatisticsScreen() {
         const diff = calculateVictoryRate(b.wins, b.played) - calculateVictoryRate(a.wins, a.played);
         return diff !== 0 ? diff : b.points - a.points;
       })
-      .slice(0, 5)
       .map((s) => {
         const p = bundle.participants.find((x) => x.id === s.participantId);
         const tn = normalizeTeamDisplayName(p?.teamName ?? "Time");
@@ -690,17 +771,43 @@ export default function TournamentStatisticsScreen() {
       });
   }, [bundle, colorMap]);
 
+  const homeAwayEntries: HomeAwayEntry[] = useMemo(() => {
+    if (!bundle) return [];
+    const map = new Map<string, HomeAwayEntry>();
+    bundle.participants.forEach((p) => {
+      const tn = normalizeTeamDisplayName(p.teamName ?? "Time");
+      map.set(p.id, {
+        participantId: p.id,
+        name: p.displayName ?? "Jogador",
+        teamName: tn,
+        color: colorMap.get(p.id) ?? "#94A3B8",
+        crest: p.teamBadgeUrl ?? resolveTeamVisualByName(tn),
+        homeGoals: 0, awayGoals: 0,
+        homeWins: 0, awayWins: 0,
+        homeGames: 0, awayGames: 0,
+      });
+    });
+    bundle.campeonato.rodadas.flat().forEach((m) => {
+      if (m.status !== "finalizado" || m.placarMandante == null || m.placarVisitante == null) return;
+      const hg = m.placarMandante, ag = m.placarVisitante;
+      const home = map.get(m.mandanteId);
+      const away = map.get(m.visitanteId);
+      if (home) { home.homeGoals += hg; home.homeGames += 1; if (hg > ag) home.homeWins += 1; }
+      if (away) { away.awayGoals += ag; away.awayGames += 1; if (ag > hg) away.awayWins += 1; }
+    });
+    return [...map.values()].sort(
+      (a, b) => (b.homeGoals + b.awayGoals) - (a.homeGoals + a.awayGoals),
+    );
+  }, [bundle, colorMap]);
+
   // ── evolução insights ──
   const insights = useMemo(() => {
-    if (evolucaoSeries.length === 0) return [];
+    if (evolucaoSeries.length === 0 || !bundle) return [];
     const leader = [...evolucaoSeries].sort(
       (a, b) => (b.pointsByRound.at(-1) ?? 0) - (a.pointsByRound.at(-1) ?? 0),
     )[0];
-    const mostConsistent = [...evolucaoSeries].reduce((best, s) => {
-      const stalled = s.pointsByRound.slice(1).filter((v, i) => v === (s.pointsByRound[i] ?? 0)).length;
-      const bestStalled = best.pointsByRound.slice(1).filter((v, i) => v === (best.pointsByRound[i] ?? 0)).length;
-      return stalled < bestStalled ? s : best;
-    });
+    const topScorer = [...bundle.standings].sort((a, b) => b.goalsFor - a.goalsFor)[0];
+    const topScorerParticipant = bundle.participants.find((p) => p.id === topScorer?.participantId);
     return [
       {
         label: "Líder",
@@ -709,20 +816,32 @@ export default function TournamentStatisticsScreen() {
         color: leader?.color ?? "#FFD76A",
       },
       {
-        label: "Mais consistente",
-        value: mostConsistent?.name ?? "—",
-        note: "menos rodadas em branco",
-        color: mostConsistent?.color ?? "#67E8F9",
+        label: "Mais letal",
+        value: topScorerParticipant?.displayName ?? "—",
+        note: `${topScorer?.goalsFor ?? 0} gols marcados`,
+        color: colorMap.get(topScorer?.participantId ?? "") ?? "#86EFAC",
       },
     ];
-  }, [evolucaoSeries]);
+  }, [evolucaoSeries, bundle, colorMap]);
 
-  const radarDataByScore = useMemo(
-    () => [...radarData].sort(
-      (a, b) => b.values.reduce((x, y) => x + y, 0) - a.values.reduce((x, y) => x + y, 0),
-    ),
-    [radarData],
-  );
+  const radarDataByGroup = useMemo(() => {
+    const map = new Map<string, RadarEntry[]>();
+    radarData.forEach((entry) => {
+      const g = entry.groupName;
+      const arr = map.get(g) ?? [];
+      arr.push(entry);
+      map.set(g, arr);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([groupName, entries]) => ({
+        groupName,
+        entries: [...entries].sort(
+          (a, b) => b.values.reduce((x, y) => x + y, 0) - a.values.reduce((x, y) => x + y, 0),
+        ),
+      }));
+  }, [radarData]);
+  const showRadarGroupHeaders = radarDataByGroup.length > 1 || (radarDataByGroup[0]?.groupName !== "Geral");
 
   const radarSize = chartWidth > 0 ? Math.min(Math.floor((chartWidth - 28) * 0.38), 148) : 0;
 
@@ -904,6 +1023,14 @@ export default function TournamentStatisticsScreen() {
                 </View>
               </LiveBorderCard>
             </RevealOnScroll>
+
+            <RevealOnScroll delay={240}>
+              <LiveBorderCard accent="blue" radius={22} padding={1.3} backgroundColor="#060D18">
+                <View style={{ padding: 20 }}>
+                  <HomeAwayCard entries={homeAwayEntries} />
+                </View>
+              </LiveBorderCard>
+            </RevealOnScroll>
           </View>
         )}
 
@@ -913,22 +1040,20 @@ export default function TournamentStatisticsScreen() {
             onLayout={(e: LayoutChangeEvent) => setChartWidth(e.nativeEvent.layout.width)}
             style={{ gap: 14 }}
           >
-            {/* Group header */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(139,92,246,0.18)" }} />
-              <View style={{ alignItems: "center", gap: 1 }}>
-                <Text style={{ fontSize: 9, fontWeight: "900", letterSpacing: 2.5, textTransform: "uppercase", color: "#7B5CF0" }}>
-                  GRUPO A
-                </Text>
-                <Text style={{ fontSize: 9, color: "#4A5568", letterSpacing: 0.5 }}>
-                  {bundle.tournament.name}
-                </Text>
-              </View>
-              <View style={{ flex: 1, height: 1, backgroundColor: "rgba(139,92,246,0.18)" }} />
-            </View>
+            {radarDataByGroup.map(({ groupName, entries }) => (
+              <View key={groupName} style={{ gap: 10 }}>
+                {showRadarGroupHeaders && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Text style={{
+                      fontSize: 11, fontWeight: "900", letterSpacing: 1.2,
+                      textTransform: "uppercase", color: "#C4B5FD",
+                    }}>{groupName}</Text>
+                    <View style={{ flex: 1, height: 1, backgroundColor: "rgba(196,181,253,0.20)" }} />
+                  </View>
+                )}
 
-            {/* One card per participant — sorted by composite score */}
-            {radarDataByScore.map((entry, idx) => {
+                {/* One card per participant — sorted by composite score within group */}
+                {entries.map((entry, idx) => {
               const score = Math.round(entry.values.reduce((a, b) => a + b, 0) / RADAR_N);
               const rank = idx + 1;
               return (
@@ -1015,6 +1140,8 @@ export default function TournamentStatisticsScreen() {
                 </RevealOnScroll>
               );
             })}
+              </View>
+            ))}
           </View>
         )}
 
