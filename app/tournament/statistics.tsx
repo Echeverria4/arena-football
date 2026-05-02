@@ -501,7 +501,7 @@ function HomeAwayCard({ entries }: { entries: HomeAwayEntry[] }) {
     <View style={{ gap: 12 }}>
       <View style={{ gap: 3 }}>
         <Text style={{ fontSize: 13, fontWeight: "800", color: "#F3F7FF" }}>Casa vs Fora</Text>
-        <Text style={{ fontSize: 11, color: "#6B7EA3" }}>Gols marcados e vitórias por localidade</Text>
+        <Text style={{ fontSize: 11, color: "#6B7EA3" }}>Aproveitamento em casa e fora — % de vitórias</Text>
       </View>
 
       {/* Column headers */}
@@ -1046,16 +1046,6 @@ export default function TournamentStatisticsScreen() {
           >
             {radarDataByGroup.map(({ groupName, entries }) => (
               <View key={groupName} style={{ gap: 10 }}>
-                {showRadarGroupHeaders && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <Text style={{
-                      fontSize: 11, fontWeight: "900", letterSpacing: 1.2,
-                      textTransform: "uppercase", color: "#C4B5FD",
-                    }}>{groupName}</Text>
-                    <View style={{ flex: 1, height: 1, backgroundColor: "rgba(196,181,253,0.20)" }} />
-                  </View>
-                )}
-
                 {/* One card per participant — sorted by composite score within group */}
                 {entries.map((entry, idx) => {
               const score = Math.round(entry.values.reduce((a, b) => a + b, 0) / RADAR_N);
