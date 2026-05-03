@@ -234,9 +234,50 @@ export default function TournamentStandingsScreen() {
           (m) => m.rodada <= numGrpRounds && groupIdSet.has(m.mandanteId) && groupIdSet.has(m.visitanteId),
         );
         const groupPending = countPendingRounds(groupMatches, numGrpRounds);
-        if (groupPending === 0 || groupPending > 2) continue;
+
+        if (groupPending === 0) {
+          if (groupMatches.length === 0) continue;
+          // Group finished — directly classify top qualifyingPositions as 100%
+          const groupStandings = sortedStandings
+            .filter((e) => ids.includes(e.participantId))
+            .sort((a, b) => {
+              if (b.points !== a.points) return b.points - a.points;
+              if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+              return b.goalsFor - a.goalsFor;
+            });
+          groupStandings.slice(0, qualifyingPositions).forEach((e) => combined.set(e.participantId, 100));
+          continue;
+        }
+
+        if (groupPending > 2) continue;
+
         const probs = computeQualProbs(ids, allMatches, numGrpRounds, qualifyingPositions);
-        for (const [id, p] of probs) combined.set(id, p);
+
+        // Only keep non-zero probabilities (0% = already eliminated, no badge needed)
+        for (const [id, p] of probs) {
+          if (p > 0) combined.set(id, p);
+        }
+
+        // Participants who've already played all their group matches and are currently
+        // in qualifying position are effectively classified — override to 100%
+        const groupRanking = sortedStandings
+          .filter((e) => ids.includes(e.participantId))
+          .sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
+            return b.goalsFor - a.goalsFor;
+          });
+        for (let pos = 0; pos < groupRanking.length; pos++) {
+          const entry = groupRanking[pos]!;
+          const hasPendingMatch = groupMatches.some(
+            (m) =>
+              m.status !== "finalizado" &&
+              (m.mandanteId === entry.participantId || m.visitanteId === entry.participantId),
+          );
+          if (!hasPendingMatch && pos < qualifyingPositions) {
+            combined.set(entry.participantId, 100);
+          }
+        }
       }
 
       return combined;
