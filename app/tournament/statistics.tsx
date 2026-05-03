@@ -829,21 +829,10 @@ export default function TournamentStatisticsScreen() {
   }, [evolucaoSeries, bundle, colorMap]);
 
   const radarDataByGroup = useMemo(() => {
-    const map = new Map<string, RadarEntry[]>();
-    radarData.forEach((entry) => {
-      const g = entry.groupName;
-      const arr = map.get(g) ?? [];
-      arr.push(entry);
-      map.set(g, arr);
-    });
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([groupName, entries]) => ({
-        groupName,
-        entries: [...entries].sort(
-          (a, b) => b.values.reduce((x, y) => x + y, 0) - a.values.reduce((x, y) => x + y, 0),
-        ),
-      }));
+    const sorted = [...radarData].sort(
+      (a, b) => b.values.reduce((x, y) => x + y, 0) - a.values.reduce((x, y) => x + y, 0),
+    );
+    return [{ groupName: "Geral", entries: sorted }];
   }, [radarData]);
   const showRadarGroupHeaders = radarDataByGroup.length > 1 || (radarDataByGroup[0]?.groupName !== "Geral");
 

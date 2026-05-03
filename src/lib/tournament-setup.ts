@@ -429,28 +429,37 @@ export function generateKnockoutFirstRound(campeonato: Campeonato): KnockoutFirs
   // Two-pass ordering: all "1st-place" matches first, then all "2nd-place"
   // matches, so same-group teams end up in opposite bracket halves and can
   // only meet in the Final (protected seeding).
+  // usedIds prevents a participant from appearing in two matches if group data
+  // is inconsistent (participant listed in more than one group).
   if (advancementMode === "top_two") {
     const firstsMatches: Jogo[] = [];
     const secondsMatches: Jogo[] = [];
+    const usedIds = new Set<string>();
 
     for (let i = 0; i < groupNames.length; i += 2) {
       const nameA = groupNames[i]!;
       const nameB = groupNames[i + 1];
       if (!nameB) continue;
-      const rankA = groupRankings.get(nameA) ?? [];
-      const rankB = groupRankings.get(nameB) ?? [];
-      if (rankA[0] && rankB[1])
+      const rankA = (groupRankings.get(nameA) ?? []).filter(id => !usedIds.has(id));
+      const rankB = (groupRankings.get(nameB) ?? []).filter(id => !usedIds.has(id));
+      if (rankA[0] && rankB[1]) {
         firstsMatches.push(createMatch(rankA[0], rankB[1], newRoundNum, ++matchOffset));
+        usedIds.add(rankA[0]);
+        usedIds.add(rankB[1]);
+      }
     }
 
     for (let i = 0; i < groupNames.length; i += 2) {
       const nameA = groupNames[i]!;
       const nameB = groupNames[i + 1];
       if (!nameB) continue;
-      const rankA = groupRankings.get(nameA) ?? [];
-      const rankB = groupRankings.get(nameB) ?? [];
-      if (rankB[0] && rankA[1])
-        secondsMatches.push(createMatch(rankB[0], rankA[1], newRoundNum, ++matchOffset));
+      const rankA = (groupRankings.get(nameA) ?? []).filter(id => !usedIds.has(id));
+      const rankB = (groupRankings.get(nameB) ?? []).filter(id => !usedIds.has(id));
+      if (rankB[0] && rankA[0]) {
+        secondsMatches.push(createMatch(rankB[0], rankA[0], newRoundNum, ++matchOffset));
+        usedIds.add(rankB[0]);
+        usedIds.add(rankA[0]);
+      }
     }
 
     return { rounds: buildLegs([...firstsMatches, ...secondsMatches]) };

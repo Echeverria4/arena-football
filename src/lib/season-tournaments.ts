@@ -29,12 +29,13 @@ export function getNextSeasonLabel(campeonatos: Campeonato[]) {
 }
 
 export function normalizeCampeonato(campeonato: Campeonato): Campeonato {
+  const formato = campeonato.formato ?? "league";
   return {
     ...campeonato,
     temporada: campeonato.temporada ?? formatSeasonNumber(1),
     status: getSeasonStatus(campeonato),
     tempoExtraRodadasMs: campeonato.tempoExtraRodadasMs ?? {},
-    formato: campeonato.formato ?? "league",
+    formato,
     regras:
       campeonato.regras ??
       "Mandante cria a sala. Resultados podem ser corrigidos somente pelo criador.",
@@ -42,6 +43,10 @@ export function normalizeCampeonato(campeonato: Campeonato): Campeonato {
       campeonato.criteriosClassificacao ?? ["points", "goal_difference", "head_to_head"],
     allowVideos: campeonato.allowVideos ?? true,
     allowGoalAward: campeonato.allowGoalAward ?? true,
+    gruposClassificacaoModo:
+      formato === "groups_knockout"
+        ? campeonato.gruposClassificacaoModo ?? "top_two"
+        : campeonato.gruposClassificacaoModo,
   };
 }
 
