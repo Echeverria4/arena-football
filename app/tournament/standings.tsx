@@ -209,11 +209,8 @@ export default function TournamentStandingsScreen() {
     const allMatches = bundle.campeonato.rodadas.flat();
 
     if (fmt === "groups_knockout") {
-      // Show probabilities when ≤ 2 group-stage rounds remain
       const numGrpRounds = bundle.campeonato.numRodadasGrupos ?? 0;
       if (numGrpRounds === 0) return new Map();
-      const pending = countPendingRounds(allMatches, numGrpRounds);
-      if (pending === 0 || pending > 2) return new Map();
 
       const advMode = bundle.campeonato.gruposClassificacaoModo ?? "top_two";
       const qualifyingPositions =
@@ -222,7 +219,6 @@ export default function TournamentStandingsScreen() {
         : advMode === "first_direct_second_playoff" ? 2
         : 3; // first_direct_second_vs_third_playoff
 
-      // Compute per group
       const combined = new Map<string, number>();
       const groupMap = new Map<string, string[]>();
       for (const p of bundle.campeonato.participantes) {
@@ -231,10 +227,18 @@ export default function TournamentStandingsScreen() {
         arr.push(p.id);
         groupMap.set(g, arr);
       }
+
       for (const [, ids] of groupMap) {
+        const groupIdSet = new Set(ids);
+        const groupMatches = allMatches.filter(
+          (m) => m.rodada <= numGrpRounds && groupIdSet.has(m.mandanteId) && groupIdSet.has(m.visitanteId),
+        );
+        const groupPending = countPendingRounds(groupMatches, numGrpRounds);
+        if (groupPending === 0 || groupPending > 2) continue;
         const probs = computeQualProbs(ids, allMatches, numGrpRounds, qualifyingPositions);
         for (const [id, p] of probs) combined.set(id, p);
       }
+
       return combined;
     }
 

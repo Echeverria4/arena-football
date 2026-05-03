@@ -189,17 +189,19 @@ function FixedColumn({
                 {item.qualProb != null ? (
                   <View style={[
                     s.qualProbBadge,
-                    item.qualProb >= 70 ? s.qualHigh
+                    item.qualProb === 100 ? s.qualClassified
+                    : item.qualProb >= 70 ? s.qualHigh
                     : item.qualProb >= 40 ? s.qualMid
                     : s.qualLow,
                   ]}>
                     <Text style={[
                       s.qualProbText,
-                      item.qualProb >= 70 ? { color: "#16A34A" }
+                      item.qualProb === 100 ? { color: "#065F46" }
+                      : item.qualProb >= 70 ? { color: "#16A34A" }
                       : item.qualProb >= 40 ? { color: "#B45309" }
                       : { color: "#B91C1C" },
                     ]}>
-                      {item.qualProb}% classif.
+                      {item.qualProb === 100 ? "Classificado" : `${item.qualProb}% classif.`}
                     </Text>
                   </View>
                 ) : move !== "same" ? (
@@ -519,6 +521,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderWidth: 1,
+  },
+
+  qualClassified: {
+    backgroundColor: "rgba(6,95,70,0.12)",
+    borderColor: "rgba(6,95,70,0.35)",
   },
 
   qualHigh: {
