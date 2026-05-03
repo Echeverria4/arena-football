@@ -415,13 +415,14 @@ export const useTournamentStore = create<TournamentState>()(
             const numRodGrupos = campeonato.numRodadasGrupos ?? 0;
             // Don't regenerate if KO rounds already exist
             if (campeonato.rodadas.length > numRodGrupos) return campeonato;
-            // Don't generate until every group-stage match is finished
+            // Don't generate until every group-stage match is finished.
+            // When numRodGrupos is 0 (unset legacy data), require all current rounds to be done.
+            const groupRoundsToCheck = numRodGrupos > 0
+              ? campeonato.rodadas.slice(0, numRodGrupos)
+              : campeonato.rodadas;
             if (
-              numRodGrupos > 0 &&
-              !campeonato.rodadas
-                .slice(0, numRodGrupos)
-                .flat()
-                .every((j) => j.status === "finalizado")
+              groupRoundsToCheck.flat().length > 0 &&
+              !groupRoundsToCheck.flat().every((j) => j.status === "finalizado")
             ) return campeonato;
             const result: KnockoutFirstRoundResult = generateKnockoutFirstRound(campeonato);
             if (result.rounds.length === 0) return campeonato;

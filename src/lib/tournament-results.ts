@@ -188,11 +188,16 @@ export function resetMatchInCampeonato(campeonato: Campeonato, jogoId: string): 
 
   // Resetting a group-stage match invalidates the knockout bracket — strip KO rounds
   // so they get regenerated once the group stage is complete again.
+  // When numRodadasGrupos is 0 (unset legacy data), any match before the total
+  // round count is treated as a group-stage match.
+  const effectiveGroupRounds = numRodadasGrupos > 0
+    ? numRodadasGrupos
+    : campeonato.rodadas.length;
   const isGroupStageMatch =
     campeonato.formato === "groups_knockout" &&
-    numRodadasGrupos > 0 &&
     targetJogo != null &&
-    targetJogo.rodada <= numRodadasGrupos;
+    targetJogo.rodada <= effectiveGroupRounds &&
+    campeonato.rodadas.length > effectiveGroupRounds;
 
   const rodadas = campeonato.rodadas.map((rodada) =>
     rodada.map((jogo) =>
@@ -202,7 +207,7 @@ export function resetMatchInCampeonato(campeonato: Campeonato, jogoId: string): 
     ),
   );
 
-  const finalRodadas = isGroupStageMatch ? rodadas.slice(0, numRodadasGrupos) : rodadas;
+  const finalRodadas = isGroupStageMatch ? rodadas.slice(0, effectiveGroupRounds) : rodadas;
 
   return {
     ...campeonato,

@@ -459,8 +459,13 @@ export default function TournamentMatchesScreen() {
                 {teamMatchesFor ? (() => {
                   const tmTeamName = teamMatchesFor === "home" ? selectedMatchContext.homeTeamName : selectedMatchContext.awayTeamName;
                   const tmParticipantId = teamMatchesFor === "home" ? selectedMatchContext.homeParticipantId : selectedMatchContext.awayParticipantId;
+                  const tmMaxRound = isGroupsKnockout && !groupStageAllDone && numRodadasGrupos > 0
+                    ? numRodadasGrupos
+                    : Infinity;
                   const tmMatches = bundle.campeonato.rodadas.flat().filter(
-                    (m) => m.mandanteId === tmParticipantId || m.visitanteId === tmParticipantId,
+                    (m) =>
+                      (m.mandanteId === tmParticipantId || m.visitanteId === tmParticipantId) &&
+                      m.rodada <= tmMaxRound,
                   );
                   return (
                     <View style={{ gap: 12, flex: 1 }}>

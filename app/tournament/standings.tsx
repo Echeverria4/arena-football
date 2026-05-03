@@ -13,6 +13,7 @@ import { ScreenState } from "@/components/ui/ScreenState";
 import { ScrollRow } from "@/components/ui/ScrollRow";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { usePanelGrid } from "@/components/ui/usePanelGrid";
+import { computeQualProbs, countPendingRounds } from "@/lib/classification-probability";
 import { normalizeTeamDisplayName, resolveTeamVisualByName } from "@/lib/team-visuals";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { getTournamentBundle } from "@/lib/tournament-display";
@@ -202,6 +203,62 @@ export default function TournamentStandingsScreen() {
       .map(([label, entries]) => ({ label, entries }));
   }, [bundle.participants, effectiveGroupedView, sortedStandings]);
 
+  // ── Qualification probability ──────────────────────────────────────────────
+  const qualProbMap = useMemo<Map<string, number>>(() => {
+    const fmt = bundle.campeonato.formato ?? "league";
+    const allMatches = bundle.campeonato.rodadas.flat();
+
+    if (fmt === "groups_knockout") {
+      // Show probabilities when ≤ 2 group-stage rounds remain
+      const numGrpRounds = bundle.campeonato.numRodadasGrupos ?? 0;
+      if (numGrpRounds === 0) return new Map();
+      const pending = countPendingRounds(allMatches, numGrpRounds);
+      if (pending === 0 || pending > 2) return new Map();
+
+      const advMode = bundle.campeonato.gruposClassificacaoModo ?? "top_two";
+      const qualifyingPositions =
+        advMode === "first_only" ? 1
+        : advMode === "top_two" ? 2
+        : advMode === "first_direct_second_playoff" ? 2
+        : 3; // first_direct_second_vs_third_playoff
+
+      // Compute per group
+      const combined = new Map<string, number>();
+      const groupMap = new Map<string, string[]>();
+      for (const p of bundle.campeonato.participantes) {
+        const g = p.grupo ?? "Grupo A";
+        const arr = groupMap.get(g) ?? [];
+        arr.push(p.id);
+        groupMap.set(g, arr);
+      }
+      for (const [, ids] of groupMap) {
+        const probs = computeQualProbs(ids, allMatches, numGrpRounds, qualifyingPositions);
+        for (const [id, p] of probs) combined.set(id, p);
+      }
+      return combined;
+    }
+
+    if (fmt === "league") {
+      // Show probabilities when ≤ 5 rounds remain, only for top-4 players
+      const pending = countPendingRounds(allMatches, Infinity);
+      if (pending === 0 || pending > 5) return new Map();
+
+      const allIds = bundle.campeonato.participantes.map((p) => p.id);
+      const top4Ids = sortedStandings.slice(0, 4).map((e) => e.participantId);
+      const probs = computeQualProbs(allIds, allMatches, Infinity, 4);
+
+      // Only expose probabilities for the top-4 players
+      const filtered = new Map<string, number>();
+      for (const id of top4Ids) {
+        const p = probs.get(id);
+        if (p != null) filtered.set(id, p);
+      }
+      return filtered;
+    }
+
+    return new Map();
+  }, [bundle.campeonato, bundle.campeonato.participantes, sortedStandings]);
+
   const groupedRows = useMemo(
     () =>
       groupedStandings.map((group) => ({
@@ -245,6 +302,7 @@ export default function TournamentStandingsScreen() {
             ],
             previousPosition:
               previousPosition && previousPosition > 0 ? previousPosition : undefined,
+            qualProb: qualProbMap.get(entry.participantId),
           };
         }),
       })),
@@ -255,6 +313,7 @@ export default function TournamentStandingsScreen() {
       previousGlobalPositionById,
       previousRoundStandings,
       recentFormByParticipantId,
+      qualProbMap,
     ],
   );
 

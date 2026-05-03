@@ -27,6 +27,8 @@ export type StandingRow = {
   recentForm?: RecentFormResult[];
   movement?: Movement;
   previousPosition?: number;
+  /** Qualification probability 0-100. Shown only when defined. */
+  qualProb?: number;
 };
 
 export type AdvancementMode =
@@ -184,14 +186,30 @@ function FixedColumn({
                 <Text numberOfLines={1} style={[s.teamName, isSelected && { color: "#1E3A8A" }]}>
                   {item.name}
                 </Text>
-                {move !== "same" && (
+                {item.qualProb != null ? (
+                  <View style={[
+                    s.qualProbBadge,
+                    item.qualProb >= 70 ? s.qualHigh
+                    : item.qualProb >= 40 ? s.qualMid
+                    : s.qualLow,
+                  ]}>
+                    <Text style={[
+                      s.qualProbText,
+                      item.qualProb >= 70 ? { color: "#16A34A" }
+                      : item.qualProb >= 40 ? { color: "#B45309" }
+                      : { color: "#B91C1C" },
+                    ]}>
+                      {item.qualProb}% classif.
+                    </Text>
+                  </View>
+                ) : move !== "same" ? (
                   <Text style={[
                     s.moveTag,
                     move === "up" ? { color: "#16A34A" } : { color: "#DC2626" },
                   ]}>
                     {move === "up" ? "▲" : "▼"}
                   </Text>
-                )}
+                ) : null}
               </View>
             </View>
           </Pressable>
@@ -493,6 +511,35 @@ const s = StyleSheet.create({
   moveTag: {
     fontSize: 9,
     fontWeight: "900",
+  },
+
+  qualProbBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderWidth: 1,
+  },
+
+  qualHigh: {
+    backgroundColor: "rgba(22,163,74,0.08)",
+    borderColor: "rgba(22,163,74,0.25)",
+  },
+
+  qualMid: {
+    backgroundColor: "rgba(180,83,9,0.08)",
+    borderColor: "rgba(180,83,9,0.25)",
+  },
+
+  qualLow: {
+    backgroundColor: "rgba(185,28,28,0.07)",
+    borderColor: "rgba(185,28,28,0.20)",
+  },
+
+  qualProbText: {
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.3,
   },
 
   statHeadCell: {
