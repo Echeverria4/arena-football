@@ -7,7 +7,13 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Arena precisa acessar sua galeria para você adicionar o escudo do time."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

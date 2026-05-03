@@ -9,6 +9,7 @@ type Props = {
   backgroundColor?: string;
   frameColor?: string;
   style?: StyleProp<ViewStyle>;
+  innerStyle?: StyleProp<ViewStyle>;
 };
 
 export function NeonFrame({
@@ -19,6 +20,7 @@ export function NeonFrame({
   backgroundColor = "#FFFFFF",
   frameColor = "rgba(59,91,255,0.16)",
   style,
+  innerStyle,
 }: Props) {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0.9)).current;
@@ -113,13 +115,16 @@ export function NeonFrame({
       />
 
       <View
-        style={{
-          borderRadius: radius - padding,
-          overflow: "hidden",
-          backgroundColor,
-          borderWidth: 1,
-          borderColor: frameColor,
-        }}
+        style={[
+          {
+            borderRadius: radius - padding,
+            overflow: "hidden",
+            backgroundColor,
+            borderWidth: 1,
+            borderColor: frameColor,
+          },
+          innerStyle,
+        ]}
       >
         {children}
       </View>

@@ -1,5 +1,5 @@
 import { router, Stack, useGlobalSearchParams, usePathname } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { View } from "react-native";
 
 import { SyncStatusPill } from "@/components/tournament/SyncStatusPill";
@@ -7,8 +7,10 @@ import { TournamentDeadlinePill } from "@/components/tournament/TournamentDeadli
 import { FloatingMusicPlayer } from "@/components/ui/FloatingMusicPlayer";
 import { useTournamentRealtimeSync } from "@/hooks/useTournamentRealtimeSync";
 import { useTournamentSnapshotSync } from "@/hooks/useTournamentSnapshotSync";
+import { getMusicStatus, pauseMusic, playUri } from "@/lib/music-player";
 import { isTournamentAccessLocked, resolveTournamentAccessMode } from "@/lib/tournament-access";
 import { useAppStore } from "@/stores/app-store";
+import { useMusicStore } from "@/stores/music-store";
 import { useTournamentStore } from "@/stores/tournament-store";
 
 function resolveTournamentRouteKey(pathname: string) {
@@ -119,6 +121,27 @@ export default function TournamentLayout() {
   // realtime de matches nao cobre. So roda quando shareKey + access role
   // estao definidos — ou seja, somente para quem entrou via link.
   useTournamentSnapshotSync({ campeonatoId: activeCampeonatoId });
+
+  // Tournament custom soundtrack: auto-play when entering, pause when leaving
+  const trilhaSonoraUri = useTournamentStore((state) =>
+    activeCampeonatoId
+      ? state.campeonatos.find((c) => c.id === activeCampeonatoId)?.trilhaSonoraUri
+      : undefined,
+  );
+  const musicEnabled = useMusicStore((s) => s.enabled);
+  const musicVolume = useMusicStore((s) => s.volume);
+  const wasPlayingBeforeTrilhaRef = useRef(false);
+
+  useEffect(() => {
+    if (!trilhaSonoraUri || !musicEnabled) return;
+
+    wasPlayingBeforeTrilhaRef.current = getMusicStatus().isPlaying;
+    void playUri(trilhaSonoraUri, musicVolume);
+
+    return () => {
+      void pauseMusic();
+    };
+  }, [trilhaSonoraUri, musicEnabled]);
 
   return (
     <View style={{ flex: 1 }}>

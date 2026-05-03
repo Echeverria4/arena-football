@@ -168,6 +168,51 @@ export async function playTrack(trackId: string, volume?: number) {
   }
 }
 
+/**
+ * Play an arbitrary URI (local file or data:) without requiring a catalog entry.
+ * Used for per-tournament custom soundtracks.
+ */
+export async function playUri(uri: string, volume?: number) {
+  if (volume !== undefined) _volume = Math.max(0, Math.min(1, volume));
+  _shouldBePlaying = true;
+  _isPlaying = false;
+  _currentTrackId = null;
+
+  if (Platform.OS === "web") {
+    _teardownWebAudio();
+    const audio = new (globalThis as any).Audio(uri) as HTMLAudioElement;
+    audio.volume = _volume;
+    audio.loop = true;
+    _mountWebAudio(audio);
+    try {
+      await audio.play();
+      _webAudio = audio;
+      _isPlaying = true;
+    } catch (e) {
+      _teardownWebAudio();
+      _shouldBePlaying = false;
+    }
+  } else {
+    try {
+      if (_sound) {
+        _sound.setOnPlaybackStatusUpdate(null);
+        await _sound.unloadAsync();
+        _sound = null;
+      }
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true, isLooping: true, volume: _volume },
+      );
+      _sound = sound;
+      _isPlaying = true;
+      sound.setOnPlaybackStatusUpdate(_onNativeStatus);
+    } catch (e) {
+      _shouldBePlaying = false;
+    }
+  }
+}
+
 export async function pauseMusic() {
   _shouldBePlaying = false;
   if (Platform.OS === "web") {

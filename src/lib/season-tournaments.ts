@@ -43,6 +43,8 @@ export function normalizeCampeonato(campeonato: Campeonato): Campeonato {
       campeonato.criteriosClassificacao ?? ["points", "goal_difference", "head_to_head"],
     allowVideos: campeonato.allowVideos ?? true,
     allowGoalAward: campeonato.allowGoalAward ?? true,
+    trilhaSonoraNome: campeonato.trilhaSonoraNome,
+    trilhaSonoraUri: campeonato.trilhaSonoraUri,
     gruposClassificacaoModo:
       formato === "groups_knockout"
         ? campeonato.gruposClassificacaoModo ?? "top_two"

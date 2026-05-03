@@ -580,7 +580,7 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          freezeOnBlur: true,
+          freezeOnBlur: false,
           tabBarActiveTintColor: "#FFFFFF",
           tabBarInactiveTintColor: "#FFFFFF",
           tabBarShowLabel: !isSmallPhone,

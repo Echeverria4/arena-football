@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as DocumentPicker from "expo-document-picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { Alert, Image, Pressable, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Image, Platform, Pressable, Switch, Text, TextInput, View } from "react-native";
 import { z } from "zod";
 
 import { TeamPickerModal } from "@/components/tournament/TeamPickerModal";
@@ -111,6 +112,8 @@ export default function TournamentCreateScreen() {
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [step1Values, setStep1Values] = useState<TournamentCreateValues | null>(null);
+  const [soundtrackName, setSoundtrackName] = useState<string | null>(null);
+  const [soundtrackUri, setSoundtrackUri] = useState<string | null>(null);
   const [draftParticipants, setDraftParticipants] = useState<DraftParticipant[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step2Touched, setStep2Touched] = useState(false);
@@ -172,6 +175,35 @@ export default function TournamentCreateScreen() {
       shouldTouch: true,
       shouldValidate: true,
     });
+  }
+
+  async function pickSoundtrack() {
+    if (Platform.OS === "web") {
+      await new Promise<void>((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "audio/*";
+        input.onchange = (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (!file) { resolve(); return; }
+          const url = URL.createObjectURL(file);
+          setSoundtrackUri(url);
+          setSoundtrackName(file.name.replace(/\.[^.]+$/, ""));
+          resolve();
+        };
+        input.click();
+      });
+    } else {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setSoundtrackUri(asset.uri);
+        setSoundtrackName((asset.name ?? "Trilha sonora").replace(/\.[^.]+$/, ""));
+      }
+    }
   }
 
   function handleStep1Next(values: TournamentCreateValues) {
@@ -282,6 +314,8 @@ export default function TournamentCreateScreen() {
         ...campeonato,
         participantes: updatedParticipantes,
         classificacao: updatedClassificacao,
+        trilhaSonoraNome: soundtrackName ?? undefined,
+        trilhaSonoraUri: soundtrackUri ?? undefined,
       };
 
       adicionarCampeonato(finalCampeonato);
@@ -650,6 +684,84 @@ export default function TournamentCreateScreen() {
                   {errors.classificationCriteria.message}
                 </Text>
               ) : null}
+            </View>
+
+            {/* Soundtrack — optional */}
+            <View
+              style={{
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: soundtrackUri
+                  ? "rgba(139,92,246,0.45)"
+                  : "rgba(255,255,255,0.10)",
+                backgroundColor: soundtrackUri
+                  ? "rgba(139,92,246,0.07)"
+                  : "rgba(255,255,255,0.03)",
+                padding: 14,
+                gap: 10,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ color: "#E2E8F0", fontSize: 14, fontWeight: "700" }}>
+                    Trilha sonora <Text style={{ color: "#6B7EA3", fontSize: 12, fontWeight: "500" }}>(opcional)</Text>
+                  </Text>
+                  <Text style={{ color: "#6B7EA3", fontSize: 12, lineHeight: 18 }}>
+                    {soundtrackUri
+                      ? soundtrackName ?? "Música selecionada"
+                      : "Toca automaticamente ao abrir o campeonato"}
+                  </Text>
+                </View>
+
+                {soundtrackUri ? (
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <Pressable
+                      onPress={() => { void pickSoundtrack(); }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        backgroundColor: "rgba(139,92,246,0.15)",
+                        borderWidth: 1,
+                        borderColor: "rgba(139,92,246,0.40)",
+                      }}
+                    >
+                      <Text style={{ color: "#C4B5FD", fontSize: 12, fontWeight: "700" }}>Trocar</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => { setSoundtrackUri(null); setSoundtrackName(null); }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        backgroundColor: "rgba(185,28,28,0.10)",
+                        borderWidth: 1,
+                        borderColor: "rgba(185,28,28,0.30)",
+                      }}
+                    >
+                      <Text style={{ color: "#FCA5A5", fontSize: 12, fontWeight: "700" }}>Remover</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() => { void pickSoundtrack(); }}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      backgroundColor: "rgba(139,92,246,0.12)",
+                      borderWidth: 1,
+                      borderColor: "rgba(139,92,246,0.35)",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 15 }}>🎵</Text>
+                    <Text style={{ color: "#C4B5FD", fontSize: 13, fontWeight: "700" }}>Escolher</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
 
             {/* Allow videos */}

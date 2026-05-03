@@ -156,6 +156,8 @@ export type Campeonato = {
   criteriosClassificacao?: ClassificationCriterion[];
   allowVideos?: boolean;
   allowGoalAward?: boolean;
+  trilhaSonoraNome?: string;
+  trilhaSonoraUri?: string;
   participantes: Participante[];
   rodadas: Jogo[][];
   classificacao: ClassificacaoItem[];
