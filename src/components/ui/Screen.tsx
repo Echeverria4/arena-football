@@ -50,6 +50,7 @@ export function Screen({
           overflowX: "hidden" as const,
           overflowY: "scroll" as const,
           scrollbarGutter: "stable" as never,
+          overscrollBehavior: "none" as never,
         }
       : undefined;
   const webScrollStyle =
@@ -58,6 +59,7 @@ export function Screen({
           overflowX: isHorizontal ? ("auto" as const) : ("hidden" as const),
           overflowY: isHorizontal ? ("hidden" as const) : ("scroll" as const),
           scrollbarGutter: "stable" as never,
+          overscrollBehavior: "none" as never,
         }
       : undefined;
 
@@ -94,6 +96,8 @@ export function Screen({
           ]}
           showsVerticalScrollIndicator={scrollProps?.showsVerticalScrollIndicator ?? !isHorizontal}
           showsHorizontalScrollIndicator={scrollProps?.showsHorizontalScrollIndicator ?? isHorizontal}
+          bounces={false}
+          overScrollMode="never"
           {...scrollProps}
         >
           {children}
