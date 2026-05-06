@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-worklets/android/build.gradle b/node_modules/react-native-worklets/android/build.gradle
+index 18f06b6..280cb1c 100644
+--- a/node_modules/react-native-worklets/android/build.gradle
++++ b/node_modules/react-native-worklets/android/build.gradle
+@@ -253,9 +253,7 @@ android {
+     sourceSets {
+         main {
+             java {
+-                if (!IS_NEW_ARCHITECTURE_ENABLED) {
+-                    srcDirs += "src/worklets/paper"
+-                }
++                srcDirs += "src/paper"
+             }
+         }
+     }
